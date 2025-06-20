@@ -8,12 +8,12 @@
   import { tick } from "svelte";
   import { X } from "lucide-svelte";
   import { modalStack } from "$lib/stores/modalStore";
-  import { transparentPanel } from "$lib/stores/derivedThemeStore";
+  import { transparentPanel, panelRoundness } from "$lib/stores/derivedThemeStore";
   import { app } from "$lib/state/app.state.svelte";
 
   // Props
   let {
-    isOpen = false,
+    isOpen = $bindable(),
     modalKey = Math.random().toString(36).substr(2, 9),
     title = "",
     variant = transparentPanel ? "transparent" : "solid",
@@ -52,7 +52,7 @@
   let currentX = $state(0);
   let isDragging = $state(false);
   let modalElement: HTMLDivElement = $state(null);
-  let zIndex = $state(99999);
+  let zIndex = $state(100010);
   
   const SLIDE_THRESHOLD = 100; // pixels to trigger close
 
@@ -83,8 +83,8 @@
       // Find position of current modal
       const currentIndex = modalEntries.findIndex(([key]) => key === modalKey);
       if (currentIndex !== -1) {
-        // Base z-index is 99999, each modal adds 10 to ensure proper stacking
-        zIndex = 99999 + (currentIndex * 10);
+        // Base z-index is 100010, each modal adds 10 to ensure proper stacking
+        zIndex = 100010 + (currentIndex * 10);
       }
     });
 
@@ -216,29 +216,30 @@
     >
       <div
         class="fixed inset-0 bg-black/60 backdrop-blur-md"
-        on:click={handleBackdropClick}
+        onclick={handleBackdropClick}
         style="z-index: {zIndex};"
         transition:fade={{ duration: 120, easing: cubicOut }}
-      />
+      ></div>
 
       <div
         bind:this={modalElement}
         class="relative px-4 will-change-transform max-w-full max-h-screen md:max-h-[calc(100vh-40px)] flex flex-col overflow-hidden"
         style="width: {modalWidth}; z-index: {zIndex + 1};"
-        on:mousedown={handleDragStart}
-        on:mousemove={handleDragMove}
-        on:mouseup={handleDragEnd}
-        on:mouseleave={handleDragEnd}
-        on:touchstart={handleDragStart}
-        on:touchmove={handleDragMove}
-        on:touchend={handleDragEnd}
-        on:click|stopPropagation
+        onmousedown={handleDragStart}
+        onmousemove={handleDragMove}
+        onmouseup={handleDragEnd}
+        onmouseleave={handleDragEnd}
+        ontouchstart={handleDragStart}
+        ontouchmove={handleDragMove}
+        ontouchend={handleDragEnd}
+        onclick={(e) => e.stopPropagation()}
         transition:fade={{ duration: 150, delay: 100, easing: cubicOut }}
       >
         <Panel
           width="100%"
           height={modalHeight}
-          className="flex flex-col overflow-hidden {className} {isPadded ? 'px-4' : ''}"
+          className="flex flex-col overflow-hidden !{$panelRoundness} {className} {isPadded ? 'px-4' : ''}"
+          zIndex={undefined}
         >
           <div
             class="modal-content flex flex-col overflow-hidden"
@@ -266,8 +267,8 @@
                 </slot>
               </div>
               <button
-                class="!flex !items-center hover:text-kong-accent-red !border-0 !shadow-none group relative"
-                on:click={(e) => handleClose(e)}
+                class="!flex !items-center hover:text-kong-error !border-0 !shadow-none group relative"
+                onclick={(e) => handleClose(e)}
                 aria-label="Close modal"
               >
                 <X size={18} />
@@ -296,10 +297,5 @@
     transition: all 0.15s ease;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     width: 40px;
-  }
-
-  :global(#portal-target) {
-    position: relative;
-    isolation: isolate;
   }
 </style>

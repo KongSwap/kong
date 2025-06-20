@@ -6,7 +6,7 @@ set -e
 echo "==== Testing KONG Token Burn Functionality ====" 
 
 # Get canister IDs
-KONG_LEDGER=$(dfx canister id kskong_ledger)
+KONG_LEDGER=$(dfx canister id kong_ledger)
 MINTER_ID="faaxe-sf6cf-hmx3r-ujxc6-7ppwl-3lkf3-zpj6i-2m75x-bqmba-dod7q-4qe"
 KONG_FEE=$(dfx canister call ${KONG_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
 KONG_FEE=${KONG_FEE//_/}

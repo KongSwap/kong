@@ -29,17 +29,11 @@
     "staging_fe": "",
     "staging": "ohr23-xqaaa-aaaar-qahqq-cai"
   },
-  "usdt_ledger": {
+  "ckusdt_ledger": {
     "ic": "cngnf-vqaaa-aaaar-qag4q-cai",
-    "local": "",
+    "local": "cngnf-vqaaa-aaaar-qag4q-cai",
     "staging_fe": "cngnf-vqaaa-aaaar-qag4q-cai",
-    "staging": ""
-  },
-  "ksusdt_ledger": {
-    "ic": "",
-    "local": "zdzgz-siaaa-aaaar-qaiba-cai",
-    "staging_fe": "",
-    "staging": "zdzgz-siaaa-aaaar-qaiba-cai"
+    "staging": "cngnf-vqaaa-aaaar-qag4q-cai"
   },
   "icp_ledger": {
     "ic": "ryjl3-tyaaa-aaaaa-aaaba-cai",
@@ -47,41 +41,23 @@
     "staging_fe": "ryjl3-tyaaa-aaaaa-aaaba-cai",
     "staging": "ryjl3-tyaaa-aaaaa-aaaba-cai"
   },
-  "btc_ledger": {
+  "ckbtc_ledger": {
     "ic": "mxzaz-hqaaa-aaaar-qaada-cai",
     "local": "mxzaz-hqaaa-aaaar-qaada-cai",
     "staging_fe": "mxzaz-hqaaa-aaaar-qaada-cai",
     "staging": "mxzaz-hqaaa-aaaar-qaada-cai"
   },
-  "ksbtc_ledger": {
-    "ic": "",
-    "local": "zeyan-7qaaa-aaaar-qaibq-cai",
-    "staging_fe": "",
-    "staging": "zeyan-7qaaa-aaaar-qaibq-cai"
-  },
-  "eth_ledger": {
+  "cketh_ledger": {
     "ic": "ss2fx-dyaaa-aaaar-qacoq-cai",
     "local": "ss2fx-dyaaa-aaaar-qacoq-cai",
     "staging_fe": "ss2fx-dyaaa-aaaar-qacoq-cai",
     "staging": "ss2fx-dyaaa-aaaar-qacoq-cai"
   },
-  "kseth_ledger": {
-    "ic": "",
-    "local": "zr7ra-6yaaa-aaaar-qaica-cai",
-    "staging_fe": "",
-    "staging": "zr7ra-6yaaa-aaaar-qaica-cai"
-  },
   "kong_ledger": {
     "ic": "o7oak-iyaaa-aaaaq-aadzq-cai",
     "local": "o7oak-iyaaa-aaaaq-aadzq-cai",
     "staging_fe": "o7oak-iyaaa-aaaaq-aadzq-cai",
-    "staging": ""
-  },
-  "kskong_ledger": {
-    "ic": "",
-    "local": "ulvla-h7777-77774-qaacq-cai",
-    "staging_fe": "",
-    "staging": "ulvla-h7777-77774-qaacq-cai"
+    "staging": "o7oak-iyaaa-aaaaq-aadzq-cai"
   },
   "internet_identity": {
     "local": "rdmx6-jaaaa-aaaaa-aaadq-cai",
@@ -104,7 +80,7 @@
   "ic_siws_provider": {
     "local": "guktk-fqaaa-aaaao-a4goa-cai",
     "staging_fe": "guktk-fqaaa-aaaao-a4goa-cai",
-    "staging": "",
+    "staging": "guktk-fqaaa-aaaao-a4goa-cai",
     "ic": "guktk-fqaaa-aaaao-a4goa-cai"
   }
 }

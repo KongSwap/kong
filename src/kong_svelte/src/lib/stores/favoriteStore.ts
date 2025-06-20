@@ -1,5 +1,5 @@
 import { writable, get, derived } from "svelte/store";
-import { STORAGE_KEYS, createNamespacedStore } from '$lib/config/localForage.config';
+import { browser } from '$app/environment';
 
 // Internal store for favorites state
 interface FavoriteState {
@@ -10,8 +10,7 @@ interface FavoriteState {
 
 function createFavoriteStore() {
   // Create the storage namespace for favorite tokens
-  const FAVORITE_TOKENS_KEY = STORAGE_KEYS.FAVORITE_TOKENS;
-  const storage = createNamespacedStore(STORAGE_KEYS.FAVORITE_TOKENS);
+  const FAVORITE_TOKENS_KEY = 'favoriteTokens';
   
   // Create a writable store with initial state
   const initialState: FavoriteState = {
@@ -66,7 +65,8 @@ function createFavoriteStore() {
     
     try {
       const key = getStorageKey(currentWalletId);
-      const storedFavorites = await storage.getItem<{address: string, timestamp: number}[]>(key) || [];
+      const stored = localStorage.getItem(key);
+      const storedFavorites = stored ? JSON.parse(stored) as {address: string, timestamp: number}[] : [];
       const ids = storedFavorites.map(fav => fav.address);
       
       // Update the store with loaded data
@@ -100,7 +100,8 @@ function createFavoriteStore() {
     
     try {
       const key = getStorageKey(currentWalletId);
-      const storedFavorites = await storage.getItem<{address: string, timestamp: number}[]>(key) || [];
+      const stored = localStorage.getItem(key);
+      const storedFavorites = stored ? JSON.parse(stored) as {address: string, timestamp: number}[] : [];
       
       // Check if already exists
       const existing = storedFavorites.find(fav => fav.address === canisterId);
@@ -115,7 +116,7 @@ function createFavoriteStore() {
       });
       
       // Save back to storage
-      await storage.setItem(key, storedFavorites);
+      localStorage.setItem(key, JSON.stringify(storedFavorites));
       
       // Update the store
       store.update(state => {
@@ -146,7 +147,8 @@ function createFavoriteStore() {
     
     try {
       const key = getStorageKey(currentWalletId);
-      const storedFavorites = await storage.getItem<{address: string, timestamp: number}[]>(key) || [];
+      const stored = localStorage.getItem(key);
+      const storedFavorites = stored ? JSON.parse(stored) as {address: string, timestamp: number}[] : [];
       
       // Find if exists
       const index = storedFavorites.findIndex(fav => fav.address === canisterId);
@@ -158,7 +160,7 @@ function createFavoriteStore() {
       storedFavorites.splice(index, 1);
       
       // Save back to storage
-      await storage.setItem(key, storedFavorites);
+      localStorage.setItem(key, JSON.stringify(storedFavorites));
       
       // Update the store
       store.update(state => {

@@ -1,204 +1,264 @@
 <script lang="ts">
-  import { themeStore } from '$lib/stores/themeStore';
-  import type { ThemeColors } from '$lib/themes/baseTheme';
-  import { getThemeById } from '$lib/themes/themeRegistry';
-  import { panelRoundness } from '$lib/stores/derivedThemeStore';
+  import { Check, AlertCircle, Loader2 } from 'lucide-svelte';
+  import { tweened } from 'svelte/motion';
+  import { cubicOut } from 'svelte/easing';
+  import { onMount } from 'svelte';
 
-  // Props
+  // ===== CONSTANTS =====
+  const SCALE_VALUES = {
+    press: 0.98,
+    hover: 1.02,
+    normal: 1
+  };
+
+  // ===== PROPS =====
   let { 
     text,
     isError,
     isProcessing,
     isLoading,
-    showShineAnimation,
     disabled,
     onClick,
-    // Theme props - only used if theme values aren't available
-    primaryGradientStart,
-    primaryGradientEnd,
-    errorGradientStart,
-    errorGradientEnd,
-    processingGradientStart,
-    processingGradientEnd,
-    borderColor,
-    glowColor,
-    shine,
-    readyGlowStart,
-    readyGlowEnd
-  } = $props<{
-    text: string;
-    isError: boolean;
-    isProcessing: boolean;
-    isLoading: boolean;
-    showShineAnimation: boolean;
-    disabled: boolean;
-    onClick: () => void;
-    // Optional theme props as fallbacks
-    primaryGradientStart?: string;
-    primaryGradientEnd?: string;
-    errorGradientStart?: string;
-    errorGradientEnd?: string;
-    processingGradientStart?: string;
-    processingGradientEnd?: string;
-    borderColor?: string;
-    glowColor?: string;
-    shine?: string;
-    readyGlowStart?: string;
-    readyGlowEnd?: string;
-  }>();
+    priceImpact = null,
+    estimatedGas = null,
+  } = $props();
 
-  // Get current theme - using function approach to prevent reactive loops
-  function getCurrentTheme() {
-    return getThemeById($themeStore);
-  }
+  // ===== STATE MANAGEMENT =====
+  // Animation tweens
+  const buttonScale = tweened(SCALE_VALUES.normal, { duration: 150, easing: cubicOut });
+  const pressScale = tweened(SCALE_VALUES.normal, { duration: 75, easing: cubicOut });
+  
+  // Interaction state
+  let interaction = $state({
+    isHovered: false,
+    isPressed: false
+  });
+  
+  let buttonElement: HTMLButtonElement;
 
-  function getThemeColors(): ThemeColors {
-    return getCurrentTheme().colors as ThemeColors;
+  // ===== COMPUTED VALUES =====
+  const isSwapReady = $derived(text === "SWAP" && !disabled && !isProcessing && !isError);
+  const showIcon = $derived(getIcon() !== null);
+  const Icon = $derived(getIcon());
+  const isLoadingState = $derived(isProcessing || isLoading);
+  const showPriceImpactWarning = $derived(priceImpact !== null && priceImpact > 2 && !isError && !isProcessing);
+
+  // ===== UI HELPERS =====
+  function getIcon() {
+    if (isError) return AlertCircle;
+    if (isLoadingState) return Loader2;
+    return null;
   }
   
-  function getPrimaryGradientStart(): string {
-    return getThemeColors().swapButtonPrimaryGradientStart || 
-           primaryGradientStart || 
-           "rgba(55, 114, 255, 0.95)";
-  }
-  
-  function getPrimaryGradientEnd(): string {
-    return getThemeColors().swapButtonPrimaryGradientEnd || 
-           primaryGradientEnd || 
-           "rgba(111, 66, 193, 0.95)";
+  function getAriaLabel(): string {
+    if (isError) return `Error: ${text}`;
+    if (isLoadingState) return "Processing swap, please wait";
+    if (disabled) return `${text} - button disabled`;
+    return text;
   }
 
-  function getErrorGradientStart(): string {
-    return getThemeColors().swapButtonErrorGradientStart || 
-           errorGradientStart || 
-           "rgba(239, 68, 68, 0.9)";
-  }
-  
-  function getErrorGradientEnd(): string {
-    return getThemeColors().swapButtonErrorGradientEnd || 
-           errorGradientEnd || 
-           "rgba(239, 68, 68, 0.8)";
-  }
-  
-  function getProcessingGradientStart(): string {
-    return getThemeColors().swapButtonProcessingGradientStart || 
-           processingGradientStart || 
-           "#3772ff";
-  }
-  
-  function getProcessingGradientEnd(): string {
-    return getThemeColors().swapButtonProcessingGradientEnd || 
-           processingGradientEnd || 
-           "#4580ff";
-  }
-  
-  function getBorderColor(): string {
-    return getThemeColors().swapButtonBorderColor || 
-           borderColor || 
-           "rgba(255, 255, 255, 0.12)";
-  }
-  
-  function getGlowColor(): string {
-    return getThemeColors().swapButtonGlowColor || 
-           glowColor || 
-           "rgba(255, 255, 255, 0.2)";
-  }
-  
-  function getShineColor(): string {
-    return getThemeColors().swapButtonShineColor || 
-           shine || 
-           "rgba(255, 255, 255, 0.2)";
-  }
-  
-  function getReadyGlowStart(): string {
-    return getThemeColors().swapButtonReadyGlowStart || 
-           readyGlowStart || 
-           "rgba(55, 114, 255, 0.5)";
-  }
-  
-  function getReadyGlowEnd(): string {
-    return getThemeColors().swapButtonReadyGlowEnd || 
-           readyGlowEnd || 
-           "rgba(111, 66, 193, 0.5)";
-  }
-  
-  function getTextColor(): string {
-    return getThemeColors().swapButtonTextColor || "#FFFFFF";
-  }
-  
-  function getRoundness(): string {
-    return getThemeColors().swapButtonRoundness || $panelRoundness || "rounded-lg";
-  }
-  
-  function getShadow(): string {
-    return getThemeColors().swapButtonShadow || "0 8px 32px rgba(0, 0, 0, 0.32)";
+  function getTextSizeClass() {
+    return text.length > 20 ? 'text-lg' : 'text-xl';
   }
 
-  // Generate dynamic style strings
-  function getNormalStyle(): string {
-    return `background: linear-gradient(135deg, ${getPrimaryGradientStart()} 0%, ${getPrimaryGradientEnd()} 100%); border-color: ${getBorderColor()}; box-shadow: ${getShadow()};`;
+  // Get button state class
+  function getButtonStateClass() {
+    if (isError) return 'button-error';
+    if (isLoadingState) return 'button-processing';
+    if (isSwapReady) return 'button-ready';
+    return 'button-normal';
+  }
+
+  // ===== INTERACTION HANDLERS =====
+  function handleMouseDown(event: MouseEvent) {
+    if (disabled || isProcessing) return;
+    
+    interaction.isPressed = true;
+    pressScale.set(SCALE_VALUES.press);
+  }
+
+  function handleMouseUp() {
+    interaction.isPressed = false;
+    pressScale.set(SCALE_VALUES.normal);
+    buttonScale.set(SCALE_VALUES.normal);
+  }
+
+  function handleClick(event: MouseEvent) {
+    if (disabled || isProcessing) return;
+    
+    if ('vibrate' in navigator) navigator.vibrate(10);
+    
+    onClick();
   }
   
-  function getErrorStyle(): string {
-    return `background: linear-gradient(135deg, ${getErrorGradientStart()} 0%, ${getErrorGradientEnd()} 100%); border-color: ${getBorderColor()}; box-shadow: none; opacity: 1;`;
+  function handleKeyDown(event: KeyboardEvent) {
+    if ((event.key === 'Enter' || event.key === ' ') && !disabled && !isProcessing) {
+      event.preventDefault();
+      const rect = buttonElement.getBoundingClientRect();
+      const mockEvent = new MouseEvent('click', {
+        clientX: rect.left + rect.width / 2,
+        clientY: rect.top + rect.height / 2
+      });
+      handleClick(mockEvent as MouseEvent);
+    }
   }
   
-  function getProcessingStyle(): string {
-    return `background: linear-gradient(135deg, ${getProcessingGradientStart()} 0%, ${getProcessingGradientEnd()} 100%); border-color: ${getBorderColor()}; cursor: wait; opacity: 0.8;`;
+  function handleMouseEnter() {
+    interaction.isHovered = true;
+    if (!disabled && !isProcessing) {
+      buttonScale.set(SCALE_VALUES.hover);
+    }
   }
+  
+  function handleMouseLeave() {
+    interaction = {
+      isHovered: false,
+      isPressed: false
+    };
+    buttonScale.set(SCALE_VALUES.normal);
+    pressScale.set(SCALE_VALUES.normal);
+  }
+
+  // ===== EFFECTS & LIFECYCLE ===== 
+
+  onMount(() => {
+    const handleGlobalMouseUp = () => {
+      if (interaction.isPressed) handleMouseUp();
+    };
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  });
 </script>
 
-<button
-  class="relative w-full py-4 px-6 overflow-hidden transition-all duration-200 ease-out mt-1 border shadow-md min-h-[64px] disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-px hover:shadow-lg hover:border-white/20 active:translate-y-0 active:shadow-md active:duration-100 {getRoundness()}"
-  style={isError ? getErrorStyle() : (isProcessing || isLoading) ? getProcessingStyle() : getNormalStyle()}
-  class:animate-pulse={isProcessing || isLoading}
-  class:shine-animation={showShineAnimation}
-  on:click={onClick}
-  disabled={disabled || isProcessing}
->
+
+  <button
+    bind:this={buttonElement}
+    class="swap-button relative w-full px-6 overflow-hidden min-h-[64px] disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent group {getButtonStateClass()}"
+    class:hover-effect={!disabled && !isProcessing}
+    class:pressed={interaction.isPressed}
+    style="
+      transform: scale({$buttonScale * $pressScale});
+    "
+    onclick={handleClick}
+    onkeydown={handleKeyDown}
+    onmouseenter={handleMouseEnter}
+    onmouseleave={handleMouseLeave}
+    onmousedown={handleMouseDown}
+    onmouseup={handleMouseUp}
+    disabled={disabled || isProcessing}
+    aria-label={getAriaLabel()}
+    aria-busy={isLoadingState}
+    aria-disabled={disabled}
+    role="button"
+    tabindex={disabled ? -1 : 0}
+  >
+  <!-- Press effect overlay -->
+  {#if interaction.isPressed}
+    <div class="absolute inset-0 pointer-events-none rounded-[inherit] bg-black/10 transition-opacity duration-75" />
+  {/if}
+
+  <!-- Button content -->
   <div class="relative z-10 flex items-center justify-center gap-2 w-full">
-    {#if isProcessing || isLoading}
-      <div class="w-[22px] h-[22px] rounded-full border-2 border-white/10 border-t-white animate-spin"></div>
+    {#if showIcon && Icon}
+      <div class="flex-shrink-0">
+        <svelte:component this={Icon} class="w-5 h-5 {isError ? 'text-red-300' : ''} {isLoadingState ? 'animate-spin' : ''}" />
+      </div>
     {/if}
-    <span class="font-semibold text-2xl tracking-wide flex items-center justify-center text-center overflow-hidden" style="color: {getTextColor()}; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);">
-      {#if text.length > 20}
-        <span class="text-xl px-2">{text}</span>
-      {:else}
-        {text}
-      {/if}
+    
+    <span class="font-semibold tracking-wide text-center {getTextSizeClass()}">
+      {text}
     </span>
+    
+    {#if showPriceImpactWarning}
+      <span class="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 font-medium">
+        {priceImpact?.toFixed(1)}%
+      </span>
+    {/if}
   </div>
   
-  <div class="absolute inset-0 transition-opacity duration-300 opacity-0 hover:opacity-100" 
-       style="background: radial-gradient(circle at 50% 50%, {getGlowColor()}, transparent 70%);"></div>
-  
-  <div class="absolute top-0 left-[-100%] w-1/2 h-full pointer-events-none transform -skew-x-20" 
-       style="background: linear-gradient(90deg, transparent, {getShineColor()}, transparent);"
-       class:animate-shine={showShineAnimation}></div>
-  
-  <div class="absolute -inset-[2px] rounded-[18px] opacity-0 blur-md transition-opacity duration-300" 
-       style="background: linear-gradient(135deg, {getReadyGlowStart()}, {getReadyGlowEnd()});"
-       class:animate-pulse-glow={showShineAnimation}></div>
+  <!-- Progress indicator -->
+  {#if isLoadingState}
+    <div class="absolute bottom-0 left-0 h-1 bg-kong-text-light/20 rounded-full overflow-hidden w-full">
+      <div class="h-full bg-kong-text-light/30 w-full" />
+    </div>
+  {/if}
 </button>
 
 <style>
-  /* Animations that can't be expressed with Tailwind */
-  @keyframes shine {
-    0%, 100% { left: -100%; }
-    35%, 65% { left: 200%; }
+  /* ===== BASE BUTTON STYLES ===== */
+  .swap-button {
+    border: 1px solid var(--swap-button-border-color, rgb(var(--ui-border) / 0.3));
+    border-radius: var(--swap-button-roundness, 9999px);
+    color: var(--swap-button-text-color, rgb(var(--text-light)));
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    /* box-shadow: var(--swap-button-shadow, 0 2px 4px rgba(0, 0, 0, 0.1)); */
+
+    &:hover {
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
   }
 
-  @keyframes pulse-glow {
-    0%, 100% { opacity: 0; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(1.02); }
+  /* Button state backgrounds */
+  .button-normal {
+    background: linear-gradient(135deg, 
+      var(--swap-button-primary-gradient-start, rgb(var(--brand-primary) / 0.95)) 0%, 
+      var(--swap-button-primary-gradient-end, rgb(var(--brand-secondary) / 0.95)) 100%);
   }
 
-  /* Animation utility classes */
-  .animate-shine {
-    animation: shine 3s infinite;
+  .button-ready {
+    background: linear-gradient(135deg, 
+      var(--swap-button-ready-glow-start, rgb(var(--semantic-success) / 0.95)) 0%, 
+      var(--swap-button-ready-glow-end, rgb(var(--semantic-success-hover) / 0.95)) 100%);
+    border-color: var(--swap-button-ready-glow-start, rgb(var(--semantic-success) / 0.4));
+    box-shadow: var(--swap-button-shadow, none);
+  }
+
+  .button-error {
+    background: linear-gradient(135deg, 
+      var(--swap-button-error-gradient-start, rgb(var(--semantic-error) / 0.9)) 0%, 
+      var(--swap-button-error-gradient-end, rgb(var(--semantic-error-hover) / 0.8)) 100%);
+    border-color: var(--swap-button-error-gradient-start, rgb(var(--semantic-error) / 0.4));
+  }
+
+  .button-processing {
+    background: linear-gradient(135deg, 
+      var(--swap-button-processing-gradient-start, rgb(var(--semantic-info) / 0.8)) 0%, 
+      var(--swap-button-processing-gradient-end, rgb(var(--semantic-info-hover) / 0.6)) 100%);
+    border-color: var(--swap-button-processing-gradient-start, rgb(var(--semantic-info) / 0.4));
+    cursor: wait;
+    opacity: 0.8;
+  }
+
+  /* Hover effects */
+  .swap-button:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+
+
+  /* ===== UTILITY CLASSES ===== */
+  
+  /* ===== BUTTON STATES ===== */
+  button:focus {
+    --tw-ring-color: rgb(var(--brand-primary) / 0.5);
   }
   
-  .animate-pulse-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
+  button.button-error:focus {
+    --tw-ring-color: rgb(var(--semantic-error) / 0.5);
+  }
+  
+  button.hover-effect:hover:not(:disabled) {
+    transform: translateY(-2px);
+    border-color: rgba(var(--text-light) / 0.25);
+  }
+  
+  button.pressed {
+    transform: scale(0.98) translateY(2px) !important;
+    filter: brightness(0.9) !important;
+  }
+  
+  /* ===== TRANSITIONS ===== */
+  button {
+    transform-origin: center;
+    transition: all 150ms ease-out;
   }
 </style> 

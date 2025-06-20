@@ -1,19 +1,18 @@
 <script lang="ts">
-  import { page } from "$app/stores";
   import { goto } from "$app/navigation";
-  import { onMount, onDestroy } from "svelte";
+  import { onDestroy } from "svelte";
   import { fade } from "svelte/transition";
   import Panel from "$lib/components/common/Panel.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import { Droplets, ArrowLeft, Plus, Minus, Wallet, Send, TrendingUp } from "lucide-svelte";
+  import { Droplets, ArrowLeft, Plus, Minus, Wallet, Send } from "lucide-svelte";
   import { auth } from "$lib/stores/auth";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { liquidityStore } from "$lib/stores/liquidityStore";
   import { loadBalances } from "$lib/stores/tokenStore";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { livePools, loadPools } from "$lib/stores/poolStore";
-  import { formatToNonZeroDecimal, calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import ConfirmLiquidityModal from "$lib/components/liquidity/modals/ConfirmLiquidityModal.svelte";
   import { fetchPoolBalanceHistory } from "$lib/api/pools";
   import TVLHistoryChart from "$lib/components/liquidity/create_pool/charts/TVLHistoryChart.svelte";
@@ -112,14 +111,18 @@
   function calculateTotalEarnings() {
     let total = 0;
     if (pool.userFeeShare0 && pool.userFeeShare0 > 0 && token0) {
-      const fee0UsdValue = calculateTokenUsdValue(pool.userFeeShare0.toString(), token0);
-      total += parseFloat(fee0UsdValue);
+      // userFeeShare0 is already in decimal format
+      const fee0Amount = Number(pool.userFeeShare0);
+      const fee0UsdValue = fee0Amount * parseFloat(token0.metrics?.price || 0);
+      total += fee0UsdValue;
     }
     if (pool.userFeeShare1 && pool.userFeeShare1 > 0 && token1) {
-      const fee1UsdValue = calculateTokenUsdValue(pool.userFeeShare1.toString(), token1);
-      total += parseFloat(fee1UsdValue);
+      // userFeeShare1 is already in decimal format
+      const fee1Amount = Number(pool.userFeeShare1);
+      const fee1UsdValue = fee1Amount * parseFloat(token1.metrics?.price || 0);
+      total += fee1UsdValue;
     }
-    return total;
+    return formatToNonZeroDecimal(total.toString());
   }
   
   // Load pool data when component mounts or pool ID changes
@@ -154,30 +157,24 @@
     try {
       isLoading = true;
       error = null;
-      
-      console.log('[loadPoolData] Starting to load pool data for:', { address0, address1, poolId });
-      
+            
       // Ensure live pools are loaded
       if ($livePools.length === 0) {
         console.log('[loadPoolData] No live pools loaded, fetching...');
         await loadPools();
       }
-      console.log('[loadPoolData] Live pools loaded:', $livePools.length);
       
       let userPool = null;
       
       // Only try to get user pool data if connected
       if ($auth.isConnected) {
-        console.log('[loadPoolData] User is connected, loading user pools...');
         
         // Initialize user pools if not already done
         if (!hasInitialized) {
-          console.log('[loadPoolData] Initializing currentUserPoolsStore...');
           await currentUserPoolsStore.initialize();
           hasInitialized = true;
         } else if ($currentUserPoolsStore.filteredPools.length === 0 && !$currentUserPoolsStore.loading) {
           // Re-initialize if pools are empty and not loading
-          console.log('[loadPoolData] Re-initializing empty currentUserPoolsStore...');
           await currentUserPoolsStore.initialize();
         }
         
@@ -188,38 +185,25 @@
           RETRY_DELAYS.storeLoading.delay
         );
         
-        console.log('[loadPoolData] currentUserPoolsStore state:', {
-          processedPools: $currentUserPoolsStore.processedPools.length,
-          filteredPools: $currentUserPoolsStore.filteredPools.length,
-          loading: $currentUserPoolsStore.loading
-        });
-        
         // Find the specific pool from user's pools
         // Check processedPools instead of filteredPools to include pools with zero balance
         userPool = $currentUserPoolsStore.processedPools.find(
           p => p.address_0 === address0 && p.address_1 === address1
         );
         
-        console.log('[loadPoolData] User pool found in processedPools:', userPool ? 'Yes' : 'No');
         
         // If not found in processedPools, check filteredPools as fallback
         if (!userPool) {
           userPool = $currentUserPoolsStore.filteredPools.find(
             p => p.address_0 === address0 && p.address_1 === address1
           );
-          console.log('[loadPoolData] User pool found in filteredPools:', userPool ? 'Yes' : 'No');
         }
       }
       
       // If user has a pool, use it. Otherwise, look for pool in livePools or create minimal object
       if (userPool) {
-        console.log('[loadPoolData] Using user pool data');
         pool = userPool;
       } else {
-        // User doesn't have a position, try to find pool in livePools
-        console.log('[loadPoolData] Searching for pool in livePools...');
-        console.log('[loadPoolData] Looking for:', { address0, address1 });
-        
         // Log first few pools to debug
         if ($livePools.length > 0) {
           console.log('[loadPoolData] Sample livePools:', $livePools.slice(0, 3).map(p => ({
@@ -232,7 +216,6 @@
           p => p.address_0 === address0 && p.address_1 === address1
         );
         
-        console.log('[loadPoolData] Live pool found:', livePoolData ? 'Yes' : 'No');
         if (livePoolData) {
           console.log('[loadPoolData] Live pool data:', {
             symbol_0: livePoolData.symbol_0,
@@ -245,7 +228,6 @@
           ? { ...livePoolData, ...getUserPoolDefaults() }
           : createMinimalPool(address0, address1);
           
-        console.log('[loadPoolData] Final pool data:', pool);
       }
       
       // Fetch token data
@@ -398,7 +380,7 @@
     <ButtonV2
       theme="primary"
       size="md"
-      on:click={() => goto("/pools")}
+      onclick={() => goto("/pools")}
     >
       <ArrowLeft size={16} />
       Back to Pools
@@ -408,7 +390,7 @@
   <div class="flex flex-col max-w-[1300px] mx-auto px-4 pb-8">
     <!-- Header -->
     <div class="pb-8">
-      <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
           <TokenImages tokens={[token0, token1]} size={32} overlap={true} />
           <h1 class="text-2xl font-bold text-kong-text-primary">
@@ -451,7 +433,7 @@
         
         {@render metricPanel(
           "Lifetime Earnings",
-          `$${formatToNonZeroDecimal(calculateTotalEarnings())}`,
+          `$${calculateTotalEarnings()}`,
           `<div class="flex justify-between items-center text-xs w-full">
             <div class="flex items-center gap-2">
               ${pool.userFeeShare0 && pool.userFeeShare0 > 0 ? `
@@ -496,7 +478,7 @@
                   class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-200 {activeTab === tab.id ? tab.activeClass : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-white/[0.02]'}"
                   onclick={() => (activeTab = tab.id)}
                 >
-                  <svelte:component this={tab.icon} size={12} />
+                  <tab.icon size={12} />
                   <span>{tab.label}</span>
                 </button>
               {/each}
@@ -549,10 +531,6 @@
       handleLiquidityActionComplete();
     }}
     modalKey={`confirm-liquidity-${pool.address_0}-${pool.address_1}`}
-    target="#modals"
+    target="#portal-target"
   />
 {/if}
-
-<style lang="postcss">
-  /* Add any custom styles here */
-</style>

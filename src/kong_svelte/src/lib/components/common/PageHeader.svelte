@@ -11,7 +11,7 @@
   }> = [];
 </script>
 
-<div class="flex flex-col gap-2 px-4 w-full">
+<div class="flex flex-col gap-2 p-4 w-full">
   <div class="mx-auto w-full max-w-[{maxWidth}] px-1">
     <!-- Header with Stats -->
     <div class="flex flex-col md:flex-row items-start md:items-center md:justify-between gap-6 md:gap-4 -mt-2">

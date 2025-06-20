@@ -9,7 +9,7 @@ fi
 
 USER_PRINCIPAL_ID=$(dfx identity get-principal --identity kong_user1)
 KONG_BACKEND=$(dfx canister id kong_backend)
-TOKEN_LEDGER=$(dfx canister id ksusdt_ledger)
+TOKEN_LEDGER=$(dfx canister id ckusdt_ledger)
 
 dfx canister call ${NETWORK} ${TOKEN_LEDGER} icrc2_allowance '
   record {

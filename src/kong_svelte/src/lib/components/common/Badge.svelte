@@ -43,17 +43,17 @@
   // Computed styles based on variant
   const variantStyles = $derived({
     blue: "bg-kong-accent-blue/20 text-kong-accent-blue",
-    green: "bg-kong-accent-green/20 text-kong-accent-green",
-    red: "bg-kong-accent-red/20 text-kong-accent-red",
+    green: "bg-kong-success/20 text-kong-success",
+    red: "bg-kong-error/20 text-kong-error",
     yellow: "bg-kong-accent-yellow/20 text-kong-accent-yellow",
-    purple: "bg-kong-accent-purple/20 text-kong-accent-purple",
+    purple: "bg-kong-primary/20 text-kong-primary",
     gray: "bg-kong-text-secondary/20 text-kong-text-secondary",
     orange: "bg-kong-accent-yellow/20 text-kong-accent-yellow",
     icrc: "bg-gradient-to-r from-[#2D5BCA]/50 to-[#3B99F4]/50 text-kong-text-primary/80",
     solana: "bg-gradient-to-r from-[#00FFA3]/50 to-[#DC1FFF]/50 text-kong-text-primary/70",
     google: isDarkTheme 
-      ? "bg-kong-bg-light text-white border border-kong-border hover:bg-[#303134] flex items-center shadow-sm" 
-      : "bg-white text-[#4285F4] border border-kong-bg-light hover:bg-[#F8FAFD] flex items-center shadow-sm"
+      ? "bg-kong-bg-secondary text-white border border-kong-border hover:bg-[#303134] flex items-center shadow-sm" 
+      : "bg-white text-[#4285F4] border border-kong-bg-secondary hover:bg-[#F8FAFD] flex items-center shadow-sm"
   });
 
   // Size styles

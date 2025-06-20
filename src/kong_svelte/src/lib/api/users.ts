@@ -80,7 +80,6 @@ export async function fetchUsers(principal_id?: string): Promise<UsersResponse> 
       
       // Handle empty response
       if (!responseText.trim()) {
-        console.log('Empty response received');
         return {
           transactions: [],
           has_more: false
@@ -141,7 +140,6 @@ export async function fetchUsers(principal_id?: string): Promise<UsersResponse> 
     }
 
     if (!data) {
-      console.log('No data received from API');
       return {
         transactions: [],
         has_more: false
@@ -266,7 +264,6 @@ export async function fetchUsers(principal_id?: string): Promise<UsersResponse> 
       // Create mock data for testing if no items exist
       if (!data.items || !Array.isArray(data.items) || data.items.length === 0) {
         // For testing only - this would typically be removed in production
-        console.log('No items in response - using mock data for testing');
         const now = Date.now();
         data = { 
           items: [

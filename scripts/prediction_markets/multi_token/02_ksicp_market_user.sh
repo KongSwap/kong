@@ -1,15 +1,15 @@
 #!/bin/bash
 
-# Test script for creating a user market with ksUSDT tokens
+# Test script for creating a user market with ckUSDT tokens
 # and having multiple users place bets on different outcomes
 # This demonstrates the multi-token functionality with token-specific activation fees
 
 # Set up variables
 PREDICTION_MARKETS_CANISTER=$(dfx canister id prediction_markets_backend)
-KSUSDT_LEDGER=$(dfx canister id ksusdt_ledger)
-KSUSDT_TOKEN_ID="v56tl-sp777-77774-qaahq-cai"
-KSUSDT_FEE=$(dfx canister call ${KSUSDT_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
-KSUSDT_FEE=${KSUSDT_FEE//_/}
+CKUSDT_LEDGER=$(dfx canister id ckusdt_ledger)
+CKUSDT_TOKEN_ID="v56tl-sp777-77774-qaahq-cai"
+CKUSDT_FEE=$(dfx canister call ${CKUSDT_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
+CKUSDT_FEE=${CKUSDT_FEE//_/}
 
 # Set up identities for different users
 ALICE_IDENTITY="alice"
@@ -17,10 +17,10 @@ BOB_IDENTITY="bob"
 CAROL_IDENTITY="carol"
 DAVE_IDENTITY="dave"
 
-echo "=== Testing ksUSDT User Market with Multiple Users ==="
+echo "=== Testing ckUSDT User Market with Multiple Users ==="
 echo "Prediction Markets Canister: ${PREDICTION_MARKETS_CANISTER}"
-echo "ksUSDT Ledger: ${KSUSDT_LEDGER}"
-echo "ksUSDT Fee: ${KSUSDT_FEE}"
+echo "ckUSDT Ledger: ${CKUSDT_LEDGER}"
+echo "ckUSDT Fee: ${CKUSDT_FEE}"
 
 # Function to place a bet with a specific identity
 place_bet() {
@@ -57,22 +57,22 @@ place_bet() {
     dfx canister call prediction_markets_backend place_bet "(${market_id}, ${outcome_index}, ${amount}, opt \"${token_id}\")"
 }
 
-# Step 1: Create a market using ksICP token (as Alice - a regular user)
+# Step 1: Create a market using ICP token (as Alice - a regular user)
 # Switch to Alice's identity
 dfx identity use ${ALICE_IDENTITY}
 ALICE_PRINCIPAL=$(dfx identity get-principal)
 echo "Creating market as Alice (${ALICE_PRINCIPAL})..."
 
-# The activation threshold for ksUSDT is 100 USDT (100000000 with 6 decimals)
+# The activation threshold for ckUSDT is 100 USDT (100000000 with 6 decimals)
 ACTIVATION_AMOUNT=100000000
 
-echo "Creating a new market with ksUSDT tokens as user..."
+echo "Creating a new market with ckUSDT tokens as user..."
 RESULT=$(dfx canister call prediction_markets_backend create_market \
   "(\"Will SOL reach $500 by the end of 2025?\", variant { Crypto }, \
   \"Prediction on Solana price. Market resolves YES if SOL reaches $500 on any major exchange before the end of 2025.\", \
   vec { \"Yes\"; \"No\" }, variant { Admin }, \
   variant { Duration = 120 : nat }, null, null, null, \
-  opt \"${KSUSDT_TOKEN_ID}\")")
+  opt \"${CKUSDT_TOKEN_ID}\")")
 
 # Extract market ID and check for success
 if [[ $RESULT == *"Ok"* ]]; then
@@ -97,37 +97,37 @@ fi
 echo "Created market with ID: ${MARKET_ID}"
 
 # Set a standard bet amount for all users (after activation)
-STANDARD_BET=10000000  # 10 ksUSDT
+STANDARD_BET=10000000  # 10 ckUSDT
 
 # Step 2: Place bets with different users
-# Alice places the activation bet (25 ksUSDT) on "Yes" (outcome 0)
-# This will activate the market since it meets the minimum activation threshold for ksUSDT
+# Alice places the activation bet (25 ckUSDT) on "Yes" (outcome 0)
+# This will activate the market since it meets the minimum activation threshold for ckUSDT
 echo "Alice placing activation bet..."
-place_bet "${ALICE_IDENTITY}" "${MARKET_ID}" 0 ${ACTIVATION_AMOUNT} "${KSUSDT_TOKEN_ID}" "${KSUSDT_LEDGER}" "${KSUSDT_FEE}"
+place_bet "${ALICE_IDENTITY}" "${MARKET_ID}" 0 ${ACTIVATION_AMOUNT} "${CKUSDT_TOKEN_ID}" "${CKUSDT_LEDGER}" "${CKUSDT_FEE}"
 
 # Wait 10 seconds before next bet
 echo "Waiting 10 seconds before next bet..."
 sleep 10
 
-# Bob bets 10 ksUSDT on "No" (outcome 1)
+# Bob bets 10 ckUSDT on "No" (outcome 1)
 echo "Bob placing bet..."
-place_bet "${BOB_IDENTITY}" "${MARKET_ID}" 1 ${STANDARD_BET} "${KSUSDT_TOKEN_ID}" "${KSUSDT_LEDGER}" "${KSUSDT_FEE}"
+place_bet "${BOB_IDENTITY}" "${MARKET_ID}" 1 ${STANDARD_BET} "${CKUSDT_TOKEN_ID}" "${CKUSDT_LEDGER}" "${CKUSDT_FEE}"
 
 # Wait 10 seconds before next bet
 echo "Waiting 10 seconds before next bet..."
 sleep 10
 
-# Carol bets 10 ksUSDT on "Yes" (outcome 0)
+# Carol bets 10 ckUSDT on "Yes" (outcome 0)
 echo "Carol placing bet..."
-place_bet "${CAROL_IDENTITY}" "${MARKET_ID}" 0 ${STANDARD_BET} "${KSUSDT_TOKEN_ID}" "${KSUSDT_LEDGER}" "${KSUSDT_FEE}"
+place_bet "${CAROL_IDENTITY}" "${MARKET_ID}" 0 ${STANDARD_BET} "${CKUSDT_TOKEN_ID}" "${CKUSDT_LEDGER}" "${CKUSDT_FEE}"
 
 # Wait 10 seconds before next bet
 echo "Waiting 10 seconds before next bet..."
 sleep 10
 
-# Dave bets 10 ksUSDT on "No" (outcome 1)
+# Dave bets 10 ckUSDT on "No" (outcome 1)
 echo "Dave placing bet..."
-place_bet "${DAVE_IDENTITY}" "${MARKET_ID}" 1 ${STANDARD_BET} "${KSUSDT_TOKEN_ID}" "${KSUSDT_LEDGER}" "${KSUSDT_FEE}"
+place_bet "${DAVE_IDENTITY}" "${MARKET_ID}" 1 ${STANDARD_BET} "${CKUSDT_TOKEN_ID}" "${CKUSDT_LEDGER}" "${CKUSDT_FEE}"
 
 # Switch back to default identity
 dfx identity use default
@@ -216,17 +216,17 @@ dfx identity use ${CAROL_IDENTITY}
 CAROL_HISTORY=$(dfx canister call prediction_markets_backend get_user_history "(principal \"${CAROL_PRINCIPAL}\")")
 CAROL_WINNINGS=$(echo "$CAROL_HISTORY" | grep -o "winnings = opt [0-9]\+" | awk '{print $NF}' | head -1)
 
-# Convert to ksICP units (divide by 10^8)
+# Convert to ICP units (divide by 10^8)
 if [ ! -z "$ALICE_WINNINGS" ]; then
-    ALICE_PAYOUT_KSICP=$(echo "scale=2; $ALICE_WINNINGS / 100000000" | bc)
+    ALICE_PAYOUT_ICP=$(echo "scale=2; $ALICE_WINNINGS / 100000000" | bc)
 else
-    ALICE_PAYOUT_KSICP="N/A"
+    ALICE_PAYOUT_ICP="N/A"
 fi
 
 if [ ! -z "$CAROL_WINNINGS" ]; then
-    CAROL_PAYOUT_KSICP=$(echo "scale=2; $CAROL_WINNINGS / 100000000" | bc)
+    CAROL_PAYOUT_ICP=$(echo "scale=2; $CAROL_WINNINGS / 100000000" | bc)
 else
-    CAROL_PAYOUT_KSICP="N/A"
+    CAROL_PAYOUT_ICP="N/A"
 fi
 
 # Get market details to check time-weighting
@@ -234,4 +234,4 @@ dfx identity use default
 MARKET_DETAILS=$(dfx canister call prediction_markets_backend get_market "(${MARKET_ID})")
 USES_TIME_WEIGHTING=$(echo "$MARKET_DETAILS" | grep -o "uses_time_weighting = [a-z]\+" | awk -F '= ' '{print $2}')
 
-echo "=== ksICP User Market Test Complete ==="
+echo "=== ICP User Market Test Complete ==="

@@ -15,15 +15,15 @@ use crate::canister::get_current_time;
 
 /// Get all claims for the calling user
 #[query]
-pub fn get_user_claims() -> Vec<ClaimRecord> {
-    let user = ic_cdk::caller();
+pub fn get_user_claims(principal: String) -> Vec<ClaimRecord> {
+    let user = Principal::from_text(principal).unwrap();
     fetch_user_claims(user)
 }
 
 /// Get pending claims for the calling user
 #[query]
-pub fn get_user_pending_claims() -> Vec<ClaimRecord> {
-    let user = ic_cdk::caller();
+pub fn get_user_pending_claims(principal: String) -> Vec<ClaimRecord> {
+    let user = Principal::from_text(principal).unwrap();
     fetch_user_pending_claims(user)
 }
 

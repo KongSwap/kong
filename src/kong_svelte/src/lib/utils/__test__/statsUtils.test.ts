@@ -58,12 +58,12 @@ describe('getPriceChangeClass', () => {
 
   it('should return green class for positive price change', () => {
     const token = { metrics: { price_change_24h: '5.5' } } as Kong.Token;
-    expect(getPriceChangeClass(token)).toBe('text-kong-text-accent-green');
+    expect(getPriceChangeClass(token)).toBe('text-kong-success');
   });
 
   it('should return red class for negative price change', () => {
     const token = { metrics: { price_change_24h: '-3.2' } } as Kong.Token;
-    expect(getPriceChangeClass(token)).toBe('text-kong-accent-red');
+    expect(getPriceChangeClass(token)).toBe('text-kong-error');
   });
 
   it('should return empty string for zero price change', () => {

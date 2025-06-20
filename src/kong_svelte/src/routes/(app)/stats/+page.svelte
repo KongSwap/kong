@@ -1,608 +1,376 @@
 <script lang="ts">
-  import { writable, derived } from "svelte/store";
-  import {
-    CKUSDT_CANISTER_ID,
-    ICP_CANISTER_ID,
-    KONG_CANISTER_ID,
-  } from "$lib/constants/canisterConstants";
   import Panel from "$lib/components/common/Panel.svelte";
-  import {
-    TrendingUp,
-    ChevronDown,
-    PiggyBank,
-    HandCoins,
-  } from "lucide-svelte";
-  import { onMount, onDestroy } from "svelte";
+  import { ChevronDown } from "lucide-svelte";
+  import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { auth } from "$lib/stores/auth";
   import { browser } from "$app/environment";
-  import { page } from "$app/stores";
   import TokenCardMobile from "$lib/components/stats/TokenCardMobile.svelte";
-  import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-	import { favoriteStore } from "$lib/stores/favoriteStore";
-  import { sidebarStore } from "$lib/stores/sidebarStore";
-  import PageHeader from "$lib/components/common/PageHeader.svelte";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
-  import DataTable from "$lib/components/common/DataTable.svelte";
+  import StatsGrid from "$lib/components/common/StatsGrid.svelte";
   import TokenCell from "$lib/components/stats/TokenCell.svelte";
   import PriceCell from "$lib/components/stats/PriceCell.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
+  import { fetchTokens, fetchTopTokens } from "$lib/api/tokens/TokenApiClient";
   import { fetchPoolTotals } from "$lib/api/pools";
-  import { themeStore } from "$lib/stores/themeStore";
-  import { app } from "$lib/state/app.state.svelte";
+  import { panelRoundness } from "$lib/stores/derivedThemeStore";
+  import PlatformStats from "$lib/components/stats/PlatformStats.svelte";
+  import BiggestMovers from "$lib/components/stats/BiggestMovers.svelte";
+  import TopVolume from "$lib/components/stats/TopVolume.svelte";
+  import { page } from "$app/state";
 
   // Constants
-  const ITEMS_PER_PAGE = 100;
   const REFRESH_INTERVAL = 10000;
-  const SEARCH_DEBOUNCE = 300;
-  
-  // Theme tracking
-  let currentThemeId = $state($themeStore);
-  $effect(() => { currentThemeId = $themeStore; });
-  
-  // State stores
-  const tokenData = writable<FE.StatsToken[]>([]);
-  const totalCount = writable<number>(0);
-  const currentPage = writable<number>(1);
-  const searchTerm = writable<string>("");
-  const debouncedSearchTerm = writable<string>("");
-  const isLoading = writable<boolean>(true);
-  const isPageChange = writable<boolean>(false);
-  const previousPrices = writable(new Map<string, number>());
-  const priceFlashStates = writable(new Map<string, { class: string; timeout: ReturnType<typeof setTimeout> }>());
-  const poolTotals = writable({ total_volume_24h: 0, total_tvl: 0, total_fees_24h: 0 });
-  const showFavoritesOnly = writable<boolean>(false);
-  const sortBy = writable<string>("market_cap");
-  const sortDirection = writable<"asc" | "desc">("desc");
-  const favoriteTokenIds = writable<string[]>([]);
-  const favoriteCount = writable<number>(0);
-  const isInitialRefreshCycleDone = writable<boolean>(false);
-  
+  const DEFAULT_ITEMS_PER_PAGE = 50;
 
-  // Temporary Mobile Detection until stores are removed. With stores, the Svelte 5 $derived rune is not available, the current implementation is a temporary workaround.
-  let isMobile = $state(app.isMobile);
+  // State using Svelte 5 runes
+  let tokens = $state<FE.StatsToken[]>([]);
+  let totalCount = $state(0);
+  let currentPage = $state(1);
+  let itemsPerPage = $state(DEFAULT_ITEMS_PER_PAGE);
+  let searchTerm = $state("");
+  let isLoading = $state(true);
+  let poolTotals = $state({ total_volume_24h: 0, total_tvl: 0, total_fees_24h: 0 });
+  let topTokens = $state({ gainers: [], losers: [], hottest: [], top_volume: [] });
+  let sortBy = $state("market_cap");
+  let sortDirection = $state<"asc" | "desc">("desc");
 
-  $effect(() => {
-    isMobile = app.isMobile;
-    // console.log("isMobile", isMobile);
-  });
-  
+  // Price flash state
+  let priceFlashStates = $state(new Map<string, { class: string; timeout: ReturnType<typeof setTimeout> }>());
+  let previousPrices = $state(new Map<string, number>());
 
-  // Local state
-  let searchTimeout: ReturnType<typeof setTimeout>;
+  // Local variables
+  let isMobile = $state(false);
   let refreshInterval: ReturnType<typeof setInterval>;
-  let lastPage = 1;
-  let lastSearchTerm = "";
-  let lastUrlUpdate = '';
-  let isInitialLoadDone = false;
-  let isUrlUpdateInProgress = false;
+  let searchTimeout: ReturnType<typeof setTimeout>;
+  let isInitialLoad = true;
 
-  // Update price flash animation states
-  function updatePriceFlash(token: Kong.Token) {
-    const currentPrice = Number(token.metrics?.price || 0);
-    const prevPrice = $previousPrices.get(token.address);
+  // Derived values
+  const topGainers = $derived(topTokens.gainers);
+  const topLosers = $derived(topTokens.losers);
+  const topVolumeTokens = $derived(topTokens.top_volume);
 
-    // First update the previous price to avoid race conditions
-    previousPrices.update(prices => {
-      prices.set(token.address, currentPrice);
-      return prices;
+  // Sorted tokens for mobile
+  const sortedTokens = $derived(() => {
+    return [...tokens].sort((a, b) => {
+      let aVal = 0, bVal = 0;
+      switch (sortBy) {
+        case "market_cap": aVal = Number(a.metrics?.market_cap || 0); bVal = Number(b.metrics?.market_cap || 0); break;
+        case "price": aVal = Number(a.metrics?.price || 0); bVal = Number(b.metrics?.price || 0); break;
+        case "volume": aVal = Number(a.metrics?.volume_24h || 0); bVal = Number(b.metrics?.volume_24h || 0); break;
+        case "price_change": aVal = Number(a.metrics?.price_change_24h || 0); bVal = Number(b.metrics?.price_change_24h || 0); break;
+      }
+      return sortDirection === "asc" ? aVal - bVal : bVal - aVal;
     });
+  });
 
-    // Only compare and flash after the initial refresh cycle is complete
-    if ($isInitialRefreshCycleDone && prevPrice !== undefined && prevPrice > 0 && currentPrice > 0 && prevPrice !== currentPrice) {
-      const flashClass = currentPrice > prevPrice ? "flash-green" : "flash-red";
+  // Price flash functionality
+  function updatePriceFlashes(newTokens: FE.StatsToken[]) {
+    if (isInitialLoad) {
+      // On initial load, just store prices without flashing
+      const newPrices = new Map(previousPrices);
+      newTokens.forEach(token => {
+        newPrices.set(token.address, Number(token.metrics?.price || 0));
+      });
+      previousPrices = newPrices;
+      isInitialLoad = false;
+      return;
+    }
+
+    // Create completely new Maps to ensure reactivity
+    const currentPrices = new Map(previousPrices);
+    const newFlashStates = new Map();
+    
+    // Copy existing flash states (excluding expired ones)
+    const existingFlashStates = priceFlashStates;
+    
+    newTokens.forEach(token => {
+      const currentPrice = Number(token.metrics?.price || 0);
+      const prevPrice = currentPrices.get(token.address);
       
-      // Clean up existing timeout to avoid memory leaks
-      priceFlashStates.update(states => {
-        if (states.has(token.address)) {
-          clearTimeout(states.get(token.address)!.timeout);
+      if (prevPrice !== undefined && prevPrice !== currentPrice && currentPrice > 0) {
+        const flashClass = currentPrice > prevPrice ? "flash-green" : "flash-red";
+        
+        // Clear existing timeout if any
+        const existingState = existingFlashStates.get(token.address);
+        if (existingState?.timeout) {
+          clearTimeout(existingState.timeout);
         }
         
-        // Create a new timeout
+        // Set new flash state with timeout
         const timeout = setTimeout(() => {
-          priceFlashStates.update(currentStates => {
-            currentStates.delete(token.address);
-            return currentStates;
-          });
+          const newStates = new Map(priceFlashStates);
+          newStates.delete(token.address);
+          priceFlashStates = newStates;
         }, 2000);
         
-        // Update with new animation state 
-        states.set(token.address, { class: flashClass, timeout });
-        return states;
-      });
-    }
+        newFlashStates.set(token.address, { class: flashClass, timeout });
+      }
+      
+      // Update current price
+      currentPrices.set(token.address, currentPrice);
+    });
+    
+    // Set the new states
+    priceFlashStates = newFlashStates;
+    previousPrices = currentPrices;
   }
 
   // Data fetching
-  async function refreshData(isPageChangeRefresh = false) {
-    if (isPageChangeRefresh) isLoading.set(true);
+  async function fetchData(showLoading = false) {
+    if (showLoading) isLoading = true;
     
     try {
-      const [{tokens, total_count}, totalsResult] = await Promise.all([
-        fetchTokens({ 
-          page: $currentPage, 
-          limit: ITEMS_PER_PAGE,
-          search: $debouncedSearchTerm,
-        }),
-        fetchPoolTotals()
+      const [tokensRes, totalsRes, topTokensRes] = await Promise.all([
+        fetchTokens({ page: currentPage, limit: itemsPerPage, search: searchTerm }),
+        fetchPoolTotals(),
+        fetchTopTokens(),
       ]);
 
-      tokenData.set(tokens);
-      totalCount.set(total_count);
-      poolTotals.set(totalsResult);
-      tokens.forEach(updatePriceFlash);
+      // Update price flashes before updating state
+      updatePriceFlashes(tokensRes.tokens);
+
+      tokens = tokensRes.tokens;
+      totalCount = tokensRes.total_count;
+      poolTotals = totalsRes;
+      topTokens = topTokensRes;
+      isLoading = false;
     } catch (error) {
-      console.error('Error refreshing data:', error);
-    } finally {
-      if (isPageChangeRefresh) isLoading.set(false);
+      console.error("Error fetching data:", error);
+      isLoading = false;
     }
   }
 
-  // Simplify search term handling
-  function handleSearchInput(e) {
-    const value = e.currentTarget.value;
-    console.log("Search input changed:", value);
-    searchTerm.set(value);
+  // Search handling with debounce
+  function handleSearch(e: Event) {
+    const value = (e.target as HTMLInputElement).value;
+    searchTerm = value;
+    
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      currentPage = 1;
+      updateURL();
+      fetchData(true);
+    }, 300);
   }
 
-  // Handle search term debouncing
-  $effect(() => {
-    if (searchTimeout) clearTimeout(searchTimeout);
-    const currentSearchTerm = $searchTerm;
+  // Page change
+  function changePage(newPage: number) {
+    currentPage = newPage;
+    updateURL();
+    fetchData(true);
+  }
+
+  // Page size change
+  function changePageSize(newPageSize: number) {
+    itemsPerPage = newPageSize;
+    currentPage = 1;
+    updateURL();
+    fetchData(true);
+  }
+
+  // URL management
+  function updateURL() {
+    if (!browser) return;
+    const url = new URL(page.url);
     
-    searchTimeout = setTimeout(() => {      
-      // Only update if different to prevent cycles
-      if (currentSearchTerm !== $debouncedSearchTerm) {
-        debouncedSearchTerm.set(currentSearchTerm);
-      }
-    }, SEARCH_DEBOUNCE);
-  });
-
-  // Reset to page 1 and refresh data when search term changes
-  $effect(() => {
-    const currentDebouncedTerm = $debouncedSearchTerm;
-    
-    if (currentDebouncedTerm !== undefined && currentDebouncedTerm !== lastSearchTerm && !isUrlUpdateInProgress) {
-      console.log("Search term changed from", lastSearchTerm, "to", currentDebouncedTerm);
-      lastSearchTerm = currentDebouncedTerm;
-      
-      // Always reset to page 1 for new searches
-      if ($currentPage !== 1) {
-        console.log("Resetting to page 1 for new search");
-        lastPage = 1; // Update lastPage to prevent triggering page effect
-        currentPage.set(1);
-      } else {
-        console.log("Already on page 1, refreshing data");
-        isPageChange.set(true); // Signal it's a page change type refresh
-        refreshData(true);
-      }
-    }
-  });
-
-  // Handle page changes
-  $effect(() => {
-    if ($currentPage !== lastPage && !isUrlUpdateInProgress) {
-      console.log("Page changed from", lastPage, "to", $currentPage);
-      isPageChange.set(true);
-      lastPage = $currentPage;
-      refreshData(true);
-    }
-  });
-
-  // Combined reactive effect for data refresh interval
-  $effect(() => {
-    // Clean up existing interval
-    if (refreshInterval) {
-      clearInterval(refreshInterval);
-      refreshInterval = undefined;
-    }
-
-    // Only run in browser and on the stats page
-    if (browser && $page.url.pathname === '/stats') {
-      // Initial data load
-      if (!isInitialLoadDone) {
-        isInitialLoadDone = true;
-        isInitialRefreshCycleDone.set(false); // Reset flag on initial load
-        refreshData(true);
-      }
-      
-      // Set up refresh interval
-      refreshInterval = setInterval(() => {
-        refreshData(false);
-        // Mark the initial refresh cycle as done after the first interval runs
-        if (!$isInitialRefreshCycleDone) {
-          isInitialRefreshCycleDone.set(true);
-        }
-      }, REFRESH_INTERVAL);
-    }
-  });
-
-  // Handle URL updates separately to avoid too many history calls
-  let urlUpdateTimeout;
-  $effect(() => {
-    if (browser && $page.url.pathname === '/stats' && 
-        ($currentPage !== undefined || $debouncedSearchTerm !== undefined)) {
-      
-      // Clear previous timeout to avoid race conditions
-      if (urlUpdateTimeout) clearTimeout(urlUpdateTimeout);
-      
-      // Debounce URL updates to ensure we're not updating too frequently
-      urlUpdateTimeout = setTimeout(() => {
-        const url = new URL(window.location.href);
-        
-        const currentPageString = $currentPage.toString();
-        const urlPageParam = url.searchParams.get('page') || '1';
-        
-        if (currentPageString !== urlPageParam) {
-          url.searchParams.set('page', currentPageString);
-        }
-        
-        const currentSearchTerm = $debouncedSearchTerm;
-        const urlSearchParam = url.searchParams.get('search') || '';
-        
-        if (currentSearchTerm !== urlSearchParam) {
-          if (currentSearchTerm) {
-            url.searchParams.set('search', currentSearchTerm);
-          } else {
-            url.searchParams.delete('search');
-          }
-        }
-        
-        const newUrl = url.toString();
-        
-        // Only update URL if it actually changed to prevent excessive history API calls
-        if (newUrl !== lastUrlUpdate) {
-          lastUrlUpdate = newUrl;
-          isUrlUpdateInProgress = true;
-          goto(newUrl, { replaceState: true, keepFocus: true })
-            .then(() => {
-              // Set a small delay to ensure URL update completes before allowing other effects
-              setTimeout(() => {
-                isUrlUpdateInProgress = false;
-              }, 50);
-            });
-        }
-      }, 50); // Short timeout to batch potential multiple changes
-    }
-  });
-
-  // Handle favorites when auth changes
-  $effect(() => {
-    if ($auth.isConnected) {
-      favoriteCount.set(favoriteStore.getCount());
-      favoriteStore.loadFavorites().then(favorites => favoriteTokenIds.set(favorites));
+    url.searchParams.set("page", currentPage.toString());
+    if (searchTerm) {
+      url.searchParams.set("search", searchTerm);
     } else {
-      favoriteTokenIds.set([]);
-      favoriteCount.set(0);
+      url.searchParams.delete("search");
     }
-  });
+    
+    goto(url.toString(), { replaceState: true, keepFocus: true });
+  }
 
-  // Cleanup on component destroy
-  onDestroy(() => {
-    if (searchTimeout) clearTimeout(searchTimeout);
-    if (refreshInterval) clearInterval(refreshInterval);
-    if (urlUpdateTimeout) clearTimeout(urlUpdateTimeout);
-  });
-
-  // Initialize on mount
-  onMount(() => {
-    if (browser) {
-      // Get initial parameters from URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const pageParam = parseInt(urlParams.get('page') || '1');
-      const searchParam = urlParams.get('search') || '';
-      
-      // Set initial values
-      lastPage = pageParam; // Initialize lastPage first
-      currentPage.set(pageParam);
-      
-      if (searchParam) {
-        lastSearchTerm = searchParam; // Initialize lastSearchTerm first
-        searchTerm.set(searchParam);
-        debouncedSearchTerm.set(searchParam);
-      }
+  // Sorting for mobile
+  function toggleSort(newSortBy: string) {
+    if (sortBy === newSortBy && sortDirection === "desc") {
+      sortDirection = "asc";
+    } else {
+      sortDirection = "desc";
     }
-  });
+    sortBy = newSortBy;
+  }
 
-  // Filtered tokens derived store
-  const filteredTokens = derived(
-    [tokenData, favoriteTokenIds, showFavoritesOnly],
-    ([$tokenData, $favoriteTokenIds, $showFavoritesOnly]) => 
-      $showFavoritesOnly 
-        ? $tokenData.filter(token => $favoriteTokenIds.includes(token.address))
-        : $tokenData
-  );
+
 
   // Helper functions
   function getTrendClass(token: FE.StatsToken): string {
     const change = token?.metrics?.price_change_24h;
     if (!change) return "";
-    return Number(change) > 0 ? "text-kong-text-accent-green" : 
-           Number(change) < 0 ? "text-kong-accent-red" : "";
+    return Number(change) > 0 ? "text-kong-success" 
+         : Number(change) < 0 ? "text-kong-error" : "";
   }
 
-  function isTopVolume(token: FE.StatsToken): boolean {
-    if (token.address === CKUSDT_CANISTER_ID || token.address === ICP_CANISTER_ID)
-      return false;
+  // Table configuration (reactive to pass topTokens and priceFlashStates data)
+  const tableColumns = $derived([
+    { key: "#", title: "#", align: "center" as const, sortable: false, formatter: (row) => `${row.metrics?.market_cap_rank}` },
+    { key: "token", title: "Token", align: "left" as const, component: TokenCell, sortable: false, componentProps: { topTokens } },
+    { key: "price", title: "Price", align: "right" as const, sortable: false, component: PriceCell, componentProps: { priceFlashStates } },
+    { key: "price_change_24h", title: "24h", align: "right" as const, sortable: false, formatter: (row) => {
+      const value = row.metrics?.price_change_24h || 0;
+      return `${value > 0 ? "+" : ""}${formatToNonZeroDecimal(value)}%`;
+    }},
+    { key: "volume_24h", title: "Vol", align: "right" as const, sortable: false, formatter: (row) => formatUsdValue(row.metrics?.volume_24h || 0) },
+    { key: "market_cap", title: "MCap", align: "right" as const, sortable: false, formatter: (row) => formatUsdValue(row.metrics?.market_cap || 0) },
+    { key: "tvl", title: "TVL(:MC)", align: "right" as const, sortable: false, isHtml: true, formatter: (row) => `<div class="flex flex-col gap-0">${formatUsdValue(row.metrics?.tvl || 0)}  <span class="text-xs text-kong-text-secondary">(${(Number(row.metrics?.tvl) / Number(row.metrics?.market_cap) * 100).toFixed(2)}%)</span></div>` },
+  ]);
+
+  // Initialize and cleanup
+  onMount(() => {
+    if (!browser) return;
+    
+    // Mobile detection
+    isMobile = window.innerWidth < 768;
+    const handleResize = () => { isMobile = window.innerWidth < 768; };
+    window.addEventListener("resize", handleResize, { passive: true });
+
+    // Initialize from URL
+    const urlParams = new URLSearchParams(page.url.search);
+    const pageParam = parseInt(urlParams.get("page") || "1");
+    const search = urlParams.get("search") || "";
+    
+    currentPage = pageParam;
+    searchTerm = search;
+    
+    // Initial fetch and setup interval
+    fetchData(true);
+    refreshInterval = setInterval(() => fetchData(false), REFRESH_INTERVAL);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (refreshInterval) clearInterval(refreshInterval);
+      if (searchTimeout) clearTimeout(searchTimeout);
       
-    return token.volumeRank !== undefined && 
-           token.volumeRank <= 7 && 
-           Number(token.metrics?.volume_24h || 0) > 0;
-  }
-
-  function toggleSort(newSortBy: string) {
-    if ($sortBy === newSortBy) {
-      sortDirection.update(direction => direction === "desc" ? "asc" : "desc");
-    } else {
-      sortBy.set(newSortBy);
-      sortDirection.set("desc");
-    }
-  }
-
-  // Table columns configuration
-  const tableColumns = [
-    {
-      key: 'token',
-      title: 'Token',
-      align: 'left' as 'left' | 'right' | 'center',
-      component: TokenCell,
-      sortable: true
-    },
-    {
-      key: 'price',
-      title: 'Price',
-      align: 'right' as 'left' | 'right' | 'center',
-      sortable: true,
-      component: PriceCell,
-      componentProps: {
-        priceFlashStates: $priceFlashStates
-      }
-    },
-    {
-      key: 'price_change_24h',
-      title: '24h',
-      align: 'right' as 'left' | 'right' | 'center',
-      sortable: true,
-      formatter: (row) => {
-        const value = row.metrics?.price_change_24h || 0;
-        return `${value > 0 ? '+' : ''}${formatToNonZeroDecimal(value)}%`;
-      }
-    },
-    {
-      key: 'volume_24h',
-      title: 'Vol',
-      align: 'right' as 'left' | 'right' | 'center',
-      sortable: true,
-      formatter: (row) => formatUsdValue(row.metrics?.volume_24h || 0)
-    },
-    {
-      key: 'market_cap',
-      title: 'MCap',
-      align: 'right' as 'left' | 'right' | 'center',
-      sortable: true,
-      formatter: (row) => formatUsdValue(row.metrics?.market_cap || 0)
-    },
-    {
-      key: 'tvl',
-      title: 'TVL',
-      align: 'right' as 'left' | 'right' | 'center',
-      sortable: true,
-      formatter: (row) => formatUsdValue(row.metrics?.tvl || 0)
-    }
-  ];
+      // Clean up price flash timeouts
+      priceFlashStates.forEach(state => {
+        if (state.timeout) clearTimeout(state.timeout);
+      });
+    };
+  });
 </script>
 
 <svelte:head>
   <title>Market Stats - KongSwap</title>
 </svelte:head>
 
-<PageHeader
-  title="Market Stats"
-  description="Track token performance and market activity"
-  icon={TrendingUp}
-  stats={[
-    {
-      label: "Vol 24H",
-      value: `${formatUsdValue($poolTotals.total_volume_24h)}`,
-      icon: TrendingUp,
-    },
-    {
-      label: "TVL",
-      value: `${formatUsdValue($poolTotals.total_tvl)}`,
-      icon: PiggyBank,
-    },
-    {
-      label: "Fees 24H",
-      value: `${formatUsdValue($poolTotals.total_fees_24h)}`,
-      icon: HandCoins,
-      hideOnMobile: true,
-    },
-  ]}
-/>
+<section class="flex flex-col md:flex-row w-full gap-4 px-4">
+  <!-- Sidebar -->
+  <div class="w-full md:w-[330px] flex flex-col gap-2 order-1">
+    <PlatformStats {poolTotals} {isLoading} />
+    <BiggestMovers {topGainers} {topLosers} {isLoading} panelRoundness={$panelRoundness} />
+    <TopVolume {topVolumeTokens} {isLoading} panelRoundness={$panelRoundness} />
+  </div>
 
-<section class="flex flex-col w-full px-2 max-h-[calc(100vh-15rem)] mt-4 h-[calc(100vh-6rem)]">
-  <div class="z-10 flex flex-col lg:flex-row w-full mx-auto gap-4 max-w-[1300px] h-[calc(100vh-15rem)]">
-    <Panel
-      type="main"
-      className="content-panel flex-1 !p-0"
-      height="100%"
-    >
-      <div class="flex flex-col h-full !rounded-lg">
-        <!-- Header -->
-        <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10 backdrop-blur-md rounded-t-lg">
-          <div class="hidden sm:flex items-center gap-3 py-1 border-b border-kong-border">
-            <div class="flex bg-transparent">
-              <button
-                class="px-4 py-1 transition-colors duration-200 {!$showFavoritesOnly ? 'text-kong-text-primary' : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-                on:click={() => showFavoritesOnly.set(false)}
-              >
-                All Tokens
-              </button>
-              <button
-                class="px-4 py-1 transition-colors duration-200 {$showFavoritesOnly ? 'text-kong-text-primary' : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-                on:click={() => showFavoritesOnly.set(true)}
-              >
-                My Favorites
-                {#if $auth.isConnected}
-                  <span class="ml-1 px-2 py-0.5 text-kong-text-primary/80 bg-kong-primary/60 rounded text-xs">
-                    {$favoriteCount}
-                  </span>
-                {/if}
-              </button>
-            </div>
-
-            <div class="flex-1 px-4 py-2">
-              <input
-                type="text"
-                placeholder={isMobile ? "Search tokens..." : "Search tokens by name, symbol, or canister ID"}
-                class="w-full bg-transparent text-kong-text-primary placeholder-[#8890a4] focus:outline-none"
-                on:input={handleSearchInput}
-                value={$searchTerm}
-                disabled={$showFavoritesOnly}
-              />
-            </div>
-          </div>
+  <!-- Main Content -->
+  <Panel type="main" className="flex flex-col !p-0 !w-full !shadow-none !border-none order-2" height="100%">
+    <div class="flex flex-col h-full !rounded-lg">
+      <!-- Search Header (Desktop) -->
+      <div class="hidden sm:flex items-center mb-2 gap-2">
+        <div class="relative flex-1">
+          <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-kong-text-secondary pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            type="text"
+            placeholder={isMobile ? "Search tokens..." : "Search tokens by name, symbol, or canister ID"}
+            class="w-full pl-10 pr-4 py-2 rounded-full bg-kong-bg-secondary/60 border border-kong-border/40 text-kong-text-primary placeholder-[#8890a4] focus:outline-none focus:ring-2 focus:ring-kong-primary/40 focus:border-kong-primary transition-all duration-200 shadow-sm"
+            oninput={handleSearch}
+            value={searchTerm}
+          />
         </div>
+      </div>
 
-        <!-- Content -->
-        {#if $isLoading && $filteredTokens.length === 0}
-          <div class="flex flex-col items-center justify-center h-64 text-center">
-            <div class="transition-opacity duration-300">
-              <div class="h-4 w-32 bg-kong-surface-light rounded mb-4"></div>
-              <div class="h-4 w-48 bg-kong-surface-light rounded"></div>
-            </div>
-          </div>
-        {:else if $filteredTokens.length === 0}
-          <div class="flex flex-col items-center justify-center h-64 text-center">
-            {#if $showFavoritesOnly && !$auth.isConnected}
-              <p class="text-gray-400 mb-4">
-                Connect your wallet to view and manage your favorite tokens
-              </p>
-              <ButtonV2
-                variant="solid"
-                theme="primary"
-                on:click={() => sidebarStore.open()}
-              >
-                Connect Wallet
-              </ButtonV2>
-            {:else}
-              <p class="text-gray-400">
-                No tokens found matching your search criteria
-              </p>
-            {/if}
-          </div>
-        {:else}
-          <div class="flex-1 rounded-lg h-full overflow-auto {isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-1rem)]'}">
-            {#if !isMobile}
-              <DataTable
-                data={$filteredTokens}
-                rowKey="canister_id"
-                isLoading={$isLoading}
-                columns={tableColumns}
-                itemsPerPage={ITEMS_PER_PAGE}
-                defaultSort={{ column: 'market_cap', direction: 'desc' }}
-                onRowClick={(row) => goto(`/stats/${row.address}`)}
-                isKongRow={(row) => row.address === KONG_CANISTER_ID}
-                totalItems={$showFavoritesOnly ? $filteredTokens.length : $totalCount}
-                currentPage={$currentPage}
-                onPageChange={(page) => currentPage.set(page)}
-              />
-            {:else}
-              <div class="flex flex-col h-full overflow-hidden">
-                <!-- Mobile filters -->
-                <div class="sticky top-0 z-30 bg-kong-bg-dark border-b border-kong-border">
-                  <div class="flex gap-2 px-3 py-2 justify-between">
+      <!-- Content -->
+      {#if isLoading && sortedTokens().length === 0}
+        <div class="flex flex-col items-center justify-center h-64 text-center">
+          <div class="h-4 w-32 bg-kong-bg-secondary rounded mb-4"></div>
+          <div class="h-4 w-48 bg-kong-bg-secondary rounded"></div>
+        </div>
+      {:else if sortedTokens().length === 0}
+        <div class="flex flex-col items-center justify-center h-64 text-center">
+          <p class="text-gray-400">No tokens found matching your search criteria</p>
+        </div>
+      {:else}
+        <div class="flex-1 {$panelRoundness}">
+          {#if !isMobile}
+            <StatsGrid
+              data={sortedTokens()}
+              rowKey="canister_id"
+              {isLoading}
+              columns={tableColumns}
+              {itemsPerPage}
+              defaultSort={{ column: "market_cap", direction: "desc" }}
+              onRowClick={(row) => goto(`/stats/${row.address}`)}
+              totalItems={totalCount}
+              {currentPage}
+              onPageChange={changePage}
+              onPageSizeChange={changePageSize}
+            />
+          {:else}
+            <!-- Mobile View -->
+            <div class="flex flex-col h-full overflow-hidden">
+              <!-- Mobile Filters -->
+              <div class="sticky top-0 z-30 backdrop-blur-md border-b border-kong-border/50">
+                <div class="flex gap-1.5 sm:px-3 py-3 justify-between">
+                  {#each [
+                    { key: "market_cap", label: "MCap" },
+                    // { key: "price", label: "Price" },
+                    { key: "volume", label: "Volume" },
+                    { key: "price_change", label: "% (24h)" }
+                  ] as sort}
                     <button
-                      class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {$sortBy === 'market_cap' ? 'bg-kong-primary text-white' : 'bg-kong-surface-light'}"
-                      on:click={() => toggleSort("market_cap")}
+                      class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 {sortBy === sort.key
+                        ? 'bg-kong-primary text-kong-text-on-primary shadow-md'
+                        : 'bg-kong-bg-primary/40 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-primary/60'}"
+                      onclick={() => toggleSort(sort.key)}
                     >
-                      MCap
-                      <ChevronDown
-                        size={16}
-                        class="transition-transform {$sortDirection === 'asc' && $sortBy === 'market_cap' ? 'rotate-180' : ''}"
-                      />
+                      {sort.label}
+                      <ChevronDown size={14} class="transition-transform {sortDirection === 'asc' && sortBy === sort.key ? 'rotate-180' : ''}" />
                     </button>
-                    <button
-                      class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {$sortBy === 'volume' ? 'bg-kong-primary text-white' : 'bg-kong-surface-light'}"
-                      on:click={() => toggleSort("volume")}
-                    >
-                      Volume
-                      <ChevronDown
-                        size={16}
-                        class="transition-transform {$sortDirection === 'asc' && $sortBy === 'volume' ? 'rotate-180' : ''}"
-                      />
-                    </button>
-                    <button
-                      class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {$sortBy === 'price_change' ? 'bg-kong-primary text-white' : 'bg-kong-surface-light'}"
-                      on:click={() => toggleSort("price_change")}
-                    >
-                      24h %
-                      <ChevronDown
-                        size={16}
-                        class="transition-transform {$sortDirection === 'asc' && $sortBy === 'price_change' ? 'rotate-180' : ''}"
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Scrollable content -->
-                <div class="flex-1 overflow-auto">
-                  <div class="space-y-2.5 px-2 py-2">
-                    {#each $filteredTokens as token (token.address)}
-                      <button
-                        class="w-full"
-                        on:click={() => goto(`/stats/${token.address}`)}
-                      >
-                        <TokenCardMobile
-                          {token}
-                          isConnected={$auth.isConnected}
-                          isFavorite={$favoriteTokenIds.includes(token.address)}
-                          trendClass={getTrendClass(token)}
-                          showHotIcon={isTopVolume(token)}
-                        />
-                      </button>
-                    {/each}
-                  </div>
-                </div>
-
-                <!-- Mobile Pagination -->
-                <div class="sticky bottom-0 left-0 right-0 flex items-center justify-between px-4 py-2 border-t border-kong-border backdrop-blur-md !rounded-b-lg">
-                  <button
-                    class="px-3 py-1 rounded text-sm {$currentPage === 1 ? 'text-kong-text-secondary bg-kong-bg-dark opacity-50 cursor-not-allowed' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
-                    on:click={() => {
-                      if ($currentPage > 1) {
-                        isPageChange.set(true);
-                        currentPage.set($currentPage - 1);
-                      }
-                    }}
-                    disabled={$currentPage === 1}
-                  >
-                    Previous
-                  </button>
-                  <span class="text-sm text-kong-text-secondary">
-                    Page {$currentPage} of {Math.max(1, Math.ceil($totalCount / ITEMS_PER_PAGE))}
-                  </span>
-                  <button
-                    class="px-3 py-1 rounded text-sm {$currentPage >= Math.ceil($totalCount / ITEMS_PER_PAGE) ? 'text-kong-text-secondary bg-kong-bg-dark opacity-50 cursor-not-allowed' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
-                    on:click={() => {
-                      if ($currentPage < Math.ceil($totalCount / ITEMS_PER_PAGE)) {
-                        isPageChange.set(true);
-                        currentPage.set($currentPage + 1);
-                      }
-                    }}
-                    disabled={$currentPage >= Math.ceil($totalCount / ITEMS_PER_PAGE)}
-                  >
-                    Next
-                  </button>
+                  {/each}
                 </div>
               </div>
-            {/if}
-          </div>
-        {/if}
-      </div>
-    </Panel>
-  </div>
+
+              <!-- Token List -->
+              <div class="flex-1 overflow-auto">
+                <div class="flex flex-col gap-1 py-2">
+                  {#each sortedTokens() as token (token.address)}
+                    <button class="w-full" onclick={() => goto(`/stats/${token.address}`)}>
+                      <TokenCardMobile {token} trendClass={getTrendClass(token)} showIcons={true} section="stats-list" paddingClass="px-3 py-1.5" {topTokens} />
+                    </button>
+                  {/each}
+                </div>
+              </div>
+
+              <!-- Mobile Pagination -->
+              <div class="sticky bottom-0 flex items-center justify-between px-4 py-2 border-t border-kong-border backdrop-blur-md !rounded-b-lg">
+                <button
+                  class="px-3 py-1 rounded text-sm {currentPage === 1 ? 'text-kong-text-secondary bg-kong-bg-secondary opacity-50 cursor-not-allowed' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
+                  onclick={() => changePage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+                <span class="text-sm text-kong-text-secondary">
+                  Page {currentPage} of {Math.max(1, Math.ceil(totalCount / itemsPerPage))}
+                </span>
+                <button
+                  class="px-3 py-1 rounded text-sm {currentPage >= Math.ceil(totalCount / itemsPerPage) ? 'text-kong-text-secondary bg-kong-bg-secondary opacity-50 cursor-not-allowed' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
+                  onclick={() => changePage(currentPage + 1)}
+                  disabled={currentPage >= Math.ceil(totalCount / itemsPerPage)}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          {/if}
+        </div>
+      {/if}
+    </div>
+  </Panel>
 </section>
 
 <style scoped lang="postcss">

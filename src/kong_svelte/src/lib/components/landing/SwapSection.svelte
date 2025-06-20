@@ -270,7 +270,7 @@
   <div class="crt-noise absolute inset-0 z-1 pointer-events-none"></div>
   <div class="crt-flicker absolute inset-0 z-1 pointer-events-none"></div>
   
-  <div class="container max-w-7xl mx-auto px-3 md:px-8 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-8">
+  <div class="container !max-w-7xl mx-auto px-3 md:px-8 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-8">
     <!-- iPhone with screenshot (on left for swap section) -->
     <div class="flex-1 flex justify-center items-center relative z-10 order-2 md:order-1 transform translate-y-12 opacity-0 transition-all duration-1000 ease-out {animationClass}">
       <!-- Use the IphoneFrame component -->

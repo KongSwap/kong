@@ -38,8 +38,8 @@
     bind:this={searchInput}
     placeholder="Search for tokens, wallets..."
     class="search-input"
-    on:input={handleInput}
-    on:keydown={handleKeydown}
+    oninput={handleInput}
+    onkeydown={handleKeydown}
     autocomplete="off"
   />
   {#if isSearching}
@@ -49,7 +49,7 @@
   {:else if searchQuery}
     <button 
       class="clear-button items-center justify-center" 
-      on:click={handleClear}
+      onclick={handleClear}
       aria-label="Clear search"
     >
       <X size={16} />
@@ -63,12 +63,8 @@
 
 <style lang="postcss">
   .search-input-container {
-    @apply flex-1 flex items-center gap-2 py-2 px-2 bg-kong-bg-dark/70 rounded-lg border border-kong-border/50 focus-within:border-kong-border/80 transition-colors;
+    @apply flex-1 flex items-center gap-2 py-2 px-2 bg-kong-bg-primary/70 rounded-lg border border-kong-border/50 focus-within:border-kong-border/80 transition-colors;
     @apply w-full;
-  }
-
-  .search-icon {
-    @apply text-kong-text-secondary flex-shrink-0;
   }
 
   .search-input {
@@ -90,7 +86,7 @@
   }
 
   .keyboard-shortcut-indicator {
-    @apply px-1.5 py-0.5 bg-kong-surface-dark border border-kong-border rounded text-xs text-kong-text-secondary;
+    @apply px-1.5 py-0.5 bg-kong-bg-tertiary border border-kong-border rounded text-xs text-kong-text-secondary;
     @apply hidden sm:block;
   }
 </style> 

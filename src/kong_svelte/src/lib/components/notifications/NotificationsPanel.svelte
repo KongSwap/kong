@@ -134,8 +134,8 @@
   } as const;
 
   const ICON_COLORS = {
-    success: "text-kong-accent-green",
-    error: "text-kong-accent-red",
+    success: "text-kong-success",
+    error: "text-kong-error",
     warning: "text-kong-accent-yellow",
     info: "text-kong-accent-blue",
   } as const;
@@ -148,7 +148,7 @@
   } as const;
 </script>
 
-<div class="flex-1 overflow-y-auto py-3 scrollbar-thin">
+<div class="flex-1 overflow-y-auto py-3 scrollbar-thin rounded-bl-xl">
   {#if $notificationsStore.history.length === 0}
     <div
       class="flex flex-col items-center justify-center gap-2 p-8 h-full text-kong-text-secondary text-sm"
@@ -172,7 +172,7 @@
   {:else}
     <!-- Notification summary -->
     <div
-      class="mx-5 mb-4 p-3 rounded-md bg-kong-bg-light/5 border border-kong-border/40"
+      class="mx-5 mb-4 p-3 rounded-md bg-kong-bg-secondary/5 border border-kong-border/40"
       style="box-shadow: none;"
     >
       <div class="flex items-center justify-between mb-2">
@@ -188,8 +188,8 @@
               : ""}</span
           >
           <button
-            class="text-xs text-kong-text-secondary/70 hover:text-kong-text-primary px-1.5 py-0.5 rounded hover:bg-kong-bg-light/20 transition-colors"
-            on:click={clearAllNotifications}
+            class="text-xs text-kong-text-secondary/70 hover:text-kong-text-primary px-1.5 py-0.5 rounded hover:bg-kong-bg-secondary/20 transition-colors"
+            onclick={clearAllNotifications}
           >
             Clear All
           </button>
@@ -199,7 +199,7 @@
       <div class="flex flex-wrap gap-2">
         {#if errorCount > 0}
           <div
-            class="flex items-center gap-1.5 text-xs py-1 px-2 rounded-md border border-transparent transition-colors bg-kong-accent-red/5 text-kong-accent-red/90 border-kong-accent-red/10"
+            class="flex items-center gap-1.5 text-xs py-1 px-2 rounded-md border border-transparent transition-colors bg-kong-error/5 text-kong-error/90 border-kong-error/10"
           >
             <IconError class="w-3.5 h-3.5" />
             <span
@@ -220,7 +220,7 @@
         {/if}
         {#if successCount > 0}
           <div
-            class="flex items-center gap-1.5 text-xs py-1 px-2 rounded-md border border-transparent transition-colors bg-kong-accent-green/5 text-kong-accent-green/90 border-kong-accent-green/10"
+            class="flex items-center gap-1.5 text-xs py-1 px-2 rounded-md border border-transparent transition-colors bg-kong-success/5 text-kong-success/90 border-kong-success/10"
           >
             <IconSuccess class="w-3.5 h-3.5" />
             <span
@@ -243,7 +243,7 @@
     {#each sortedDateKeys as dateKey}
       <div class="mb-6">
         <div
-          class="flex items-center text-xs font-semibold text-kong-text-secondary/90 px-5 py-2 sticky top-0 bg-kong-bg-dark/95 backdrop-blur-sm z-10"
+          class="flex items-center text-xs font-semibold text-kong-text-secondary/90 px-5 py-2 sticky top-0 bg-kong-bg-primary/95 backdrop-blur-sm z-10"
         >
           <span
             class="inline-block px-2.5 py-1 rounded-md bg-kong-text-primary/10 font-medium"
@@ -254,18 +254,18 @@
         <div class="space-y-2 px-5 mt-2">
           {#each groupedNotifications[dateKey] as notification (notification.id)}
             <div
-              class="p-4 rounded-lg flex items-start gap-4 border border-transparent transition-all duration-200 hover:border-kong-border/60 relative hover:bg-kong-bg-light/5 group {TYPE_CLASSES[
+              class="p-4 rounded-lg flex items-start gap-4 border border-transparent transition-all duration-200 hover:border-kong-border/60 relative hover:bg-kong-bg-secondary/5 group {TYPE_CLASSES[
                 notification.type
               ] || ''}"
               style="background: linear-gradient(to right, rgba(255, 255, 255, 0.015), transparent);"
               transition:slide|local={{ duration: 150 }}
             >
               <div
-                class="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-kong-bg-light/10 border border-kong-border/30 {notification.type ===
+                class="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-kong-bg-secondary/10 border border-kong-border/30 {notification.type ===
                 'success'
-                  ? 'bg-kong-accent-green/10 border-kong-accent-green/30'
+                  ? 'bg-kong-success/10 border-kong-success/30'
                   : ''} {notification.type === 'error'
-                  ? 'bg-kong-accent-red/10 border-kong-accent-red/30'
+                  ? 'bg-kong-error/10 border-kong-error/30'
                   : ''} {notification.type === 'warning'
                   ? 'bg-kong-accent-yellow/10 border-kong-accent-yellow/30'
                   : ''} {notification.type === 'info'
@@ -322,8 +322,8 @@
               </div>
 
               <button
-                class="absolute top-4 right-4 flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-kong-text-secondary/40 hover:text-kong-text-primary transition-all duration-200 opacity-0 hover:bg-kong-bg-light/30 group-hover:opacity-100"
-                on:click={() => removeNotification(notification.id)}
+                class="absolute top-4 right-4 flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-kong-text-secondary/40 hover:text-kong-text-primary transition-all duration-200 opacity-0 hover:bg-kong-bg-secondary/30 group-hover:opacity-100"
+                onclick={() => removeNotification(notification.id)}
                 aria-label="Dismiss notification"
               >
                 <IconClose size={14} />

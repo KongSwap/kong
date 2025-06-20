@@ -4,7 +4,7 @@
   export let token1: Kong.Token;
 </script>
 
-<Panel variant="transparent" className="!p-4">
+<Panel variant="solid" type="secondary" className="bg-kong-warning/5 border-kong-warning/20">
   <div class="flex items-start gap-3">
     <div class="text-yellow-400">
       <svg xmlns="http://www.w3.org/2000/svg" class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">

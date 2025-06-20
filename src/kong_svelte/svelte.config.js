@@ -10,7 +10,7 @@ const config = {
       pages: "dist",
       assets: "dist",
       fallback: "index.html",
-      precompress: false,
+      precompress: true,
       strict: false,
     }),
     files: {
@@ -24,7 +24,7 @@ const config = {
       handleHttpError: ({ path, referrer, message }) => {
         // Ignore specific paths that require client-side rendering
         if (
-          path === "/swap" ||
+          path === "/" ||
           path === "/pools" ||
           path.startsWith("/pools/") ||
           path === "/stats" ||
@@ -41,7 +41,6 @@ const config = {
       handleMissingId: ({ id, path, referrers }) => {
         // Ignore missing hash links for specific routes
         if (
-          id === "swap" ||
           id === "pools" ||
           id === "stats" ||
           id === "predict" ||

@@ -1,12 +1,14 @@
 use super::resolution::*;
 use super::resolution_api;
-use crate::types::{MarketId, OutcomeIndex};
+
+use crate::types::ResolutionArgs;
+use crate::resolution::resolution::ResolutionResult;
 
 /// Resolves a market through admin decision
-/// This is now a wrapper around the resolution API system
-/// We use a different name to avoid collision with the function in dual_approval.rs
-#[ic_cdk::update]
-async fn admin_resolve_market(market_id: MarketId, outcome_indices: Vec<OutcomeIndex>) -> ResolutionResult {
-    // Use the resolution API implementation
-    resolution_api::resolve_via_admin(market_id, outcome_indices).await
+/// This is now a wrapper around the dual approval system
+/// Note: The actual #[update] function is defined in dual_approval.rs
+#[allow(dead_code)]
+async fn resolve_via_admin(args: ResolutionArgs) -> ResolutionResult {
+    // Use the dual approval implementation
+    resolution_api::resolve_via_admin(args).await
 }

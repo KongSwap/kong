@@ -98,7 +98,7 @@ pub fn init() {
         registry.insert(
             "umunu-kh777-77774-qaaca-cai".to_string(),
             TokenInfo {
-                id: "umunu-kh777-77774-qaaca-cai".to_string(),
+                id: "o7oak-iyaaa-aaaaq-aadzq-cai".to_string(),
                 name: "Kong Swap Token".to_string(),
                 symbol: "KONG".to_string(),
                 decimals: 8,
@@ -204,7 +204,7 @@ pub fn init() {
             "zfcdd-tqaaa-aaaaq-aaaga-cai".to_string(),
             TokenInfo {
                 id: "zfcdd-tqaaa-aaaaq-aaaga-cai".to_string(),
-                name: "DANK Protocol".to_string(),
+                name: "Draggin Karma Points".to_string(),
                 symbol: "DKP".to_string(),
                 decimals: 8,
                 fee_percentage: 200, // 2%
@@ -348,4 +348,4 @@ pub fn remove_supported_token(token_id: TokenIdentifier) {
 pub const KONG_LEDGER_ID_PROD: &str = "o7oak-iyaaa-aaaaq-aadzq-cai";
 
 /// Canister ID for the KONG token ledger in local testing environment
-pub const KONG_LEDGER_ID_LOCAL: &str = "umunu-kh777-77774-qaaca-cai";
+pub const KONG_LEDGER_ID_LOCAL: &str = "o7oak-iyaaa-aaaaq-aadzq-cai";

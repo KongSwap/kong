@@ -36,98 +36,93 @@
     />
     <meta name="author" content="KongSwap" />
     <meta name="robots" content="index, follow" />
+    <meta name="yandex-verification" content="e01afe1bc6683991" />
 
-    <!-- Inline Theme Initialization - Fast loading -->
-    <script>
-      (function () {
-        // Get user ID from session or localStorage if available
-        let userId = "default";
-        try {
-          // Try to get from sessionStorage if user previously logged in
-          const authData = localStorage.getItem("kong_storage_auth");
-          if (authData) {
-            const parsed = JSON.parse(authData);
-            if (parsed && parsed.principalId) {
-              userId = parsed.principalId;
-            }
-          }
-        } catch (e) {
-          console.error("Error getting user ID for theme:", e);
-        }
-
-        // Try to load theme from localStorage with proper keys
-        let initialTheme = null;
-        try {
-          // Try user-specific theme
-          const userThemeJson = localStorage.getItem(`theme_${userId}`);
-          if (userThemeJson) {
-            initialTheme = JSON.parse(userThemeJson);
-          }
-
-          // If no user theme, try the default
-          if (!initialTheme) {
-            const defaultThemeJson = localStorage.getItem("theme");
-            if (defaultThemeJson) {
-              initialTheme = JSON.parse(defaultThemeJson);
-            }
-          }
-        } catch (e) {
-          console.error("Error loading theme:", e);
-        }
-
-        // Immediately check system preference if no theme found
-        if (!initialTheme) {
-          const prefersDark = window.matchMedia(
-            "(prefers-color-scheme: dark)",
-          ).matches;
-          initialTheme = prefersDark ? "dark" : "light";
-        }
-
-        // Apply theme class right away
-        document.documentElement.classList.add(initialTheme);
-
-        // Add basic inline styles to prevent flash
-        const style = document.createElement("style");
-        style.textContent = `
-          body { 
-            background-color: ${initialTheme === "dark" ? "#0E111B" : "#f5f7fa"}; 
-            color: ${initialTheme === "dark" ? "#ffffff" : "#111827"}; 
-            transition: background-color 0.2s ease-in-out;
-          }
-        `;
-        document.head.appendChild(style);
-      })();
-    </script>
-
-    <!-- Structured Data (Schema.org) -->
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@graph": [
-          {
-            "@type": "Organization",
-            "name": "KongSwap",
-            "url": "https://kongswap.io",
-            "logo": "https://kongswap.io/titles/kong_logo.png",
-            "sameAs": [
-              "https://x.com/kongswapx",
-              "https://t.me/kong_swap",
-              "https://www.tiktok.com/@kongswapx",
-              "https://youtube.com/@kongswapx",
-              "https://www.instagram.com/kongswapx",
-              "https://oc.app/community/maceh-niaaa-aaaaf-bm37q-cai"
-            ]
-          },
-          {
-            "@type": "WebSite",
-            "name": "KongSwap",
-            "url": "https://kongswap.io"
-          }
-        ]
-      }
-    </script>
     %sveltekit.head%
   </head>
+      <!-- Inline Theme Initialization - Fast loading -->
+      <script>
+        (function () {
+          // Try to load theme from localStorage
+          let initialTheme = null;
+          let themeColorScheme = null;
+          
+          try {
+            const storedThemeJson = localStorage.getItem("theme");
+            if (storedThemeJson) {
+              initialTheme = JSON.parse(storedThemeJson);
+              
+              // Map known themes to their color schemes
+              const themeColorSchemes = {
+                'dark': 'dark',
+                'light': 'light',
+                'plain-black': 'dark',
+                'nord': 'dark',
+                'modern-light': 'light',
+                'microswap': 'dark',
+                'synthwave': 'dark',
+                'dragginz': 'dark'
+              };
+              
+              themeColorScheme = themeColorSchemes[initialTheme] || 'dark';
+            }
+          } catch (e) {
+            console.error("Error loading theme:", e);
+          }
+  
+          // Check system preference if no theme found
+          if (!initialTheme) {
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            initialTheme = prefersDark ? "dark" : "light";
+            themeColorScheme = initialTheme;
+          }
+  
+          // Apply the color scheme class (light/dark) not the theme ID
+          document.documentElement.classList.add(themeColorScheme);
+          
+          // Also add the theme ID class for more specific targeting
+          document.documentElement.classList.add(`theme-${initialTheme}`);
+  
+          // Add basic inline styles to prevent flash based on color scheme
+          const style = document.createElement("style");
+          style.textContent = `
+            body { 
+              background-color: rgb(var(--bg-primary, ${themeColorScheme === "dark" ? "9 12 23" : "245 247 250"})); 
+              color: rgb(var(--text-primary, ${themeColorScheme === "dark" ? "255 255 255" : "17 24 39"})); 
+              transition: background-color 0.2s ease-in-out;
+            }
+          `;
+          document.head.appendChild(style);
+        })();
+      </script>
+  
+      <!-- Structured Data (Schema.org) -->
+      <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "name": "KongSwap",
+              "url": "https://kongswap.io",
+              "logo": "https://kongswap.io/images/kong_logo.png",
+              "sameAs": [
+                "https://x.com/kongswapx",
+                "https://t.me/kong_swap",
+                "https://www.tiktok.com/@kongswapx",
+                "https://youtube.com/@kongswapx",
+                "https://www.instagram.com/kongswapx",
+                "https://oc.app/community/maceh-niaaa-aaaaf-bm37q-cai"
+              ]
+            },
+            {
+              "@type": "WebSite",
+              "name": "KongSwap",
+              "url": "https://kongswap.io"
+            }
+          ]
+        }
+      </script>
   <!-- Google tag (gtag.js) -->
   <script
     async
@@ -141,9 +136,10 @@
     gtag("js", new Date());
 
     gtag("config", "G-JW23W2WSPE");
+    
   </script>
 
-  <body data-sveltekit-preload-data="hover">
+  <body data-sveltekit-preload-data="tap">
     <!-- Google Tag Manager (noscript) -->
     <noscript
       ><iframe
@@ -157,4 +153,6 @@
     <div style="display: contents">%sveltekit.body%</div>
     <div id="portal-target"></div>
   </body>
+
+
 </html>

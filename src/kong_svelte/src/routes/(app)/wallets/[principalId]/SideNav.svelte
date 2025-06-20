@@ -22,7 +22,7 @@
     { id: "overview", label: "Wallet Overview", icon: BarChart2, path: "" },
     { id: "tokens", label: "Tokens", icon: Coins, path: "/tokens" },
     { id: "pools", label: "LP Positions", icon: Droplets, path: "/liquidity" },
-    { id: "swaps", label: "Recent Swaps", icon: ArrowRightLeft, path: "/swaps" },
+    { id: "swaps", label: "Recent Swaps", icon: ArrowRightLeft, path: "/" },
   ];
 
   const currentPath = page.url.pathname.split("/").pop() || "";
@@ -45,7 +45,7 @@
         data-sveltekit-prefetch
         class="flex items-center gap-3 p-2 rounded-lg transition-colors {isCurrentPath(tab.path)
           ? 'bg-kong-primary text-white'
-          : 'hover:bg-kong-bg-dark/30'}"
+          : 'hover:bg-kong-bg-primary/30'}"
       >
         {#key tab.icon}
           <tab.icon class="w-5 h-5" />

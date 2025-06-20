@@ -344,29 +344,26 @@
     
     chartOptions.scales.x = {
       ...chartOptions.scales.x,
+      display: false, // Hide entire x-axis
       grid: {
         display: false,
       },
       ticks: {
         display: false,
-      },
-      afterFit: function(scale) {
-        scale.paddingLeft = 0;
-        scale.paddingRight = 0;
+        padding: 0,
       }
     };
 
     chartOptions.scales.y = {
       ...chartOptions.scales.y,
+      display: false, // Hide entire y-axis
+      beginAtZero: true, // Start from zero to fill space
+      grid: {
+        display: false, // Hide grid lines
+      },
       ticks: {
         display: false,
-      },
-      grid: {
-        display: true,
-      },
-      afterFit: function(scale) {
-        scale.paddingTop = 0;
-        scale.paddingBottom = 0;
+        padding: 0,
       }
     };
 
@@ -383,52 +380,55 @@
       }
     };
 
+    // Ensure no layout padding
+    if (!chartOptions.layout) {
+      chartOptions.layout = {};
+    }
+    chartOptions.layout.padding = {
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0
+    }; // No padding at all
+
     // Extend the common options with dual-axis specific settings if needed
     if (needsDualAxis) {
       // Fix the type issue with scales by creating a proper configuration
       const scalesConfig = {
         x: {
+          display: false, // Hide entire x-axis
           grid: {
             display: false,
           },
           ticks: {
-            display: false, // Explicitly hide x-axis ticks
+            display: false,
+            padding: 0,
           }
         },
         y: {
           type: "linear" as const,
-          display: true,
+          display: false, // Hide entire y-axis
           position: "left" as const,
-          beginAtZero: false,
-          grid: {
-            display: true,
-          },
-          ticks: {
-            display: false, // Hide y-axis ticks
-            color: colors.tickColor,
-            callback: function (value: number) {
-              if (value >= 1000000) return (value / 1000000).toFixed(1) + "M";
-              if (value >= 1000) return (value / 1000).toFixed(1) + "K";
-              return value.toString();
-            },
-          },
-        },
-        y1: {
-          type: "linear" as const,
-          display: true,
-          position: "right" as const,
-          beginAtZero: false,
+          beginAtZero: true,
           grid: {
             display: false,
           },
           ticks: {
-            display: false, // Hide y1-axis ticks
-            color: colors.tickColor,
-            callback: function (value: number) {
-              if (value >= 1000000) return (value / 1000000).toFixed(1) + "M";
-              if (value >= 1000) return (value / 1000).toFixed(1) + "K";
-              return value.toString();
-            },
+            display: false,
+            padding: 0,
+          },
+        },
+        y1: {
+          type: "linear" as const,
+          display: false, // Hide entire y1-axis
+          position: "right" as const,
+          beginAtZero: true,
+          grid: {
+            display: false,
+          },
+          ticks: {
+            display: false,
+            padding: 0,
           },
         },
       };
@@ -447,14 +447,14 @@
             borderColor: colors.token0Color,
             backgroundColor: token0Gradient,
             borderWidth: 2,
-            pointRadius: 2,
-            pointHoverRadius: 5,
+            pointRadius: 0, // Hide all points for cleaner look
             pointBackgroundColor: colors.token0Color,
             pointBorderColor: colors.pointBorderColor,
             pointBorderWidth: 1.5,
             tension: 0.3,
             fill: true,
             yAxisID: needsDualAxis ? "y" : "y",
+            clip: false, // Allow drawing outside the chart area
           },
           {
             label: $liquidityStore.token1?.symbol || "Token 1",
@@ -462,74 +462,22 @@
             borderColor: colors.token1Color,
             backgroundColor: token1Gradient,
             borderWidth: 2,
-            pointRadius: 2,
-            pointHoverRadius: 5,
+            pointRadius: 0, // Hide all points for cleaner look
             pointBackgroundColor: colors.token1Color,
             pointBorderColor: colors.pointBorderColor,
             pointBorderWidth: 1.5,
             tension: 0.3,
             fill: true,
             yAxisID: needsDualAxis ? "y1" : "y",
-          },
-          // Highlight significant change points
-          {
-            label: "Significant Changes",
-            data: significantChangePoints,
-            borderColor: colors.changePointColor,
-            backgroundColor: colors.changePointColor,
-            borderWidth: 0,
-            pointRadius: 6,
-            pointStyle: "rectRot",
-            pointBorderColor: colors.pointBorderColor,
-            pointBorderWidth: 1.5,
-            showLine: false,
-            yAxisID: needsDualAxis ? "y" : "y",
-            order: 0,
-            clip: false
+            clip: false, // Allow drawing outside the chart area
           },
         ],
       },
       options: {
         ...chartOptions,
-        // Ensure all axis labels are hidden
-        scales: {
-          ...chartOptions.scales,
-          x: {
-            ...chartOptions.scales.x,
-            display: true,
-            grid: {
-              display: false,
-            },
-            ticks: {
-              display: false,
-              padding: 0,
-            },
-            afterFit: function(scale) {
-              scale.paddingLeft = 0;
-              scale.paddingRight = 0;
-            }
-          },
-          y: {
-            ...chartOptions.scales.y,
-            display: true,
-            grid: {
-              display: true,
-            },
-            ticks: {
-              display: false,
-              padding: 0,
-            },
-            afterFit: function(scale) {
-              scale.paddingTop = 0;
-              scale.paddingBottom = 0;
-            }
-          }
-        },
-        // Ensure the chart area includes all data points
-        layout: {
-          padding: 0
-        },
-        // Disable clipping of the chart area to allow points to be drawn outside
+        maintainAspectRatio: false, // Allow filling the entire container
+        responsive: true, // Ensure responsiveness
+        devicePixelRatio: 2, // Sharper rendering
         plugins: {
           ...chartOptions.plugins,
           tooltip: {
@@ -548,9 +496,9 @@
   }
 </script>
 
-<Panel variant="transparent" unpadded={true} className="!overflow-visible">
+<Panel variant="solid" type="secondary" className="!overflow-visible !p-0">
   <div class="flex flex-col w-full h-full">
-    <h3 class="chart-title flex items-start justify-between py-3 px-5">
+    <h3 class="chart-title flex items-start justify-between py-3 px-3">
       Pool Balance
       <div class="text-kong-text-primary/90 flex items-center gap-2">
         {#if props.currentPool && $liquidityStore.token0 && $liquidityStore.token1}
@@ -570,14 +518,14 @@
                 ? formatNumber(props.currentPool.balance_1)
                 : "0.00"}</span
             >
-            <span class="text-kong-text-accent-green/80 text-sm mt-1"
+            <span class="text-kong-success/80 text-sm mt-1"
               >{$liquidityStore.token1.symbol}</span
             >
           </div>
         {:else}
           <div class="flex items-center gap-1">
             <span>0.00</span>
-            <span class="text-kong-text-accent-green/80 text-sm mt-1"
+            <span class="text-kong-success/80 text-sm mt-1"
               >{$liquidityStore.token0?.symbol || "-"}</span
             >
           </div>
@@ -590,22 +538,22 @@
         {/if}
       </div>
     </h3>
-    <div class="chart-container w-full h-full">
+    <div class="chart-container w-full" style="min-height: 300px; height: 100%;">
       {#if props.balanceHistory && props.balanceHistory.length > 0 && isChartAvailable}
-        <canvas class="w-full h-full !p-0 !m-0" bind:this={balanceChartCanvas}></canvas>
+        <canvas bind:this={balanceChartCanvas} class="w-full h-full !p-0 !m-0"></canvas>
       {:else}
-        <div class="coming-soon">
+        <div class="w-full flex flex-col items-center justify-center text-kong-text-primary/60 text-lg font-medium" style="min-height: 300px;">
           <BarChart3 class="mb-3 w-8 h-8" />
           {#if props.isLoading}
-            Loading chart data...
+            <span class="animate-pulse">Loading chart data...</span>
           {:else if props.errorMessage}
-            {props.errorMessage}
+            <span class="text-sm">{props.errorMessage}</span>
           {:else if !isChartAvailable}
-            Charts unavailable - Could not load Chart.js
+            <span class="text-sm">Charts unavailable - Could not load Chart.js</span>
           {:else if props.currentPool}
-            No chart data available
+            <span class="text-sm">No chart data available</span>
           {:else}
-            Charts Coming Soon
+            <span class="text-sm">Charts Coming Soon</span>
           {/if}
         </div>
       {/if}
@@ -619,14 +567,16 @@
   }
 
   .chart-container {
-    @apply relative !p-0 !m-0 overflow-visible transition-all duration-300 w-full h-full;
+    @apply relative !p-0 !m-0 overflow-hidden transition-all duration-300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom-left-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
   }
-
+  
   .chart-container canvas {
-    @apply rounded-b-lg transition-all duration-300 w-full !p-0 !m-0;
+    display: block !important;
   }
 
-  .coming-soon {
-    @apply w-full h-full flex flex-col items-center justify-center text-kong-text-primary/60 text-lg font-medium;
-  }
 </style>

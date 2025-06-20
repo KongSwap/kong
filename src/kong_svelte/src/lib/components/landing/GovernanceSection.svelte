@@ -467,7 +467,7 @@
 
   <!-- Main content container -->
   <div
-    class="container max-w-7xl mx-auto px-3 md:px-8 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-8"
+    class="!max-w-7xl mx-auto px-3 md:px-8 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-8"
   >
     <!-- Text content side -->
     {#if governanceVisible}
@@ -530,7 +530,7 @@
             <StatCard
               icon={Clock}
               value="14.5%"
-              label="Staking APY"
+              label="Staking APR"
               iconBgClass="bg-indigo-500/20"
               iconColorClass="text-indigo-300"
               gradientClass="bg-[linear-gradient(90deg,#9E7CF4,#FF00FF)]"
@@ -555,7 +555,7 @@
         in:fade={{ delay: 300, duration: 700 }}
       >
         <div
-          class="relative w-full max-w-[320px] sm:max-w-[400px] md:max-w-[500px]"
+          class="relative w-3/4 min-w-[320px] max-w-[320px] sm:max-w-[400px] md:max-w-[500px]"
         >
           <div
             class="relative rounded-xl overflow-hidden bg-white/5 border border-white/10 p-4 md:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-transform duration-700 ease-out"

@@ -390,7 +390,7 @@
               id="start-date"
               type="date"
               bind:value={startDate}
-              class="w-full pl-8 pr-3 py-2 rounded-lg bg-kong-bg-dark border border-kong-border text-sm text-kong-text-primary focus:outline-none focus:ring-1 focus:ring-kong-primary focus:border-kong-primary"
+              class="w-full pl-8 pr-3 py-2 rounded-lg bg-kong-bg-primary border border-kong-border text-sm text-kong-text-primary focus:outline-none focus:ring-1 focus:ring-kong-primary focus:border-kong-primary"
             />
           </div>
         </div>
@@ -405,7 +405,7 @@
               id="end-date"
               type="date"
               bind:value={endDate}
-              class="w-full pl-8 pr-3 py-2 rounded-lg bg-kong-bg-dark border border-kong-border text-sm text-kong-text-primary focus:outline-none focus:ring-1 focus:ring-kong-primary focus:border-kong-primary"
+              class="w-full pl-8 pr-3 py-2 rounded-lg bg-kong-bg-primary border border-kong-border text-sm text-kong-text-primary focus:outline-none focus:ring-1 focus:ring-kong-primary focus:border-kong-primary"
             />
           </div>
         </div>
@@ -486,7 +486,7 @@
 
     <!-- Download Progress Indicator -->
     {#if isLoading}
-      <div class="bg-kong-bg-dark/80 border border-kong-border rounded-lg p-3 mt-2">
+      <div class="bg-kong-bg-primary/80 border border-kong-border rounded-lg p-3 mt-2">
         <div class="flex justify-between items-center mb-2">
           <span class="text-sm font-medium text-kong-text-primary">Downloading transactions...</span>
           <div class="flex items-center">
@@ -503,7 +503,7 @@
 
     <!-- Download Button -->
     <button
-      on:click={downloadTransactions}
+      onclick={downloadTransactions}
       disabled={isLoading}
       class="w-full flex items-center justify-center gap-2 py-3 mt-4 rounded-lg bg-kong-primary hover:bg-kong-primary-hover text-white font-medium transition-colors {isLoading ? 'opacity-80 cursor-not-allowed' : ''}"
     >

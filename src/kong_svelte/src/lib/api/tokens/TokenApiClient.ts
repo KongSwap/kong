@@ -11,11 +11,12 @@ import type {
 import { ApiClient } from '../base/ApiClient';
 import { API_URL } from '../index';
 import { browser } from '$app/environment';
-import { auth } from '$lib/stores/auth';
+import { auth, faucetActor } from '$lib/stores/auth';
 import { toastStore } from '$lib/stores/toastStore';
 import { userTokens } from '$lib/stores/userTokens';
 import { get } from 'svelte/store';
 import { canisters, type CanisterType } from '$lib/config/auth.config';
+import { icrcActor } from '$lib/stores/auth';
 
 // Lazy initialization of API client to prevent SSR issues
 const getApiClient = () => {
@@ -198,12 +199,7 @@ export const addToken = async (canisterId: string): Promise<any> => {
  * Claims tokens from the faucet
  */
 export const faucetClaim = async (): Promise<void> => {
-  const actor = auth.pnp.getActor<CanisterType['KONG_FAUCET']>({
-    canisterId: canisters.kongFaucet.canisterId,
-    idl: canisters.kongFaucet.idl,
-    anon: false,
-    requiresSigning: false,
-  });
+  const actor = faucetActor({anon: false, requiresSigning: false});
   const result = await actor.claim();
 
   if ('Ok' in result) {
@@ -224,11 +220,7 @@ export const fetchTokenMetadata = async (canisterId: string): Promise<Kong.Token
       throw new Error("API calls can only be made in the browser");
     }
 
-    const actor = auth.pnp.getActor<CanisterType['ICRC2_LEDGER']>({
-      canisterId: canisterId,
-      idl: canisters.icrc2.idl,
-      anon: true,
-    });
+    const actor = icrcActor({canisterId, anon: true});
     if (!actor) {
       throw new Error('Failed to create token actor');
     }
@@ -277,8 +269,8 @@ const createRawTokenData = (canisterId: string, tokenData: any, tokenId: number)
 
   return {
     canister_id: canisterId,
-    name: name.toString(),
-    symbol: symbol.toString(),
+    name: IcrcToken.formatOdinSymbol(name.toString()),
+    symbol: IcrcToken.formatOdinSymbol(symbol.toString()),
     decimals: Number(decimals),
     address: canisterId,
     fee: fee.toString(),
@@ -306,4 +298,78 @@ const createRawTokenData = (canisterId: string, tokenData: any, tokenId: number)
     chain: "IC",
     total_24h_volume: "0"
   };
+};
+
+interface TopTokensResponse {
+  gainers: Array<{ token: Kong.Token; metrics: any }>;
+  losers: Array<{ token: Kong.Token; metrics: any }>;
+  hottest: Array<{ token: Kong.Token; metrics: any }>;
+  top_volume: Array<{ token: Kong.Token; metrics: any }>;
+}
+
+/**
+ * Fetches top tokens (gainers, losers, volume) from the API
+ */
+export const fetchTopTokens = async (): Promise<{
+  gainers: Kong.Token[];
+  losers: Kong.Token[];
+  hottest: Kong.Token[];
+  top_volume: Kong.Token[];
+}> => {
+  try {
+    // Ensure we're in a browser environment
+    if (!browser) {
+      throw new Error("API calls can only be made in the browser");
+    }
+    
+    const apiClient = getApiClient();
+    
+    // Make the API request using the base client
+    const data = await apiClient.get<any>('/api/tokens/top');
+    
+    // Ensure we have valid data
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid response from top tokens API');
+    }
+
+    // Process the arrays into the expected format
+    const processTokens = (tokens: any[]) => {
+      if (!Array.isArray(tokens)) {
+        console.warn('Expected array but got:', tokens);
+        return [];
+      }
+      return tokens.map(item => {
+        const token = item.token || item;
+        return {
+          ...token,
+          name: IcrcToken.formatOdinSymbol(token.name || ''),
+          symbol: IcrcToken.formatOdinSymbol(token.symbol || ''),
+          canister_id: token.canister_id,
+          address: token.canister_id, // Keep address for backward compatibility
+          metrics: {
+            ...token.metrics,
+            ...item.metrics // Merge metrics from both levels
+          }
+        };
+      });
+    };
+
+    const result = {
+      gainers: processTokens(data.gainers || []),
+      losers: processTokens(data.losers || []),
+      hottest: processTokens(data.hottest || []),
+      top_volume: processTokens(data.top_volume || [])
+    };
+
+    return result;
+  } catch (error) {
+    console.error('Error fetching top tokens:', error);
+    // Return empty arrays on error to prevent UI breakage
+    return {
+      gainers: [],
+      losers: [],
+      hottest: [],
+      top_volume: []
+    };
+  }
 };

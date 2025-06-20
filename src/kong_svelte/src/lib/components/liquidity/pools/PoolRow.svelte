@@ -1,6 +1,7 @@
 <script lang="ts">
   import { app } from "$lib/state/app.state.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import Panel from "$lib/components/common/Panel.svelte";
   import { onMount } from "svelte";
   import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { Flame, TrendingUp, PiggyBank, CheckCircle } from "lucide-svelte";
@@ -115,7 +116,11 @@
   </div>
 {:else}
   <!-- Mobile view (simplified card) -->
-  <div class="mobile-pool-card {isKongPool ? 'bg-kong-primary/5 hover:bg-kong-primary/15 border-kong-primary/20' : ''}">
+  <Panel 
+    variant="solid" 
+    type="secondary" 
+    className="mb-3 {isKongPool ? 'bg-kong-primary/5 hover:bg-kong-primary/15 border-kong-primary/20' : ''}"
+    interactive={true}>
     <div class="card-header">
       <div class="token-info">
         <TokenImages
@@ -150,7 +155,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </Panel>
 {/if}
 
 <style scoped lang="postcss">
@@ -171,14 +176,6 @@
     gap: 0.25rem;
   }
 
-  /* Mobile Card Styles */
-  .mobile-pool-card {
-    background-color: #1a1b23;
-    border-radius: 0.5rem;
-    padding: 0.75rem 1rem;
-    margin-bottom: 0.75rem;
-    @apply border border-kong-border;
-  }
 
   .card-header {
     display: flex;
@@ -207,10 +204,6 @@
   }
 
   @media (max-width: 640px) {
-    .mobile-pool-card {
-      padding: 0.625rem 1rem;
-    }
-
     .token-info {
       gap: 0.5rem;
     }

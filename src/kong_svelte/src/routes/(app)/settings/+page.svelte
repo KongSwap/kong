@@ -13,7 +13,6 @@
   import PageHeader from '$lib/components/common/PageHeader.svelte';
   import Panel from '$lib/components/common/Panel.svelte';
   import type { ComponentType } from 'svelte';
-  import { STORAGE_KEYS, createNamespacedStore } from '$lib/config/localForage.config';
   import { userTokens } from '$lib/stores/userTokens';
   import { currentUserBalancesStore } from '$lib/stores/balancesStore';
   import { notificationsStore } from '$lib/stores/notificationsStore';
@@ -33,18 +32,16 @@
   
   // Constants
   const quickSlippageValues = [1, 2, 3, 5];
-  const SETTINGS_KEY = STORAGE_KEYS.SETTINGS;
-  const FAVORITES_KEY = STORAGE_KEYS.FAVORITE_TOKENS;
+  const SETTINGS_KEY = 'settings';
+  const FAVORITES_KEY = 'favoriteTokens';
   
   // Loading states for async operations
   let loadingSlippage = $state(false);
   let loadingSound = $state(false);
   let loadingTicker = $state(false);
   
-  // Create namespaced stores
-  const settingsStorage = createNamespacedStore(SETTINGS_KEY);
-  const slippageStorage = createNamespacedStore('slippage');
-  const favoritesStorage = createNamespacedStore(FAVORITES_KEY);
+  // Storage keys
+  const SLIPPAGE_KEY = 'slippage';
   
   // Initialize when component mounts
   onMount(() => {
@@ -73,7 +70,6 @@
     if (browser) {
       window.addEventListener('click', handleClickOutside);
       initializeSlippageFromStorage();
-      loadThemeFromStorage();
       return () => {
         window.removeEventListener('click', handleClickOutside);
         unsubscribe();
@@ -107,7 +103,6 @@
          previousAuthState.principalId !== currentAuthState.principalId)) {
       
       loadUserSettings();
-      loadThemeFromStorage();
       
       // Update previous state
       previousAuthState = currentAuthState;
@@ -116,10 +111,7 @@
   
   // Apply a theme when selected
   async function applyTheme(themeId: string) {
-    
-    try {
-      // Get user ID for debugging
-      const userId = $auth?.account?.owner || 'default';      
+    try {     
       await themeStore.setTheme(themeId as ThemeId);
       
       // Force update UI
@@ -134,29 +126,20 @@
     }
   }
   
-  // Load theme from storage - use the store's function to avoid duplication
-  async function loadThemeFromStorage() {
-    if (browser) {
-      const storedTheme = await themeStore.loadThemeFromStorage();
-      if (storedTheme) {
-        currentThemeId = storedTheme;
-      }
-    }
-  }
-  
-  // Function to get settings from localForage
+  // Function to get settings from localStorage
   async function getSettings() {
     if (browser) {
       const walletId = $auth?.account?.owner || 'default';
       const settingsKey = `${SETTINGS_KEY}_${walletId}`;
       
       try {
-        const storedSettings = await settingsStorage.getItem<{
+        const stored = localStorage.getItem(settingsKey);
+        const storedSettings = stored ? JSON.parse(stored) as {
           sound_enabled: boolean;
           ticker_enabled?: boolean;
           max_slippage: number;
           timestamp: number;
-        }>(settingsKey);
+        } : null;
         
         if (storedSettings) {
           return storedSettings;
@@ -175,7 +158,7 @@
     };
   }
   
-  // Function to save settings to localForage
+  // Function to save settings to localStorage
   async function saveSettings(settings: any) {
     if (browser) {
       try {
@@ -188,7 +171,7 @@
           timestamp: Date.now()
         };
         
-        await settingsStorage.setItem(settingsKey, settingsToSave);
+        localStorage.setItem(settingsKey, JSON.stringify(settingsToSave));
         return true;
       } catch (error) {
         console.error('Error saving settings to storage:', error);
@@ -219,7 +202,8 @@
         const walletId = $auth?.account?.owner || 'default';
         const slippageKey = `slippage_${walletId}`;
         
-        const storedSlippage = await slippageStorage.getItem(slippageKey);
+        const stored = localStorage.getItem(`${SLIPPAGE_KEY}:${slippageKey}`);
+        const storedSlippage = stored ? JSON.parse(stored) : null;
         if (storedSlippage) {
           const value = typeof storedSlippage === 'string' 
             ? parseFloat(storedSlippage) 
@@ -242,7 +226,7 @@
         const walletId = $auth?.account?.owner || 'default';
         const slippageKey = `slippage_${walletId}`;
         
-        await slippageStorage.setItem(slippageKey, value);
+        localStorage.setItem(`${SLIPPAGE_KEY}:${slippageKey}`, JSON.stringify(value));
         
         // Update the settings store as well for consistency
         settingsStore.updateSetting('max_slippage', value);
@@ -408,7 +392,7 @@
           const favoritesKey = `${FAVORITES_KEY}_${walletId}`;
           
           // Clear favorites from storage
-          await favoritesStorage.removeItem(favoritesKey);
+          localStorage.removeItem(`${FAVORITES_KEY}:${favoritesKey}`);
           toastStore.success('Favorites cleared successfully. Refresh may be needed.'); 
         } catch (error) {
           console.error('Error clearing favorites:', error);
@@ -441,8 +425,13 @@
             currentUserBalancesStore.set({});
 
             // Clear any remaining settings storage specific to this component/page
-            await settingsStorage.clear(); 
-            await slippageStorage.clear();
+            // Clear all settings and slippage items
+            const keys = Object.keys(localStorage);
+            keys.forEach(key => {
+              if (key.startsWith(SETTINGS_KEY) || key.startsWith(SLIPPAGE_KEY)) {
+                localStorage.removeItem(key);
+              }
+            });
             notificationsStore.clearAll();
 
             // Reset theme to default (dark) immediately
@@ -495,7 +484,7 @@
   <div class="mb-4 px-4 max-w-[1300px] mx-auto">
     <button
       class="flex items-center gap-2 text-kong-text-secondary hover:text-kong-primary transition-colors"
-      on:click={goBack}
+      onclick={goBack}
     >
       <ArrowLeft class="w-4 h-4" />
       <span>Back</span>
@@ -517,7 +506,7 @@
     <!-- Wrap Slippage and Settings Grid in a new grid container -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <!-- Slippage Section -->
-      <Panel type="main" className="space-y-4">
+      <Panel className="space-y-4">
         <div class="flex items-center justify-between">
           <h3 class="text-kong-text-primary font-medium text-base">Slippage Tolerance</h3>
         </div>
@@ -547,16 +536,16 @@
               <button
                 class="px-3 py-1 text-sm rounded-md border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 class:border-kong-border={!(slippageValue === val && !isCustomSlippage)}
-                class:bg-kong-bg-light={!(slippageValue === val && !isCustomSlippage)}
+                class:bg-kong-bg-secondary={!(slippageValue === val && !isCustomSlippage)}
                 class:text-kong-text-secondary={!(slippageValue === val && !isCustomSlippage)}
-                class:hover:bg-kong-hover-bg-light={!(slippageValue === val && !isCustomSlippage)}
+                class:hover:bg-kong-bg-secondary={!(slippageValue === val && !isCustomSlippage)}
                 class:hover:border-kong-primary={!(slippageValue === val && !isCustomSlippage)}
                 class:bg-kong-primary={slippageValue === val && !isCustomSlippage}
                 class:border-kong-primary={slippageValue === val && !isCustomSlippage}
                 class:text-white={slippageValue === val && !isCustomSlippage}
                 class:hover:bg-kong-primary-hover={slippageValue === val && !isCustomSlippage}
                 class:hover:border-kong-primary-hover={slippageValue === val && !isCustomSlippage}
-                on:click={() => setSlippage(val)}
+                onclick={() => setSlippage(val)}
                 disabled={!$auth.isConnected || loadingSlippage}
               >
                 {val}%
@@ -586,7 +575,7 @@
       <div class="settings-grid">
         <!-- Combined Application Settings Panel -->
         <Panel className="space-y-4">
-          <h3 class="text-kong-text-primary font-medium text-base">Application Settings</h3>
+          <h3 class="text-kong-text-primary font-medium text-base">General Settings</h3>
           
           <!-- Sound Section -->
           <div class="setting-item">
@@ -624,8 +613,8 @@
             </div>
             <div class="flex items-center gap-2">
               <button 
-                class="bg-kong-bg-light hover:bg-kong-accent-yellow/60 text-kong-text-primary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                on:click={clearFavorites}
+                class="bg-kong-bg-secondary hover:bg-kong-bg-tertiary text-kong-text-primary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                onclick={clearFavorites}
                 disabled={!$auth.isConnected}
               >
                 Clear
@@ -641,8 +630,8 @@
             </div>
             <div class="flex items-center gap-2">
               <button 
-                class="bg-kong-accent-red/30 hover:bg-kong-accent-red/60 text-red-100 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                on:click={resetDatabase}
+                class="bg-kong-error/30 hover:bg-kong-error/60 text-red-100 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                onclick={resetDatabase}
                 disabled={loadingSlippage || loadingSound}
               >
                 Reset
@@ -658,47 +647,45 @@
   <section class="mb-12">
     <h2 class="text-2xl font-bold text-kong-text-primary mb-6">Theme Management</h2>
     
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
       {#each themes as theme}
         <!-- Theme Card using Panel -->
         <Panel 
           interactive={true}
           className={`
+            !p-3
             ${currentThemeId === theme.id ? 'active text-kong-text-primary border-kong-primary border-2 bg-kong-primary/30' : ''}
             hover:!bg-kong-primary/20
           `}
-          on:click={() => applyTheme(theme.id)}
-          on:keydown={(e) => e.key === 'Enter' && applyTheme(theme.id)}
+          onclick={() => applyTheme(theme.id)}
         >
           <!-- Theme preview -->
-          <div class="theme-preview h-28 mb-3 rounded overflow-hidden border border-kong-border flex">
+          <div class="theme-preview h-16 mb-2 rounded overflow-hidden border border-kong-border/50 flex">
             <div class="w-1/2 flex flex-col">
-              <div class="h-1/2 flex items-center justify-center" style="background-color: {theme.colors.bgDark}">
-                <div class="w-8 h-2 rounded-full" style="background-color: {theme.colors.primary}"></div>
-              </div>
-              <div class="h-1/2 flex items-center justify-center" style="background-color: {theme.colors.bgLight}">
-                <div class="w-6 h-2 rounded-full" style="background-color: {theme.colors.accentBlue}"></div>
-              </div>
+              <div class="h-1/2" style="background-color: {theme.colors.bgPrimary}"></div>
+              <div class="h-1/2" style="background-color: {theme.colors.bgSecondary}"></div>
             </div>
             <div class="w-1/2 flex flex-col">
               <div class="h-1/3" style="background-color: {theme.colors.primary}"></div>
-              <div class="h-1/3" style="background-color: {theme.colors.accentGreen}"></div>
-              <div class="h-1/3" style="background-color: {theme.colors.accentRed}"></div>
+              <div class="h-1/3" style="background-color: {theme.colors.success}"></div>
+              <div class="h-1/3" style="background-color: {theme.colors.error}"></div>
             </div>
           </div>
           
           <!-- Theme info -->
-          <h3 class="font-bold {currentThemeId === theme.id ? 'text-kong-text-primary' : 'text-kong-text-primary'}">{theme.name}</h3>
-          <div class="flex justify-between items-center mt-2">
+          <h3 class="font-semibold text-sm {currentThemeId === theme.id ? 'text-kong-text-primary' : 'text-kong-text-primary'} mb-1">{theme.name}</h3>
+          <div class="flex justify-between items-center">
             {#if theme.author}
-              <span class="text-sm {currentThemeId === theme.id ? 'text-kong-text-primary/80' : 'text-kong-text-secondary'}">
+              <span class="text-xs {currentThemeId === theme.id ? 'text-kong-text-primary/80' : 'text-kong-text-secondary'} truncate max-w-[80px]">
                 {#if theme.authorLink}
                   <a 
                     href={theme.authorLink} 
                     class="hover:underline {currentThemeId === theme.id ? 'text-kong-text-primary' : 'text-kong-primary'}"
                     target="_blank" 
                     rel="noopener noreferrer"
-                    on:click|stopPropagation
+                    onclick={(e) => {
+                      e.stopPropagation(); // Prevent theme card click
+                    }}
                   >
                     {theme.author}
                   </a>
@@ -707,12 +694,10 @@
                 {/if}
               </span>
             {:else}
-              <span class="text-sm {currentThemeId === theme.id ? 'text-kong-text-primary/80' : 'text-kong-text-secondary'}">—</span>
+              <span class="text-xs {currentThemeId === theme.id ? 'text-kong-text-primary/80' : 'text-kong-text-secondary'}">—</span>
             {/if}
             {#if currentThemeId === theme.id}
-              <span class="text-xs px-2 py-1 bg-kong-primary text-white rounded-full">Active</span>
-            {:else}
-              <!-- Removed Apply Button -->
+              <span class="text-[10px] px-1.5 py-0.5 bg-kong-primary text-white rounded-full">Active</span>
             {/if}
           </div>
         </Panel>
@@ -729,11 +714,11 @@
         {#if showThemeCreator && ThemeCreator}
           <svelte:component this={ThemeCreator} />
         {:else}
-          <div class="bg-kong-bg-dark/30 p-4 rounded-lg border border-kong-border/20">
+          <div class="bg-kong-bg-primary/30 p-4 rounded-lg border border-kong-border/20">
             <p class="text-kong-text-primary mb-2">
               Loading theme creator...
             </p>
-            <div class="h-1 w-32 bg-kong-bg-light overflow-hidden rounded">
+            <div class="h-1 w-32 bg-kong-bg-secondary overflow-hidden rounded">
               <div class="h-full bg-kong-primary/40 animate-pulse rounded"></div>
             </div>
           </div>
@@ -743,9 +728,9 @@
     
     <Panel variant="transparent" className="mt-12">
       <h3 class="text-xl font-bold text-kong-text-primary mb-2">How to Create Themes Programmatically</h3>
-      <p class="mb-3 text-kong-text-secondary">You can also create themes through code. Check out the documentation in <code class="bg-kong-bg-dark px-1 py-0.5 rounded text-kong-accent-blue">/lib/themes/README.md</code>.</p>
+      <p class="mb-3 text-kong-text-secondary">You can also create themes through code. Check out the documentation in <code class="bg-kong-bg-primary px-1 py-0.5 rounded text-kong-accent-blue">/lib/themes/README.md</code>.</p>
       
-      <div class="code-example bg-kong-bg-dark rounded-lg p-4 overflow-x-auto">
+      <div class="code-example bg-kong-bg-primary rounded-lg p-4 overflow-x-auto">
         <pre class="text-kong-text-primary font-mono text-sm">
 import type &#123; ThemeDefinition &#125; from '$lib/themes/baseTheme';
 import &#123; themeStore &#125; from '$lib/stores/themeStore';
@@ -755,8 +740,9 @@ const myCustomTheme: ThemeDefinition = &#123;
   name: 'My Custom Theme',
   colorScheme: 'dark light',
   colors: &#123;
-    bgDark: '#1A1A1A',
-    bgLight: '#2A2A2A',
+    bgPrimary: '#1A1A1A',
+    bgSecondary: '#2A2A2A',
+    bgTertiary: '#3A3A3A',
     primary: '#FF5722',
     // ... other required colors
   &#125;
@@ -790,23 +776,22 @@ themeStore.registerAndApplyTheme(myCustomTheme);
 
   /* Removed alert-banner base and variant styling - handled inline */
   
-  /* Removed settings-grid styling - commented out previously */
-
-  /* Kept setting-item for border logic */
+  /* Setting item styles */
   .setting-item {
     @apply flex items-center justify-between py-3;
-    &:not(:last-child) {
-      @apply border-b border-kong-border/20;
-    }
   }
-
-  /* Removed setting-label styling - handled inline on spans */
-
-  /* Removed slider-section styling - handled inline */
+  
+  .setting-item:not(:last-child) {
+    @apply border-b border-kong-border/20;
+  }
+  
+  .setting-label {
+    @apply flex-1;
+  }
 
   /* Kept global slider input styling */
   :global(.slider-input) {
-    @apply bg-kong-bg-dark/40 border border-kong-border rounded-lg;
+    @apply bg-kong-bg-primary/40 border border-kong-border rounded-lg;
     padding: 6px 8px;
   }
 

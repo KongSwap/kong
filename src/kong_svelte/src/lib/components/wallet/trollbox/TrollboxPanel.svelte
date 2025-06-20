@@ -46,7 +46,7 @@
   async function initializeTrollbox() {
     if (!chatContainer) return; // Wait until chat container is available
     
-    // Load pending messages from localForage
+    // Load pending messages from localStorage
     trollboxStore.loadPendingMessagesFromStorage();
     
     // Load messages
@@ -300,7 +300,7 @@
 <!-- Overall container with fixed height to ensure the input is visible -->
 <div class="flex flex-col h-full">
   <!-- Chat Header -->
-  <header class="flex items-center justify-between p-5 border-b border-kong-border bg-kong-bg-dark/95 backdrop-blur-sm" style="box-shadow: 0 4px 15px -8px rgba(0, 0, 0, 0.2);">
+  <header class="flex items-center justify-between p-5 border-b border-kong-border bg-kong-bg-primary/95 backdrop-blur-sm" style="box-shadow: 0 4px 15px -8px rgba(0, 0, 0, 0.2);">
     <div class="flex items-center gap-2">
       <MessagesSquare size={18} class="text-kong-primary" />
       <h2 class="text-base font-semibold text-kong-text-primary" style="letter-spacing: -0.01em;">Chat</h2>
@@ -309,7 +309,7 @@
     <div class="flex items-center gap-2">
       <button 
         class="px-3 py-1.5 text-xs font-medium text-kong-text-secondary hover:text-kong-text-primary transition-colors rounded-md bg-kong-text-primary/5 hover:bg-kong-text-primary/10" 
-        on:click={() => loadMessages(true)}
+        onclick={() => loadMessages(true)}
       >
         Refresh
       </button>
@@ -318,7 +318,7 @@
 
   <!-- Error message display -->
   {#if errorMessage}
-    <div class="bg-kong-accent-red/10 border-l-4 border-kong-accent-red text-kong-accent-red p-3 text-sm" transition:slide|local={{ duration: 150 }}>
+    <div class="bg-kong-error/10 border-l-4 border-kong-error text-kong-error p-3 text-sm" transition:slide|local={{ duration: 150 }}>
       {errorMessage}
     </div>
   {/if}
@@ -348,7 +348,7 @@
   </div>
   
   <!-- Message Input - Always at the bottom -->
-  <div class="border-t border-kong-border bg-kong-bg-dark flex-shrink-0">
+  <div class="border-t border-kong-border bg-kong-bg-primary flex-shrink-0">
     <MessageInput 
       isConnected={$auth.isConnected}
       bind:messageInput
@@ -390,7 +390,7 @@
   }
 
   :global(emoji-picker) {
-    --background: rgb(var(--surface-dark));
+    --background: rgb(var(--bg-tertiary));
     --border-color: rgb(var(--border));
     --indicator-color: rgb(var(--accent-blue));
     --input-border-color: rgb(var(--border));

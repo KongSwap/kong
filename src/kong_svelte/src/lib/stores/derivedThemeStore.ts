@@ -4,10 +4,7 @@ import { getThemeById } from "$lib/themes/themeRegistry";
 
 // Base derived store for the current theme object
 const currentTheme = derived(themeStore, ($themeStore) => getThemeById($themeStore));
-
-// Export derived stores for specific theme properties
 export const themeColors = derived(currentTheme, ($theme) => $theme.colors);
-
 export const themeId = derived(currentTheme, ($theme) => $theme.id);
 
 // Example derived color properties (add more as needed)
@@ -21,10 +18,10 @@ export const buttonBorderColor = derived(themeColors, ($colors) => $colors?.bord
 export const glowEffectColor = derived(themeColors, ($colors) => ($colors as any)?.highlight ?? 'rgba(255, 255, 255, 0.2)');
 
 // Panel and button styling
-export const panelRoundness = derived(themeColors, ($colors) => ($colors as any)?.panelRoundness ?? 'rounded-lg');
+export const panelRoundness = derived(themeColors, ($colors) => ($colors as any)?.panelRoundness ?? 'rounded-none');
 
 // Derived properties for SwapPanel
-export const swapPanelRoundness = derived(themeColors, ($colors) => ($colors as any)?.swapPanelRoundness ?? 'rounded-lg');
+export const swapPanelRoundness = derived(themeColors, ($colors) => `${($colors as any)?.swapPanelRoundness ?? 'rounded-none'}`);
 export const swapPanelBorder = derived(themeColors, ($colors) => ($colors as any)?.swapPanelBorder ?? '1px solid rgba(255, 255, 255, 0.1)');
 export const swapPanelShadow = derived(themeColors, ($colors) => ($colors as any)?.swapPanelShadow ?? '0 8px 32px rgba(0, 0, 0, 0.32)');
 export const swapPanelBorderStyle = derived(themeColors, ($colors) => ($colors as any)?.swapPanelBorderStyle ?? 'default');
@@ -32,3 +29,6 @@ export const swapPanelInputsRounded = derived(themeColors, ($colors) => (($color
 export const transparentSwapPanel = derived(themeColors, ($colors) => (($colors as any)?.transparentSwapPanel ?? true)); 
 export const transparentPanel = derived(themeColors, ($colors) => (($colors as any)?.transparentPanel ?? true)); 
 export const colorScheme = derived(currentTheme, ($currentTheme) => $currentTheme?.colorScheme ?? 'light');
+
+export const logoPath = derived(themeColors, ($colors) => ($colors as any)?.logoPath ?? "/images/kongface-white.svg");
+export const mobileLogoPath = derived(themeColors, ($colors) => ($colors as any)?.mobileLogoPath ?? "/images/logo-white-wide.webp");

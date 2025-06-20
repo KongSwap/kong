@@ -1,33 +1,35 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from "svelte";
+  import { createEventDispatcher } from "svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import { sendLpTokens } from "$lib/api/pools";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils"; 
   import { fade, fly } from "svelte/transition";
-  import { auth } from "$lib/stores/auth";
-  import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { calculateRemoveLiquidityAmounts } from "$lib/api/pools";
   import { calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
 
   const dispatch = createEventDispatcher();
   
-  export let pool: any;
-  export let token0: any;
-  export let token1: any;
+  interface Props {
+    pool: any;
+    token0: any;
+    token1: any;
+  }
 
-  let amount = "";
-  let recipientAddress = "";
-  let isLoading = false;
-  let errorMessage = "";
-  let isCalculating = false;
-  let estimatedAmounts = { amount0: "0", amount1: "0" };
+  let { pool, token0, token1 }: Props = $props();
+
+  let amount = $state("");
+  let recipientAddress = $state("");
+  let isLoading = $state(false);
+  let errorMessage = $state("");
+  let isCalculating = $state(false);
+  let estimatedAmounts = $state({ amount0: "0", amount1: "0" });
 
   // LP token information
-  let tokenId = "";
-  let lpTokenBalance = 0;
+  let tokenId = $state("");
+  let lpTokenBalance = $state(0);
 
-  onMount(async () => {
+  $effect(() => {
     // Set the balance from the pool data
     lpTokenBalance = parseFloat(pool.balance) || 0;
     
@@ -140,19 +142,6 @@
     }
   }
 
-  // Calculate total USD value of tokens
-  function calculateTotalUsdValue(): string {
-    const amount0Usd = Number(
-      calculateTokenUsdValue(estimatedAmounts.amount0, token0)
-    );
-    const amount1Usd = Number(
-      calculateTokenUsdValue(estimatedAmounts.amount1, token1)
-    );
-    if (isNaN(amount0Usd) || isNaN(amount1Usd)) {
-      return "0";
-    }
-    return (amount0Usd + amount1Usd).toFixed(2);
-  }
 </script>
 
 <div in:fade={{ duration: 200 }}>
@@ -163,7 +152,7 @@
         <input
           type="number"
           bind:value={amount}
-          on:input={calculateEstimatedAmounts}
+          oninput={calculateEstimatedAmounts}
           class="amount-input"
           placeholder="0"
           max={lpTokenBalance}
@@ -182,7 +171,7 @@
           {#each [25, 50, 75, 100] as percent}
             <button
               class="{amount && Math.abs(parseFloat(amount) - (lpTokenBalance * percent) / 100) < 0.00000001 ? 'active' : ''}"
-              on:click={() => setPercentage(percent)}
+              onclick={() => setPercentage(percent)}
               type="button"
             >
               {percent === 100 ? 'MAX' : `${percent}%`}
@@ -275,10 +264,10 @@
       <ButtonV2
         theme="primary"
         variant="solid"
-        size="md"
+        size="lg"
         isDisabled={!amount || !recipientAddress || isLoading || isCalculating}
         fullWidth={true}
-        on:click={handleSendTokens}
+        onclick={handleSendTokens}
       >
         {#if isLoading}
           <div class="button-content">
@@ -390,10 +379,6 @@
     @apply text-xs text-kong-text-primary/50 font-medium;
   }
 
-  .output-total {
-    @apply text-sm font-medium text-kong-text-primary;
-  }
-
   .token-outputs {
     @apply space-y-2;
   }
@@ -427,8 +412,7 @@
   }
 
   .modal-footer {
-    @apply border-t border-kong-border/10 mt-4 bg-kong-bg-dark/90 
-           backdrop-blur-md w-full;
+    @apply border-t border-kong-border/10 mt-4 w-full;
   }
 
   .action-buttons {

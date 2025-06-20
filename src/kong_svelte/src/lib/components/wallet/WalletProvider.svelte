@@ -37,7 +37,7 @@
   import { fly, fade } from "svelte/transition";
   import { quintOut } from "svelte/easing";
   import { onMount } from "svelte";
-  import { recentWalletsStore, type RecentWallet } from "$lib/stores/recentWalletsStore";
+  import { recentWalletsStore } from "$lib/stores/recentWalletsStore";
 
   interface WalletInfo {
     id: string;
@@ -87,7 +87,7 @@
     if (!browser) return [];
     
     // Get all wallets from adapters
-    const adapters = auth.pnp?.adapters || {};
+    const adapters = auth.pnp.getEnabledWallets() || {};
     const allWallets = Object.values(adapters)
       .filter((adapter: any) => adapter.enabled !== false)
       .map(mapRawWalletToInfo);
@@ -318,13 +318,6 @@
       connecting = true;
       selectedWalletId.set(walletId);
 
-      // Add timeout to prevent hanging connections
-      connectingTimeout = window.setTimeout(() => {
-        abortController.abort(); // Ensure abort is called before reset
-        errorMessage = "Connection timeout. Please try again.";
-        resetConnectionState(); // Use helper function
-      }, 30000) as unknown as number;
-
       await auth.connect(denormalizedWalletId);
 
       // Update recent wallets list using the normalized ID
@@ -433,13 +426,13 @@
     <div
       in:fly={{ y: -20, duration: 300, easing: quintOut }}
       out:fade={{ duration: 200 }}
-      class="mx-4 my-3 flex items-center gap-2 p-3 rounded-lg bg-kong-accent-red/10 text-kong-accent-red border border-kong-accent-red/20 text-sm"
+      class="mx-4 my-3 flex items-center gap-2 p-3 rounded-lg bg-kong-error/10 text-kong-error border border-kong-error/20 text-sm"
       role="alert"
     >
       <AlertCircle size={16} class="flex-shrink-0" />
       <span>{errorMessage}</span>
       <button
-        class="ml-auto text-kong-accent-red/80 hover:text-kong-accent-red transition-colors"
+        class="ml-auto text-kong-error/80 hover:text-kong-error transition-colors"
         on:click={() => (errorMessage = null)}
         aria-label="Dismiss error"
       >
@@ -456,7 +449,7 @@
       on:click={() => (showClearConfirm = false)}
     >
       <div
-        class="p-5 bg-kong-bg-dark rounded-xl border border-kong-border shadow-lg max-w-md w-full mx-4"
+        class="p-5 bg-kong-bg-primary rounded-xl border border-kong-border shadow-lg max-w-md w-full mx-4"
         in:fly={{ y: 20, duration: 300, easing: quintOut }}
         on:click|stopPropagation
       >
@@ -470,13 +463,13 @@
 
         <div class="flex justify-end gap-3">
           <button
-            class="px-4 py-2 rounded-lg border border-kong-border text-kong-text-secondary hover:bg-kong-bg-light/10 transition-colors"
+            class="px-4 py-2 rounded-lg border border-kong-border text-kong-text-secondary hover:bg-kong-bg-secondary/10 transition-colors"
             on:click={() => (showClearConfirm = false)}
           >
             Cancel
           </button>
           <button
-            class="px-4 py-2 rounded-lg bg-kong-accent-red text-white hover:bg-kong-accent-red-hover transition-colors"
+            class="px-4 py-2 rounded-lg bg-kong-error text-white hover:bg-kong-error-hover transition-colors"
             on:click={() => {
               recentWalletsStore.clearAll();
               showClearConfirm = false;
@@ -507,7 +500,7 @@
 
             {#if $recentWalletsStore.length > 1}
               <button
-                class="text-xs text-kong-text-secondary hover:text-kong-accent-red flex items-center gap-1.5 px-2 py-1 rounded hover:bg-kong-accent-red/10 transition-colors"
+                class="text-xs text-kong-text-secondary hover:text-kong-error flex items-center gap-1.5 px-2 py-1 rounded hover:bg-kong-error/10 transition-colors"
                 on:click={() => (showClearConfirm = true)}
               >
                 <Trash2 size={12} />
@@ -528,7 +521,7 @@
                     class="wallet-card group relative flex items-center gap-3 w-full p-3 sm:p-3.5 rounded-xl
                         {i === 0
                       ? 'border border-kong-primary/40 bg-kong-primary/5'
-                      : 'border border-kong-border/30 bg-kong-bg-dark/30'}
+                      : 'border border-kong-border/30 bg-kong-bg-primary/30'}
                         will-change-transform transition-all duration-200 ease-out
                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kong-primary
                         hover:border-kong-primary/100 hover:bg-kong-primary/10 hover:translate-y-[-2px] hover:shadow-lg
@@ -579,7 +572,7 @@
 
                     <div class="flex items-center">
                       <button
-                        class="remove-wallet flex items-center justify-center w-7 h-7 rounded-full text-kong-text-secondary hover:text-kong-accent-red hover:bg-kong-accent-red/10 transition-all duration-200"
+                        class="remove-wallet flex items-center justify-center w-7 h-7 rounded-full text-kong-text-secondary hover:text-kong-error hover:bg-kong-error/10 transition-all duration-200"
                         on:click|stopPropagation={() =>
                           recentWalletsStore.remove(wallet.id)}
                         use:tooltip={{
@@ -613,7 +606,7 @@
             bind:this={searchInputRef}
             bind:value={searchQuery}
             type="text"
-            class="w-full py-2.5 pl-10 pr-4 bg-kong-bg-dark/70 border border-kong-border rounded-xl shadow-inner text-sm text-kong-text-primary focus:outline-none focus:ring-2 focus:ring-kong-primary/50 focus:border-kong-primary transition-all duration-200"
+            class="w-full py-2.5 pl-10 pr-4 bg-kong-bg-primary/70 border border-kong-border rounded-xl shadow-inner text-sm text-kong-text-primary focus:outline-none focus:ring-2 focus:ring-kong-primary/50 focus:border-kong-primary transition-all duration-200"
             placeholder="Search wallets..."
             on:keydown={handleKeyDown}
           />
@@ -629,7 +622,7 @@
             </button>
           {/if}
           <div
-            class="absolute right-3 top-2.5 opacity-60 text-xs bg-kong-bg-dark/50 px-1.5 py-0.5 rounded text-kong-text-secondary border border-kong-border-light/30"
+            class="absolute right-3 top-2.5 opacity-60 text-xs bg-kong-bg-primary/50 px-1.5 py-0.5 rounded text-kong-text-secondary border border-kong-border-light/30"
           >
             <kbd class="font-mono">/</kbd>
           </div>
@@ -642,7 +635,7 @@
           in:fade={{ duration: 300 }}
         >
           <div
-            class="mb-4 p-4 rounded-full bg-kong-bg-dark/50 shadow-inner-white"
+            class="mb-4 p-4 rounded-full bg-kong-bg-primary/50 shadow-inner-white"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -692,7 +685,7 @@
                     {formatChainName(chain)}
                   </h4>
                   <span
-                    class="text-xs bg-kong-bg-light/20 text-kong-text-secondary px-1.5 py-0.5 rounded-full"
+                    class="text-xs bg-kong-bg-secondary/20 text-kong-text-secondary px-1.5 py-0.5 rounded-full"
                   >
                     {getWalletCount(chain)}
                     {getWalletCount(chain) === 1 ? "wallet" : "wallets"}
@@ -710,7 +703,7 @@
                     )}
 
                     <div
-                      class="wallet-card group relative flex items-center gap-3 w-full p-3 sm:p-4 rounded-xl border border-kong-border/30 bg-kong-bg-dark/30
+                      class="wallet-card group relative flex items-center gap-3 w-full p-3 sm:p-4 rounded-xl border border-kong-border/30 bg-kong-bg-primary/30
                           will-change-transform transition-all duration-200 ease-out
                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kong-primary
                           hover:border-kong-primary/100 hover:bg-kong-primary/10 hover:translate-y-[-2px] hover:shadow-lg
@@ -778,7 +771,7 @@
                               href={wallet.website}
                               target="_blank"
                               rel="noopener noreferrer"
-                              class="text-xs flex items-center justify-center text-kong-text-secondary hover:text-kong-primary hover:bg-kong-bg-light/20 transition-all duration-200 cursor-pointer"
+                              class="text-xs flex items-center justify-center text-kong-text-secondary hover:text-kong-primary hover:bg-kong-bg-secondary/20 transition-all duration-200 cursor-pointer"
                               title="Visit website"
                               on:click|stopPropagation
                             >

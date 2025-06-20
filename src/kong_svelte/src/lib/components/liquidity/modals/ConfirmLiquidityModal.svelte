@@ -9,9 +9,8 @@
   import { onDestroy, createEventDispatcher } from "svelte";
   import { createPool, addLiquidity, pollRequestStatus } from "$lib/api/pools";
   import { toastStore } from "$lib/stores/toastStore";
-  import { loadBalance } from "$lib/stores/tokenStore";
+  import { loadBalance } from "$lib/stores/balancesStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
-  import { auth } from "$lib/stores/auth";
 
   const dispatch = createEventDispatcher();
 
@@ -240,7 +239,7 @@
         theme="accent-green"
         size="lg"
         fullWidth={true}
-        on:click={handleCancel}
+        onclick={handleCancel}
         isDisabled={isLoading}
       >
         Cancel
@@ -250,7 +249,7 @@
         theme="accent-green"
         size="lg"
         fullWidth={true}
-        on:click={handleConfirm}
+        onclick={handleConfirm}
         isDisabled={isLoading}
       >
         <div class="flex items-center justify-center gap-2">

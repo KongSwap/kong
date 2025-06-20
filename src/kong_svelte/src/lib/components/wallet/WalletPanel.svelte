@@ -2,7 +2,6 @@
   import { onMount } from "svelte";
   import { fade } from "svelte/transition";
   import { goto } from "$app/navigation";
-  import localforage from "localforage";
   import {
     Coins,
     Droplet,
@@ -121,7 +120,7 @@
       selectedTokenForAction = token;
       showSendTokenModal = true;
     } else if (action === "swap") {
-      navigateAndClose(`/swap?from=${token.token?.address}&to=ryjl3-tyaaa-aaaaa-aaaba-cai`);
+      navigateAndClose(`/pro?from=${token.token?.address}&to=ryjl3-tyaaa-aaaaa-aaaba-cai`);
     } else if (action === "info") {
       navigateAndClose(`/stats/${token.token?.address}`);
     } else {
@@ -265,13 +264,14 @@
 
   // Effect to save USD visibility state
   $effect(() => {
-    localforage.setItem(USD_VISIBILITY_KEY, showUsdValues);
+    localStorage.setItem(USD_VISIBILITY_KEY, JSON.stringify(showUsdValues));
   });
 
   // Load token data on mount and load persisted state
   onMount(async () => {
     // Load persisted USD visibility state
-    const persistedVisibility = await localforage.getItem<boolean>(USD_VISIBILITY_KEY);
+    const stored = localStorage.getItem(USD_VISIBILITY_KEY);
+    const persistedVisibility = stored ? JSON.parse(stored) as boolean : null;
     if (persistedVisibility !== null) {
       showUsdValues = persistedVisibility;
     }
@@ -327,25 +327,25 @@
 
 <!-- Fixed portfolio overview section -->
 <div
-  class="z-10 bg-kong-bg-dark/95 backdrop-blur-sm border-b border-kong-border"
+  class="border-b border-kong-border"
 >
   <!-- Portfolio Overview -->
-  <div class="px-5 py-3">
+  <div class="px-5 py-3 bg-kong-bg-secondary/50">
     <div class="flex justify-between items-center mb-2">
-      <div class="text-sm text-kong-text-secondary flex items-center gap-2 cursor-pointer" aria-label="Total Portfolio Value">
+      <div class="text-sm text-kong-text-primary flex items-center gap-2 cursor-pointer" aria-label="Total Portfolio Value">
         <span onclick={() => {
           goto(`/wallets/${walletId}`);
         }}>Total Portfolio Value</span>
         <div class="flex items-center gap-2">
           <button
-            class="p-1 {isRefreshing ? 'text-kong-primary bg-kong-primary/10' : 'text-kong-text-secondary/60 hover:text-kong-primary hover:bg-kong-bg-light/20'} rounded-full transition-all"
+            class="p-1 {isRefreshing ? 'text-kong-text-primary bg-kong-primary/10' : 'text-kong-text-primary/60 hover:text-kong-primary hover:bg-kong-primary/10'} rounded-full transition-all"
             onclick={() => refreshBalances(true)}
             disabled={isRefreshing}
           >
             <RefreshCw size={12} class={isRefreshing ? 'animate-spin' : ''} />
           </button>
           <button
-            class="p-1 text-kong-text-secondary/60 hover:text-kong-primary rounded-full hover:bg-kong-bg-light/20 transition-all"
+            class="p-1 text-kong-text-primary/60 hover:text-kong-primary rounded-full hover:bg-kong-bg-secondary/20 transition-all"
             onclick={toggleUsdVisibility}
           >
             {#if showUsdValues}
@@ -366,7 +366,7 @@
             >{truncateAddress($auth?.account?.owner)}</span
           >
           {#if hasCopiedPrincipal}
-            <Check size={11} class="text-kong-accent-green" />
+            <Check size={11} class="text-kong-success" />
           {:else}
             <Copy
               size={11}
@@ -393,7 +393,7 @@
   </div>
 
   <!-- Section Tabs -->
-  <div class="flex border-b border-kong-border">
+  <div class="flex">
     {#each tabsConfig as tab}
       {@const Icon = tab.icon}
       <button
@@ -416,7 +416,7 @@
 </div>
 
 <!-- Scrollable content area for tab content -->
-<div>
+<div class="h-full overflow-y-auto">
   <!-- Tab Content: Dynamically show the appropriate component -->
   {#if tabComponents[activeSection]}
     {@const tabData = tabComponents[activeSection]}

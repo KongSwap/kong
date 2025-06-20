@@ -6,10 +6,10 @@
 
 # Set up variables
 PREDICTION_MARKETS_CANISTER=$(dfx canister id prediction_markets_backend)
-KSUSDT_LEDGER=$(dfx canister id ksusdt_ledger)
-KSUSDT_TOKEN_ID="v56tl-sp777-77774-qaahq-cai"
-KSUSDT_FEE=$(dfx canister call ${KSUSDT_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
-KSUSDT_FEE=${KSUSDT_FEE//_/}
+CKUSDT_LEDGER=$(dfx canister id ckusdt_ledger)
+CKUSDT_TOKEN_ID="v56tl-sp777-77774-qaahq-cai"
+CKUSDT_FEE=$(dfx canister call ${CKUSDT_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
+CKUSDT_FEE=${CKUSDT_FEE//_/}
 
 # Set up identities for different users
 ALICE_IDENTITY="alice"
@@ -18,8 +18,8 @@ CAROL_IDENTITY="carol"
 
 echo "=== Testing Resolution Disagreement with Multi-Token Support ==="
 echo "Prediction Markets Canister: ${PREDICTION_MARKETS_CANISTER}"
-echo "ksUSDT Ledger: ${KSUSDT_LEDGER}"
-echo "ksUSDT Fee: ${KSUSDT_FEE}"
+echo "ckUSDT Ledger: ${CKUSDT_LEDGER}"
+echo "ckUSDT Fee: ${CKUSDT_FEE}"
 
 # Function to place a bet with a specific identity
 place_bet() {
@@ -56,22 +56,22 @@ place_bet() {
     dfx canister call prediction_markets_backend place_bet "(${market_id}, ${outcome_index}, ${amount}, opt \"${token_id}\")"
 }
 
-# Step 1: Create a market using ksICP token (as Alice - a regular user)
+# Step 1: Create a market using ICP token (as Alice - a regular user)
 # Switch to Alice's identity
 dfx identity use ${ALICE_IDENTITY}
 ALICE_PRINCIPAL=$(dfx identity get-principal)
 echo "Creating market as Alice (${ALICE_PRINCIPAL})..."
 
-# The activation threshold for ksUSDT is 100 USDT (100000000 with 6 decimals)
+# The activation threshold for ckUSDT is 100 USDT (100000000 with 6 decimals)
 ACTIVATION_AMOUNT=150000000
 
-echo "Creating a new market with ksUSDT tokens as user..."
+echo "Creating a new market with ckUSDT tokens as user..."
 RESULT=$(dfx canister call prediction_markets_backend create_market \
   "(\"Will ETH reach $ 10,000 by the end of 2025?\", variant { Crypto }, \
   \"Prediction on Ethereum price. Market resolves YES if ETH reaches $ 10,000 on any major exchange before the end of 2025.\", \
   vec { \"Yes\"; \"No\" }, variant { Admin }, \
   variant { Duration = 120 : nat }, null, null, null, \
-  opt \"${KSUSDT_TOKEN_ID}\")")
+  opt \"${CKUSDT_TOKEN_ID}\")")
 
 # Extract market ID and check for success
 if [[ $RESULT == *"Ok"* ]]; then
@@ -96,29 +96,29 @@ fi
 echo "Created market with ID: ${MARKET_ID}"
 
 # Set a standard bet amount for all users (after activation)
-STANDARD_BET=10000000  # 10 ksUSDT
+STANDARD_BET=10000000  # 10 ckUSDT
 
-# Step 2: Alice places the activation bet (25 ksUSDT) on "Yes" (outcome 0)
-# This will activate the market since it meets the minimum activation threshold for ksUSDT
+# Step 2: Alice places the activation bet (25 ckUSDT) on "Yes" (outcome 0)
+# This will activate the market since it meets the minimum activation threshold for ckUSDT
 echo "Alice placing activation bet..."
-place_bet "${ALICE_IDENTITY}" "${MARKET_ID}" 0 ${ACTIVATION_AMOUNT} "${KSUSDT_TOKEN_ID}" "${KSUSDT_LEDGER}" "${KSUSDT_FEE}"
+place_bet "${ALICE_IDENTITY}" "${MARKET_ID}" 0 ${ACTIVATION_AMOUNT} "${CKUSDT_TOKEN_ID}" "${CKUSDT_LEDGER}" "${CKUSDT_FEE}"
 
 # Wait 10 seconds before next bet
 echo "Waiting 10 seconds before next bet..."
 sleep 10
 
 # Step 3: Other users place bets
-# Bob bets 10 ksUSDT on "No" (outcome 1)
+# Bob bets 10 ckUSDT on "No" (outcome 1)
 echo "Bob placing bet..."
-place_bet "${BOB_IDENTITY}" "${MARKET_ID}" 1 ${STANDARD_BET} "${KSUSDT_TOKEN_ID}" "${KSUSDT_LEDGER}" "${KSUSDT_FEE}"
+place_bet "${BOB_IDENTITY}" "${MARKET_ID}" 1 ${STANDARD_BET} "${CKUSDT_TOKEN_ID}" "${CKUSDT_LEDGER}" "${CKUSDT_FEE}"
 
 # Wait 10 seconds before next bet
 echo "Waiting 10 seconds before next bet..."
 sleep 10
 
-# Carol bets 10 ksUSDT on "Yes" (outcome 0)
+# Carol bets 10 ckUSDT on "Yes" (outcome 0)
 echo "Carol placing bet..."
-place_bet "${CAROL_IDENTITY}" "${MARKET_ID}" 0 ${STANDARD_BET} "${KSUSDT_TOKEN_ID}" "${KSUSDT_LEDGER}" "${KSUSDT_FEE}"
+place_bet "${CAROL_IDENTITY}" "${MARKET_ID}" 0 ${STANDARD_BET} "${CKUSDT_TOKEN_ID}" "${CKUSDT_LEDGER}" "${CKUSDT_FEE}"
 
 # Step 4: Get market status to verify bets were placed
 echo "Checking market status..."
@@ -203,22 +203,22 @@ MARKET_STATUS=$(echo "$MARKET_DETAILS" | grep -o "status = variant { [A-Za-z]\+ 
 dfx identity use ${BOB_IDENTITY}
 BOB_HISTORY=$(dfx canister call prediction_markets_backend get_user_history "(principal \"${BOB_PRINCIPAL}\")")
 BOB_REFUNDED=$(echo "$BOB_HISTORY" | grep -c "resolved_bets = vec {")
-BOB_BET_AMOUNT=1000000000  # 10 ksICP standard bet
+BOB_BET_AMOUNT=1000000000  # 10 ICP standard bet
 
 # Get Carol's history to check for refunds
 dfx identity use ${CAROL_IDENTITY}
 CAROL_HISTORY=$(dfx canister call prediction_markets_backend get_user_history "(principal \"${CAROL_PRINCIPAL}\")")
 CAROL_REFUNDED=$(echo "$CAROL_HISTORY" | grep -c "resolved_bets = vec {")
-CAROL_BET_AMOUNT=1000000000  # 10 ksICP standard bet
+CAROL_BET_AMOUNT=1000000000  # 10 ICP standard bet
 
 # Get Alice's history to check for burned activation deposit
 dfx identity use ${ALICE_IDENTITY}
 ALICE_HISTORY=$(dfx canister call prediction_markets_backend get_user_history "(principal \"${ALICE_PRINCIPAL}\")")
 ALICE_DEPOSIT_BURNED=$(echo "$ALICE_HISTORY" | grep -c "active_bets = vec {}")
 
-# Convert to ksICP units
-BOB_REFUND_KSICP="10.00"
-CAROL_REFUND_KSICP="10.00"
-BURNED_KSICP="25.00"  # Alice's activation deposit
+# Convert to ICP units
+BOB_REFUND_ICP="10.00"
+CAROL_REFUND_ICP="10.00"
+BURNED_ICP="25.00"  # Alice's activation deposit
 
 echo "=== Resolution Disagreement Test Complete ==="

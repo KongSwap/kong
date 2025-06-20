@@ -44,7 +44,7 @@ export function getTVLChartConfig(): ChartConfiguration {
           display: false
         },
         tooltip: {
-          backgroundColor: 'rgba(11, 14, 23, 0.9)', // kong-bg-dark with opacity
+          backgroundColor: 'rgba(11, 14, 23, 0.9)', // kong-bg-primary with opacity
           padding: 12,
           titleColor: '#9BA1B0', // kong-text-secondary
           bodyColor: '#FFFFFF', // kong-text-primary

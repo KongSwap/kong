@@ -307,6 +307,12 @@ export interface MarketsByStatus {
   'active' : Array<Market>,
   'expired_unresolved' : Array<Market>,
 }
+export interface PlaceBetArgs {
+  'token_id' : [] | [string],
+  'market_id' : bigint,
+  'amount' : bigint,
+  'outcome_index' : bigint,
+}
 export interface ProcessDetails {
   'transaction_id' : [] | [bigint],
   'timestamp' : bigint,
@@ -315,6 +321,10 @@ export type RefundReason = { 'Disputed' : null } |
   { 'TransactionFailed' : null } |
   { 'Other' : string } |
   { 'VoidedMarket' : null };
+export interface ResolutionArgs {
+  'market_id' : bigint,
+  'winning_outcomes' : Array<bigint>,
+}
 export type ResolutionError = { 'MarketNotFound' : null } |
   { 'MarketStillOpen' : null } |
   { 'InvalidMarketStatus' : null } |
@@ -379,7 +389,13 @@ export type SortField = { 'TotalPool' : null } |
   { 'EndTime' : null } |
   { 'TotalBets' : null };
 export type SortOption = { 'TotalPool' : SortDirection } |
-  { 'CreatedAt' : SortDirection };
+  { 'CreatedAt' : SortDirection } |
+  { 'EndTime' : SortDirection };
+export interface StatsResult {
+  'total_bets' : bigint,
+  'total_active_markets' : bigint,
+  'total_markets' : bigint,
+}
 export interface TimeWeightPoint {
   'weight' : number,
   'absolute_time' : bigint,
@@ -430,10 +446,6 @@ export interface UserHistory {
 }
 export interface _SERVICE {
   'add_supported_token' : ActorMethod<[TokenInfo], Result>,
-  'admin_resolve_market' : ActorMethod<
-    [bigint, Array<bigint>],
-    ResolutionResult
-  >,
   'calculate_token_balance_reconciliation' : ActorMethod<
     [],
     BalanceReconciliationSummary
@@ -462,10 +474,7 @@ export interface _SERVICE {
     [bigint, bigint, bigint, bigint, [] | [string]],
     EstimatedReturn
   >,
-  'force_resolve_market' : ActorMethod<
-    [bigint, Array<bigint>],
-    ResolutionResult
-  >,
+  'force_resolve_market' : ActorMethod<[ResolutionArgs], ResolutionResult>,
   'generate_time_weight_curve' : ActorMethod<
     [bigint, bigint],
     Array<TimeWeightPoint>
@@ -498,6 +507,7 @@ export interface _SERVICE {
     [GetFeaturedMarketsArgs],
     GetMarketsByStatusResult
   >,
+  'get_stats' : ActorMethod<[], StatsResult>,
   'get_supported_tokens' : ActorMethod<[], Array<TokenInfo>>,
   'get_token_fee_percentage' : ActorMethod<[string], [] | [bigint]>,
   'get_transactions_by_market' : ActorMethod<
@@ -512,9 +522,9 @@ export interface _SERVICE {
     [],
     Array<[bigint, FailedTransaction]>
   >,
-  'get_user_claims' : ActorMethod<[], Array<ClaimRecord>>,
+  'get_user_claims' : ActorMethod<[string], Array<ClaimRecord>>,
   'get_user_history' : ActorMethod<[Principal], UserHistory>,
-  'get_user_pending_claims' : ActorMethod<[], Array<ClaimRecord>>,
+  'get_user_pending_claims' : ActorMethod<[string], Array<ClaimRecord>>,
   'icrc21_canister_call_consent_message' : ActorMethod<
     [ConsentMessageRequest],
     Result_3
@@ -529,9 +539,13 @@ export interface _SERVICE {
   'is_admin' : ActorMethod<[Principal], boolean>,
   'mark_claim_processed' : ActorMethod<[bigint], boolean>,
   'mark_transaction_resolved' : ActorMethod<[bigint], Result>,
-  'place_bet' : ActorMethod<[bigint, bigint, bigint, [] | [string]], Result_6>,
-  'propose_resolution' : ActorMethod<[bigint, Array<bigint>], ResolutionResult>,
-  'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], ResolutionResult>,
+  'place_bet' : ActorMethod<[PlaceBetArgs], Result_6>,
+  'propose_resolution' : ActorMethod<[ResolutionArgs], ResolutionResult>,
+  'resolve_via_admin' : ActorMethod<[ResolutionArgs], ResolutionResult>,
+  'resolve_via_admin_legacy' : ActorMethod<
+    [bigint, Array<bigint>],
+    ResolutionResult
+  >,
   'resolve_via_oracle' : ActorMethod<
     [bigint, Array<bigint>, Uint8Array | number[]],
     Result_7

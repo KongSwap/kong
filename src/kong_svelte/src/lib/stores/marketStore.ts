@@ -1,10 +1,10 @@
 import { writable, derived } from 'svelte/store';
-import type { Market, MarketResult } from '$lib/types/predictionMarket';
-import { getAllMarkets, getAllCategories } from '$lib/api/predictionMarket';
+import type { Market } from '../../declarations/prediction_markets_backend_legacy/prediction_markets_backend.did';
+import { getAllMarkets, getAllCategories, getMarketsByCreator } from '$lib/api/predictionMarket';
 import { toastStore } from './toastStore';
 
-export type SortOption = 'newest' | 'pool_asc' | 'pool_desc';
-export type StatusFilter = 'all' | 'open' | 'expired' | 'resolved' | 'voided';
+export type SortOption = 'newest' | 'pool_asc' | 'pool_desc' | 'end_time_asc' | 'end_time_desc';
+export type StatusFilter = 'all' | 'open' | 'expired' | 'resolved' | 'voided' | 'myMarkets';
 
 // New unified interface without categorization
 interface MarketState {
@@ -15,16 +15,18 @@ interface MarketState {
   statusFilter: StatusFilter;
   loading: boolean;
   error: string | null;
+  currentUserPrincipal: string | null; // Add current user principal
 }
 
 const initialState: MarketState = {
   markets: [],
   categories: ['All'],
   selectedCategory: null,
-  sortOption: 'pool_desc',
+  sortOption: 'end_time_asc',
   statusFilter: 'open',
   loading: true,
-  error: null
+  error: null,
+  currentUserPrincipal: null
 };
 
 function createMarketStore() {
@@ -34,7 +36,15 @@ function createMarketStore() {
     subscribe,
     
     // Initialize the store
-    async init() {
+    async init(initialOverrides?: { statusFilter?: StatusFilter, sortOption?: SortOption }) {
+      update(state => ({
+        ...state,
+        statusFilter: initialOverrides?.statusFilter ?? state.statusFilter,
+        sortOption: initialOverrides?.sortOption ?? state.sortOption,
+        loading: true, // Ensure loading is true before fetching
+        error: null,
+      }));
+
       try {
         const categoriesResult = await getAllCategories();
         
@@ -43,7 +53,7 @@ function createMarketStore() {
           categories: ['All', ...categoriesResult],
         }));
         
-        await this.refreshMarkets();
+        await this.refreshMarkets(); // Fetches markets with potentially overridden filters
       } catch (e) {
         update(state => ({
           ...state,
@@ -52,6 +62,14 @@ function createMarketStore() {
         }));
         console.error(e);
       }
+    },
+
+    // Set current user principal
+    setCurrentUserPrincipal(principal: string | null) {
+      update(state => ({
+        ...state,
+        currentUserPrincipal: principal
+      }));
     },
 
     // Set selected category
@@ -86,10 +104,45 @@ function createMarketStore() {
       update(state => ({ ...state, loading: true }));
       
       try {
-        const { sortOption, statusFilter } = await new Promise<MarketState>(resolve => {
+        const { sortOption, statusFilter, currentUserPrincipal } = await new Promise<MarketState>(resolve => {
           subscribe(state => resolve(state))();
         });
-        
+
+        let marketsResult;
+
+        // Check if we need to filter by current user
+        if (statusFilter === 'myMarkets') {
+          if (!currentUserPrincipal) {
+            // If no user is connected, return empty results
+            update(state => ({
+              ...state,
+              markets: [],
+              loading: false,
+              error: null
+            }));
+            return;
+          }
+
+          // Use getMarketsByCreator for user's markets
+          marketsResult = await getMarketsByCreator(currentUserPrincipal, {
+            start: 0,
+            length: 100,
+            sortByCreationTime: sortOption === 'newest'
+          });
+
+          // No transformation needed for legacy backend
+          const transformedMarkets = marketsResult.markets;
+
+          update(state => ({
+            ...state,
+            markets: transformedMarkets,
+            loading: false,
+            error: null
+          }));
+          return;
+        }
+
+        // Use the regular getAllMarkets for other filters
         // Map the UI sort option to backend sort options
         let backendSortOption = undefined;
         if (sortOption === 'pool_asc') {
@@ -107,18 +160,25 @@ function createMarketStore() {
             type: 'CreatedAt',
             direction: 'Descending'
           };
+        } else if (sortOption === 'end_time_asc' || sortOption === 'end_time_desc') {
+          // Backend doesn't support EndTime sorting, use CreatedAt as fallback
+          backendSortOption = {
+            type: 'CreatedAt',
+            direction: sortOption === 'end_time_asc' ? 'Ascending' : 'Descending'
+          };
         }
         
         // Determine status filter for API
         let apiStatusFilter = undefined;
         if (statusFilter === 'open') {
-          apiStatusFilter = "Active";
+          apiStatusFilter = "Open";
         } else if (statusFilter === 'resolved') {
           apiStatusFilter = "Closed";
         } else if (statusFilter === 'voided') {
           apiStatusFilter = "Voided";
         }
-        
+        // Note: 'expired' is handled by filtering open markets with past end_time 
+                
         const allMarketsResult = await getAllMarkets({
           start: 0,
           length: 100, // Fetch a reasonable number of markets
@@ -127,35 +187,10 @@ function createMarketStore() {
           statusFilter: statusFilter === 'all' ? undefined : apiStatusFilter
         });
         
-        // Transform the markets from backend format to frontend format
+        // No transformation needed for legacy backend
         update(state => ({
           ...state,
-          markets: (allMarketsResult.markets || []).map(market => {
-            // Transform MarketStatus from backend to frontend format
-            let frontendStatus;
-            if ('Active' in market.status || 'PendingActivation' in market.status) {
-              frontendStatus = { Active: null };
-            } else if ('Closed' in market.status) {
-              frontendStatus = { Closed: market.status.Closed };
-            } else if ('Disputed' in market.status) {
-              frontendStatus = { Disputed: null };
-            } else if ('Voided' in market.status) {
-              frontendStatus = { Voided: null };
-            } else if ('ExpiredUnresolved' in market.status) {
-              // Treat expired unresolved as still Open for frontend purposes
-              frontendStatus = { Active: null };
-            } else {
-              // Fallback to Open for unknown statuses
-              frontendStatus = { Active: null };
-            }
-
-            return {
-              ...market,
-              status: frontendStatus,
-              resolution_data: market.resolution_data?.[0] ?? "",
-              resolved_by: market.resolved_by?.[0] ?? null
-            };
-          }),
+          markets: allMarketsResult.markets || [],
           loading: false,
           error: null
         }));
@@ -183,56 +218,35 @@ function createMarketStore() {
 
 export const marketStore = createMarketStore();
 
-// Derived store that filters and categorizes markets on-the-fly as needed by the UI
-export const filteredMarkets = derived(
-  marketStore,
-  ($marketStore) => {
-    const { markets, selectedCategory, statusFilter } = $marketStore;
-    const nowNs = BigInt(Date.now()) * BigInt(1_000_000);
+// Derived store for filtered markets
+export const filteredMarkets = derived(marketStore, $marketStore => {
+  const { markets, selectedCategory } = $marketStore;
+  
+  // Filter by category if selected
+  let filtered = selectedCategory 
+    ? markets.filter(market => {
+        // Check if the market category matches the selected category
+        // MarketCategory is a variant type, so we need to check the key
+        return selectedCategory in market.category;
+      })
+    : markets;
     
-    // Filter by category if needed
-    let filteredMarkets = markets;
-    if (selectedCategory) {
-      filteredMarkets = markets.filter(market => {
-        const categoryKey = Object.keys(market.category)[0];
-        return categoryKey === selectedCategory;
-      });
-    }
-    
-    // Filter by status
-    let statusFilteredMarkets = filteredMarkets;
-    if (statusFilter === 'open') {
-      statusFilteredMarkets = filteredMarkets.filter(
-        market => 'Active' in market.status && BigInt(market.end_time) > nowNs
-      );
-    } else if (statusFilter === 'expired') {
-      statusFilteredMarkets = filteredMarkets.filter(
-        market => 'Active' in market.status && BigInt(market.end_time) <= nowNs
-      );
-    } else if (statusFilter === 'resolved') {
-      statusFilteredMarkets = filteredMarkets.filter(
-        market => 'Closed' in market.status
-      );
-    } else if (statusFilter === 'voided') {
-      statusFilteredMarkets = filteredMarkets.filter(
-        market => 'Voided' in market.status
-      );
-    }
-    
-    // For compatibility with the UI, maintain the expected structure
-    // When status filter is 'all', put all markets in active to prevent grouping
-    if (statusFilter === 'all') {
-      return {
-        active: filteredMarkets,
-        expired_unresolved: [],
-        resolved: []
-      };
-    } else {
-      return {
-        active: statusFilter === 'open' ? statusFilteredMarkets : [],
-        expired_unresolved: statusFilter === 'expired' ? statusFilteredMarkets : [],
-        resolved: (statusFilter === 'resolved' || statusFilter === 'voided') ? statusFilteredMarkets as unknown as MarketResult[] : []
-      };
-    }
-  }
-); 
+  // Group markets by their status
+  // Handle both 'Active' and 'Open' status variants for compatibility
+  const active = filtered.filter(market => 
+    'Active' in market.status || 'Open' in market.status
+  );
+  const expired_unresolved = filtered.filter(market => 
+    ('Active' in market.status || 'Open' in market.status) && 
+    BigInt(market.end_time) <= BigInt(Date.now() * 1_000_000)
+  );
+  const resolved = filtered.filter(market => 
+    'Closed' in market.status || 'Voided' in market.status
+  );
+  
+  return {
+    active,
+    expired_unresolved,
+    resolved
+  };
+});

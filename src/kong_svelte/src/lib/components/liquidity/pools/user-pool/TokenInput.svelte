@@ -50,7 +50,7 @@
       
       if (percentage === 100) {
         // For MAX (100%), use the calculateMaxAmount utility which properly accounts for fees
-        result = await calculateMaxAmount(token, tokenBalance, 2);
+        result = await calculateMaxAmount(token, tokenBalance, 1);
       } else {
         // For other percentages, just calculate the percentage of the balance
         const adjustedBalance = parsedBalance.times(percentage).div(100);
@@ -87,7 +87,7 @@
         placeholder="0"
         class="amount-input {isExceedingBalance ? 'input-error' : ''}"
         value={displayValue}
-        on:input={handleFormattedInput}
+        oninput={handleFormattedInput}
         {disabled}
       />
       {#if isLoading}
@@ -113,19 +113,19 @@
     <div class="percentage-buttons">
       {#if token && parsedBalance.gt(0)}
         <button 
-          on:click={() => handlePercentageClick(25)}
+          onclick={() => handlePercentageClick(25)}
           disabled={disabled}
         >25%</button>
         <button 
-          on:click={() => handlePercentageClick(50)}
+          onclick={() => handlePercentageClick(50)}
           disabled={disabled}
         >50%</button>
         <button 
-          on:click={() => handlePercentageClick(75)}
+          onclick={() => handlePercentageClick(75)}
           disabled={disabled}
         >75%</button>
         <button 
-          on:click={() => handlePercentageClick(100)}
+          onclick={() => handlePercentageClick(100)}
           disabled={disabled}
         >MAX</button>
       {:else}

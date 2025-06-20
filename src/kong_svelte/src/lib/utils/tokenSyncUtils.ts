@@ -94,7 +94,6 @@ export async function syncTokens(principalId: string | Principal): Promise<{
           principal.toText(),
           true,
         );
-        console.log("batchBalances", batchBalances);
         // Process each token in the batch
         for (const token of tokenBatch) {
           if (!token.address) continue;

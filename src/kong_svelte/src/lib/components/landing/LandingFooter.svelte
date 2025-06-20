@@ -11,7 +11,7 @@
   
   // Link definitions for footer columns
   const productLinks = [
-    { href: "/swap", label: "Swap" },
+    { href: "/", label: "Swap" },
     { href: "/pools", label: "Liquidity Pools" },
     { href: "/predict", label: "Prediction Markets" }
   ];
@@ -46,12 +46,12 @@
   <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 relative z-10">
     <!-- Logo and description -->
     <div class="col-span-1 md:col-span-1">
-      <div class="mb-6 kong-logo-container relative h-12 w-full">
+      <div class="mb-2 kong-logo-container relative h-12 w-full">
         <!-- Match hero section logo -->
         <img 
           src="titles/logo-white-wide.png" 
           alt="KongSwap Logo" 
-          class="kong-logo"
+          class="kong-logo w-[14rem]"
         />
       </div>
       <p class="text-sm text-[#A1A7BC] mb-6 font-mono">

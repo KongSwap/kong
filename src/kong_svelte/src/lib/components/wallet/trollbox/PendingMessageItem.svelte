@@ -95,9 +95,9 @@
           : `<svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
       
       const priceChangeClass = direction === "up" 
-        ? "text-kong-text-accent-green" 
+        ? "text-kong-success" 
         : direction === "down" 
-          ? "text-kong-text-accent-red" 
+          ? "text-kong-error" 
           : "text-kong-text-secondary";
       
       const formattedChange = priceChange.startsWith("-") ? priceChange : `+${priceChange}`;

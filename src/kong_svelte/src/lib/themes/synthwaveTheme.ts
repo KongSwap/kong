@@ -16,10 +16,11 @@ export const synthwaveTheme: ThemeDefinition = {
   author: 'Shill Gates',
   authorLink: 'https://windoge98.com',
   colors: {
-    // Background colors - deep purple
-    bgDark: '#16004A',      // Deep purple
-    bgLight: '#2F0B68',     // Medium purple
-    hoverBgLight: '#3A1277', // Slightly lighter purple on hover
+    // Background colors
+    bgPrimary: '#16004A',      // Deep purple
+    bgSecondary: '#2F0B68',     // Medium purple
+    bgTertiary: '#3A1277',      // Lighter purple for tertiary
+    hoverBgSecondary: '#3A1277', // Slightly lighter purple on hover
     
     // Primary and secondary colors
     primary: '#FF36AB',     // Hot pink
@@ -27,19 +28,21 @@ export const synthwaveTheme: ThemeDefinition = {
     secondary: '#00CCDD',   // Bright teal
     secondaryHover: '#00B6C5', // Darker teal
     
-    // Accent colors - vibrant neons for contrast
-    accentBlue: '#4D6CFA',  // Bright blue
-    accentRed: '#FF3864',   // Bright red/pink
-    accentGreen: '#36F9B3', // Bright green
-    accentYellow: '#FFB951', // Amber/gold
-    accentPurple: '#9D54FF', // Bright purple
-    accentCyan: '#00CCDD',   // Bright teal/cyan
+    // Semantic colors - vibrant neons for contrast
+    accent: '#4D6CFA',  // Bright blue
+    error: '#FF3864',   // Bright red/pink
+    success: '#36F9B3', // Bright green
+    warning: '#FFB951', // Amber/gold
+    info: '#00CCDD',    // Bright teal/cyan
+    muted: '#7E57C2',   // Muted purple
     
     // Hover variants - slightly darker versions
-    accentGreenHover: '#2BE0A1', // Darker green
-    accentBlueHover: '#3555DE',  // Darker blue
-    accentRedHover: '#E62954',   // Darker red
-    accentYellowHover: '#F5A43A', // Darker amber
+    successHover: '#2BE0A1', // Darker green
+    accentHover: '#3555DE',  // Darker blue
+    errorHover: '#E62954',   // Darker red
+    warningHover: '#F5A43A', // Darker amber
+    infoHover: '#00B3CC',    // Darker cyan
+    mutedHover: '#6B47B2',   // Darker muted purple
     
     // Text colors
     textPrimary: '#FFFFFF',      // Pure white
@@ -48,9 +51,9 @@ export const synthwaveTheme: ThemeDefinition = {
     textLight: '#FFFFFF',        // White text
     textDark: '#16004A',         // Dark text
     textOnPrimary: '#16004A',    // White text on primary
-    textAccentGreen: '#36F9B3',  // Same as accent green
-    textAccentRed: '#FF3864',    // Same as accent red
-    textAccentBlue: '#4D6CFA',   // Same as accent blue
+    textSuccess: '#36F9B3',  // Same as success
+    textError: '#FF3864',    // Same as error
+    textAccent: '#4D6CFA',   // Same as accent
     
     // Font settings - modern monospace fonts with retro-futuristic feel
     fontFamily: "'Major Mono Display', 'Share Tech Mono', 'Space Mono', 'IBM Plex Mono', monospace",
@@ -68,20 +71,10 @@ export const synthwaveTheme: ThemeDefinition = {
     border: '#401C7A',      // Dark purple border
     borderLight: '#5C3195', // Light purple border
     
-    // Surface colors
-    surfaceDark: '#18004F',  // Dark purple for cards
-    surfaceLight: '#2F0B68', // Medium purple for panels
-    
     // Logo properties - make it pop
     logoBrightness: 1.1,     // Slightly brighter
     logoInvert: 0,           // No inversion
     logoHoverBrightness: 1.3, // Brighter on hover
-    
-    // Plugin Manager colors
-    pmDark: '#16004A',       // Same as bg-dark
-    pmBorder: '#5C3195',     // Same as border-light
-    pmAccent: '#9D54FF',     // Purple accent
-    pmTextSecondary: '#D1B8FF', // Same as text-secondary
     
     // Chart text color
     chartTextColor: '#FFFFFF', // White for chart text
@@ -125,6 +118,6 @@ export const synthwaveTheme: ThemeDefinition = {
     enableNebula: true,      // Enable nebula effect
     enableStars: true,       // Enable stars
     nebulaOpacity: 0.4,      // Subtle nebula
-    starsOpacity: 0.7        // Visible stars
+    starsOpacity: 0.4       // Visible stars
   }
 }; 

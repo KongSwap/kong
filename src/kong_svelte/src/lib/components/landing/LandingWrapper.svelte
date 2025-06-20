@@ -92,7 +92,7 @@
 
   // Function to navigate to the swap page
   function navigateToSwap() {
-    goto("/swap"); // Use goto for client-side navigation
+    goto("/"); // Use goto for client-side navigation
   }
 
   // Toggle mobile menu
@@ -164,7 +164,6 @@
         );
         totalSwaps = calculatedSwaps; // Assign state here
       } else {
-        console.log("Leaderboard data is not in a recognized format:", leaderboardData);
         totalSwaps = 0; // Default if format is unexpected
       }
     } catch (error) {

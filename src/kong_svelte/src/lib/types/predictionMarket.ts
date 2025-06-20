@@ -11,9 +11,11 @@ export type MarketCategory =
 
 export type MarketStatus = 
   | { Disputed: null }
-  | { Open: null }
+  | { Active: null }
   | { Closed: bigint[] }
-  | { Voided: null };
+  | { Voided: null }
+  | { PendingActivation: null }
+  | { ExpiredUnresolved: null };
 
 export type ResolutionMethod = 
   | { Oracle: { oracle_principals: Principal[]; required_confirmations: bigint } }
@@ -34,6 +36,7 @@ export interface Market {
   total_pool: bigint;
   outcomes: string[];
   resolution_method: ResolutionMethod;
+  token_id: string;
   category: MarketCategory;
   rules: string;
   uses_time_weighting: boolean;
@@ -43,6 +46,10 @@ export interface Market {
   featured: boolean;
   resolved_by?: Principal;
   bet_counts: bigint[];
+  featured: boolean;
+  uses_time_weighting: boolean;
+  image_url?: string;
+  time_weight_alpha?: number;
 }
 
 export interface Bet {
@@ -99,3 +106,14 @@ export interface UserHistory {
   active_bets: UserBetInfo[];
   resolved_bets: UserBetInfo[];
 } 
+
+export interface TokenInfo {
+  id: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+  fee_percentage: bigint;
+  is_kong: boolean;
+  transfer_fee: bigint;
+  activation_fee: bigint;
+}

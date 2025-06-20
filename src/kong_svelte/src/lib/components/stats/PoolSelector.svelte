@@ -64,18 +64,7 @@
   let poolsWithTokens = $derived(relevantPools.map(pool => {
     const matchingToken = getMatchingToken(pool);
     const tvl = Number(pool.tvl);
-    
-    // Add log for each pool to debug token matching issues
-    console.log(`Pool ${pool.pool_id} tokens:`, {
-      matchingToken,
-      token,
-      addresses: [pool.address_0, pool.address_1],
-      symbols: [pool.symbol_0, pool.symbol_1],
-      // Use type-safe access for token0/token1
-      token0: (pool as any).token0,
-      token1: (pool as any).token1
-    });
-    
+
     return { pool, matchingToken, tvl };
   }).sort((a, b) => b.tvl - a.tvl));
 
@@ -113,7 +102,7 @@
       <ButtonV2
         variant="outline"
         size="sm"
-        className="{integrationMode ? '!border-0 bg-transparent' : '!border-kong-border bg-kong-bg-dark/70'} hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 w-full {$panelRoundness} transition-all duration-200 !py-3"
+        className="{integrationMode ? '!border-0 bg-transparent' : '!border-kong-border bg-kong-bg-primary/70'} hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 w-full {$panelRoundness} transition-all duration-200 !py-3"
       >
         <div class="flex items-center justify-between w-full">
           {#if $isLoadingPools}
@@ -178,8 +167,8 @@
         {#each poolsWithTokens as { pool, matchingToken }}
           <button
             type="button"
-            class="{getItemClass()} !p-3 {pool.pool_id === selectedPool?.pool_id ? 'bg-kong-bg-light' : ''} w-full"
-            on:click={() => {
+            class="{getItemClass()} !p-3 {pool.pool_id === selectedPool?.pool_id ? 'bg-kong-bg-secondary' : ''} w-full"
+            onclick={() => {
               onPoolSelect(pool);
               isPoolSelectorOpen = false;
             }}

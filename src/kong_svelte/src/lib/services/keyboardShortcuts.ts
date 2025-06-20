@@ -40,7 +40,6 @@ class KeyboardShortcutsService {
     window.addEventListener('keydown', this.handleKeyDown.bind(this));
     
     this.isInitialized = true;
-    console.log('[KeyboardShortcuts] Service initialized');
   }
 
   // Register default shortcuts
@@ -67,7 +66,6 @@ class KeyboardShortcutsService {
       },
       description: 'Show keyboard shortcuts',
       action: () => {
-        console.log('[KeyboardShortcuts] Opening keyboard shortcuts help');
         keyboardShortcutsStore.openHelp();
       },
       scope: 'global'
@@ -134,7 +132,6 @@ class KeyboardShortcutsService {
     // Execute matching shortcuts
     if (matchingShortcuts.length > 0) {
       event.preventDefault();
-      console.log(`[KeyboardShortcuts] Executing shortcuts:`, matchingShortcuts);
       matchingShortcuts.forEach(shortcut => {
         shortcut.action();
       });

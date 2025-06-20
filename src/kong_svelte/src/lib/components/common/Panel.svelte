@@ -3,7 +3,7 @@
   import { fade, slide, type TransitionConfig } from 'svelte/transition';
   import { themeStore } from '../../stores/themeStore';
   import { getThemeById } from '../../themes/themeRegistry';
-  import { transparentPanel } from '../../stores/derivedThemeStore';
+  import {panelRoundness, transparentPanel } from '../../stores/derivedThemeStore';
 
   let {
     variant = transparentPanel ? "transparent" : "solid",
@@ -13,21 +13,20 @@
     content = '',
     className = '',
     zIndex = 10,
-    roundedBorders = true,
     // New roundness prop using Tailwind classes, can be overridden by prop
-    roundness = null,
     unpadded = false,
     animated = false,
     isSwapPanel = false,
     isSidebar = false,
     interactive = false,
     shadow = "shadow-none",
-    
+    roundness,
     // Transition props
     transition = null,
     transitionParams = {},
     
-    children
+    children,
+    onclick
   } = $props<{
     variant?: "transparent" | "solid";
     type?: "main" | "secondary";
@@ -36,9 +35,8 @@
     content?: string;
     className?: string;
     zIndex?: number;
-    roundedBorders?: boolean;
-    roundness?: "rounded-none" | "rounded-sm" | "rounded" | "rounded-md" | "rounded-lg" | "rounded-xl" | "rounded-2xl" | "rounded-3xl" | "rounded-full" | null;
     unpadded?: boolean;
+    roundness?: string;
     animated?: boolean;
     isSwapPanel?: boolean;
     shadow?: string;
@@ -47,25 +45,21 @@
     transition?: 'fade' | 'slide' | null;
     transitionParams?: TransitionConfig;
     children?: () => any;
+    onclick?: () => void;
   }>();
+
+  // Make roundness reactive to theme changes
+  let effectiveRoundness = $derived(roundness ?? "rounded-kong-roundness");
 
   // Default transition parameters
   const defaultSlideParams = { duration: 300, delay: 200, axis: 'x' };
   const defaultFadeParams = { duration: 200 };
 
-  // Store the current theme's panel roundness or use default
-  let themeRoundness = $state("rounded-lg");
-  
   // Computed values
   let params = $derived({
     ...(transition === 'slide' ? defaultSlideParams : defaultFadeParams),
     ...transitionParams
   });
-  
-  // Compute the roundness class based on props and theme
-  let roundnessClass = $derived(!roundedBorders 
-    ? 'rounded-none' 
-    : roundness || themeRoundness);
     
   // Compute the interactive class based on interactive prop
   let interactiveClass = $derived(interactive ? 'interactive' : '');
@@ -74,7 +68,6 @@
   $effect(() => {
     const unsubscribe = themeStore.subscribe(themeId => {
       const theme = getThemeById(themeId);
-      themeRoundness = theme.colors.panelRoundness || "rounded-lg";
     });
     
     return unsubscribe;
@@ -83,11 +76,10 @@
 
 {#if transition === 'slide'}
   <div 
-    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} {className} {roundnessClass} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
+    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} !{effectiveRoundness} {className} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
     style="width: {width}; height: {height}; z-index: {zIndex};"
     transition:slide={params}
-    on:click
-    on:keydown
+    onclick={onclick}
   >
     {#if children}
       {@render children()}
@@ -97,11 +89,10 @@
   </div>
 {:else if transition === 'fade'}
   <div 
-    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} {className} {roundnessClass} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
+    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} !{effectiveRoundness} {className} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
     style="width: {width}; height: {height}; z-index: {zIndex};"
     transition:fade={params}
-    on:click
-    on:keydown
+    onclick={onclick}
   >
     {#if children}
       {@render children()}
@@ -111,10 +102,9 @@
   </div>
 {:else}
   <div 
-    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} {className} {roundnessClass} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
+    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} !{effectiveRoundness} {className} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
     style="width: {width}; height: {height}; z-index: {zIndex};"
-    on:click
-    on:keydown
+    onclick={onclick}
   >
     {#if children}
       {@render children()}
@@ -126,7 +116,7 @@
 
 <style lang="postcss" scoped>
 .panel {
-  @apply relative text-kong-text-primary flex flex-col min-h-0;
+  @apply relative text-kong-text-primary flex flex-col min-h-0 overflow-hidden;
 }
 
 .panel.animated {
@@ -135,12 +125,12 @@
 
 /* Base solid panel styling - uses theme variables */
 .panel.solid {
-  @apply bg-kong-bg-dark border border-kong-border;
+  @apply bg-kong-bg-secondary border border-kong-border/70;
 }
 
 /* Main panel styling - slightly different for primary panels */
 .panel.solid.main {
-  @apply border-kong-border;
+  @apply border-kong-border/70;
 }
 
 /* Sidebar panel specific style */
@@ -152,7 +142,7 @@
 
 /* Transparent panel styling */
 .panel.transparent {
-  @apply bg-kong-bg-dark/90 backdrop-blur-md;
+  @apply bg-kong-bg-secondary/90 backdrop-blur-md;
   @apply border border-kong-border/50;
 }
 
@@ -174,13 +164,6 @@
   @apply border-kong-primary bg-kong-primary-hover text-kong-text-on-primary;
 }
 
-/* Hover effect for transparent panels */
-.panel.transparent:hover,
-.panel.transparent:has(.panel:hover) {
-  @apply border-kong-border/70;
-  @apply bg-kong-bg-dark/90 backdrop-blur-md;
-}
-
 /* Premium edge highlight for solid variant - uses theme text color */
 .panel.solid:not(.rounded-none)::before {
   content: '';
@@ -192,7 +175,6 @@
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
-  border-radius: inherit;
 }
 
 /* Inner glow effect - uses theme text color */

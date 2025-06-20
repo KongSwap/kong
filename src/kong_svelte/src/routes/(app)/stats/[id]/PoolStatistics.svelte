@@ -2,12 +2,15 @@
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import Panel from "$lib/components/common/Panel.svelte";
-  import { Info } from "lucide-svelte";
+  import { Info, ExternalLink } from "lucide-svelte";
   import { tooltip } from "$lib/actions/tooltip";
   import { tokenData } from "$lib/stores/tokenData";
   import PoolSelector from "$lib/components/stats/PoolSelector.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
+  import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
+  import { auth } from "$lib/stores/auth";
+  import { goto } from "$app/navigation";
   
   // Props using $props() for Svelte 5 runes mode
   const { selectedPool, token, relevantPools, onPoolSelect } = $props<{
@@ -64,9 +67,18 @@
       ? (Number(selectedPool.lp_fee_bps) / 100).toFixed(2)
       : '0.00'
   );
+  
+  // Check if user has a position in this pool
+  const userPosition = $derived(
+    $auth.isConnected && selectedPool 
+      ? $currentUserPoolsStore.filteredPools.find(
+          p => p.address_0 === selectedPool.address_0 && p.address_1 === selectedPool.address_1
+        )
+      : null
+  );
 </script>
 
-<Panel type="main" className="p-4 relative" zIndex={1}>
+<Panel type="main" className="relative !bg-kong-bg-secondary" zIndex={1}>
   <div class="flex flex-col gap-5">
     <!-- Pool Title Section -->
     <div>
@@ -80,17 +92,28 @@
             }}><Info size={16} /></span>
           </span>
         </div>
-        {#if selectedPool?.pool_id}
-          <div class="text-xs text-kong-text-primary/50 bg-kong-bg-secondary/20 px-2 py-0.5 rounded">
-            Pool #{selectedPool.pool_id}
-          </div>
-        {/if}
+        <div class="flex items-center gap-2">
+          {#if userPosition}
+            <button
+              class="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-kong-accent-green bg-kong-accent-green/10 rounded-md hover:bg-kong-accent-green/20 transition-colors"
+              onclick={() => goto(`/pools/${selectedPool.address_0}_${selectedPool.address_1}/position`)}
+            >
+              <ExternalLink size={12} />
+              View Position
+            </button>
+          {/if}
+          {#if selectedPool?.pool_id}
+            <div class="text-xs text-kong-text-primary/50 bg-kong-bg-secondary/20 px-2 py-0.5 rounded">
+              Pool #{selectedPool.pool_id}
+            </div>
+          {/if}
+        </div>
       </div>
       
       <!-- Pool Selector Integration -->
       {#if token && onPoolSelect}
         <div class="relative pool-selector-container">
-          <div class="border !border-kong-border bg-kong-bg-dark/70 hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 {$panelRoundness} transition-all duration-200">
+          <div class="border !border-kong-border bg-kong-bg-primary/70 hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 {$panelRoundness} transition-all duration-200">
             <PoolSelector 
               {selectedPool} 
               {token} 
@@ -103,7 +126,7 @@
         </div>
       {:else}
         <div class="mb-4">
-          <div class="border !border-kong-border bg-kong-bg-dark/70 {$panelRoundness} p-3 overflow-hidden">
+          <div class="border !border-kong-border bg-kong-bg-primary/70 {$panelRoundness} p-3 overflow-hidden">
             <div class="flex items-center gap-3">
               <TokenImages
                 tokens={[token0, token1].filter(Boolean)}
@@ -137,7 +160,7 @@
           <div class="text-sm font-medium text-kong-text-primary flex items-center gap-1">
             {apy}% 
             {#if Number(apy) > 0}
-              <span class="text-xs px-1.5 py-0.5 rounded-full bg-kong-accent-green/10 text-kong-accent-green">
+              <span class="text-xs px-1.5 py-0.5 rounded-full bg-kong-success/10 text-kong-success">
                 {Number(apy) < 4 ? 'Low' : Number(apy) < 20 ? 'Medium' : 'High'}
               </span>
             {/if}

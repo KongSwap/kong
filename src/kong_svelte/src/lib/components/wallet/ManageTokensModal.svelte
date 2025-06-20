@@ -188,20 +188,20 @@
           type="text"
           bind:value={searchQuery}
           placeholder="Search by name, symbol, or canister ID"
-          class="w-full pl-10 pr-4 py-2.5 bg-kong-bg-dark/70 border border-kong-border/40 rounded-lg text-kong-text-primary placeholder-kong-text-secondary/70 focus:outline-none focus:ring-1 focus:ring-kong-accent-blue/40"
+          class="w-full pl-10 pr-4 py-2.5 bg-kong-bg-primary/70 border border-kong-border/40 rounded-lg text-kong-text-primary placeholder-kong-text-secondary/70 focus:outline-none focus:ring-1 focus:ring-kong-accent-blue/40"
         />
       </div>
       
       <div class="flex border-b border-kong-border">
         <button
           class="py-2 px-4 text-sm font-medium border-b-2 {activeTab === 'enabled' ? 'border-kong-primary text-kong-primary' : 'border-transparent text-kong-text-secondary hover:text-kong-text-primary'} transition-colors"
-          on:click={() => activeTab = "enabled"}
+          onclick={() => activeTab = "enabled"}
         >
           Enabled Tokens
         </button>
         <button
           class="py-2 px-4 text-sm font-medium border-b-2 {activeTab === 'all' ? 'border-kong-primary text-kong-primary' : 'border-transparent text-kong-text-secondary hover:text-kong-text-primary'} transition-colors"
-          on:click={() => activeTab = "all"}
+          onclick={() => activeTab = "all"}
         >
           All Tokens
         </button>
@@ -228,7 +228,7 @@
           </p>
           <button
             class="inline-flex items-center gap-2 px-4 py-2 bg-kong-primary text-white rounded-md hover:bg-kong-primary/90 transition-colors"
-            on:click={() => {
+            onclick={() => {
               showAddNewTokenModal = true;
               props.onClose();
             }}
@@ -245,7 +245,7 @@
             {@const hasTokenBalance = hasBalance(token)}
             
             <div 
-              class="p-3 border-t border-kong-border/30 flex items-center justify-between hover:bg-kong-bg-light/5 transition-colors"
+              class="p-3 border-t border-kong-border/30 flex items-center justify-between hover:bg-kong-bg-secondary/5 transition-colors"
               transition:fade={{ duration: 150 }}
             >
               <div class="flex items-center gap-3">
@@ -275,8 +275,8 @@
                 {/if}
                 
                 <button
-                  class="flex items-center justify-center rounded-full p-1.5 {enabled ? 'bg-kong-primary/10 text-kong-primary hover:bg-kong-primary/20' : 'bg-kong-bg-light/10 text-kong-text-secondary hover:bg-kong-bg-light/20'} transition-colors"
-                  on:click={(e) => {
+                  class="flex items-center justify-center rounded-full p-1.5 {enabled ? 'bg-kong-primary/10 text-kong-primary hover:bg-kong-primary/20' : 'bg-kong-bg-secondary/10 text-kong-text-secondary hover:bg-kong-bg-secondary/20'} transition-colors"
+                  onclick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
                     toggleToken(token);
@@ -300,7 +300,7 @@
     <div class="mt-6 flex justify-end">
       <button
         class="px-4 py-2 bg-kong-primary text-white rounded-md hover:bg-kong-primary/90 transition-colors"
-        on:click={props.onClose}
+        onclick={props.onClose}
       >
         Done
       </button>

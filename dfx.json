@@ -32,8 +32,9 @@
     },
     "event_store": {
       "type": "custom",
-      "candid": "canisters/event_store.did",
-      "wasm": "canisters/event_store.wasm.gz",
+      "candid": "wasm/event_store.did",
+      "wasm": "wasm/event_store.wasm.gz",
+      "specified_id": "rsp5s-2yaaa-aaaar-qaojq-cai",
       "metadata": [
         {
           "name": "candid:service"
@@ -111,7 +112,7 @@
         }
       ]
     },
-    "ksusdt_ledger": {
+    "ckusdt_ledger": {
       "type": "custom",
       "candid": "https://github.com/dfinity/ic/releases/download/ledger-suite-icrc-2025-04-14/ledger.did",
       "wasm": "https://github.com/dfinity/ic/releases/download/ledger-suite-icrc-2025-04-14/ic-icrc1-ledger.wasm.gz",
@@ -131,7 +132,7 @@
         }
       ]
     },
-    "ksbtc_ledger": {
+    "ckbtc_ledger": {
       "type": "custom",
       "candid": "https://github.com/dfinity/ic/releases/download/ledger-suite-icrc-2025-04-14/ledger.did",
       "wasm": "https://github.com/dfinity/ic/releases/download/ledger-suite-icrc-2025-04-14/ic-icrc1-ledger.wasm.gz",
@@ -141,7 +142,7 @@
         }
       ]
     },
-    "kseth_ledger": {
+    "cketh_ledger": {
       "type": "custom",
       "candid": "https://github.com/dfinity/ic/releases/download/ledger-suite-icrc-2025-04-14/ledger.did",
       "wasm": "https://github.com/dfinity/ic/releases/download/ledger-suite-icrc-2025-04-14/ic-icrc1-ledger-u256.wasm.gz",
@@ -151,7 +152,7 @@
         }
       ]
     },
-    "kskong_ledger": {
+    "kong_ledger": {
       "type": "custom",
       "candid": "https://github.com/dfinity/ic/releases/download/ledger-suite-icrc-2025-04-14/ledger.did",
       "wasm": "https://github.com/dfinity/ic/releases/download/ledger-suite-icrc-2025-04-14/ic-icrc1-ledger.wasm.gz",

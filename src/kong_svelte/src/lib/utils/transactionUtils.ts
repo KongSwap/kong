@@ -1,4 +1,5 @@
 import { formatDate } from "./dateFormatters";
+import { formatUsdValue } from "./tokenFormatters";
 
 /**
  * Formats a numeric amount to a human-readable string
@@ -146,5 +147,67 @@ export function getTransactionIcon(type: string) {
       return "ArrowDownRight";
     default:
       return "Repeat";
+  }
+}
+
+// Utility function to format principal IDs
+export function formatPrincipalId(principalId: string): string {
+  if (principalId && principalId.endsWith("-2")) {
+    return principalId.slice(0, -2);
+  }
+  return principalId;
+}
+
+// Utility function to properly handle UTC timestamps
+export function formatTimestamp(timestamp: string | number): Date {
+  if (typeof timestamp === 'string' && !timestamp.endsWith('Z') && !timestamp.includes('+')) {
+    return new Date(timestamp + 'Z');
+  }
+  return new Date(timestamp);
+}
+
+// Calculate total USD value for a transaction
+export function calculateTotalUsdValue(
+  tx: FE.Transaction, 
+  tokens: Kong.Token[]
+): string {
+  const payToken = tokens.find((t) => t.id === tx.pay_token_id);
+  const receiveToken = tokens.find((t) => t.id === tx.receive_token_id);
+  
+  if (!payToken || !receiveToken) return "0.00";
+
+  const payUsdValue = payToken.symbol === "ckUSDT"
+    ? tx.pay_amount
+    : tx.pay_amount * (Number(payToken.metrics.price) || 0);
+
+  const receiveUsdValue = receiveToken.symbol === "ckUSDT"
+    ? tx.receive_amount
+    : tx.receive_amount * (Number(receiveToken.metrics.price) || 0);
+
+  return formatUsdValue(Math.max(payUsdValue, receiveUsdValue));
+}
+
+// Simple loading state manager
+export class LoadingStateManager {
+  private states = new Set<string>();
+
+  isLoading(key: string): boolean {
+    return this.states.has(key);
+  }
+
+  setLoading(key: string, loading: boolean): void {
+    if (loading) {
+      this.states.add(key);
+    } else {
+      this.states.delete(key);
+    }
+  }
+
+  isAnyLoading(): boolean {
+    return this.states.size > 0;
+  }
+
+  clear(): void {
+    this.states.clear();
   }
 } 

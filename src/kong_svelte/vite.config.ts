@@ -98,15 +98,10 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
             return 'charting';
           }
         },
-      },
-      external: [
-        '@sveltejs/kit',
-        '@sveltejs/kit/vite',
-        'sveltekit/environment'
-      ]
+      }
     },
     modulePreload: {
-      polyfill: true
+      polyfill: true,
     },
     commonjsOptions: {
       include: [/node_modules/],
@@ -127,15 +122,6 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       })
     );
 
-    // Add terser options for production
-    Object.assign(buildOptions, {
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          drop_console: false,
-        },
-      },
-    });
   }
 
   return {
@@ -145,9 +131,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         define: {
           global: "globalThis",
         },
-      },
-      include: ['comlink', '@dfinity/agent'],
-      exclude: ['@sveltejs/kit', '$lib/utils/browser', '@dfinity/candid', '@dfinity/principal']
+      }
     },
     server: {
       proxy: {
@@ -155,13 +139,6 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
           target: "http://localhost:4943",
           changeOrigin: true,
         },
-      },
-      fs: {
-        // Allow serving files from one level up to the project root
-        allow: ['..']
-      },
-      watch: {
-        usePolling: true
       }
     },
     plugins: basePlugins as any[],

@@ -76,7 +76,6 @@ export async function fetchBalances(
   forceRefresh = false,
 ): Promise<Record<string, TokenBalance>> {
   if (!principalId || !tokens?.length) {
-    console.log(principalId ? 'No tokens provided' : 'No principal ID provided');
     return {};
   }
 

@@ -3,6 +3,7 @@
   import { handleFormattedNumberInput } from "$lib/utils/formUtils";
   import Panel from "$lib/components/common/Panel.svelte";
   import { BigNumber } from "bignumber.js";
+  import { Wallet, Plus } from "lucide-svelte";
 
   export let token0: Kong.Token | null;
   export let token1: Kong.Token | null;
@@ -92,132 +93,222 @@
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     return parts.join('.');
   }
+
+  // Check if amounts are entered
+  $: hasAmount0 = amount0 && parseFloat(amount0) > 0;
+  $: hasAmount1 = amount1 && parseFloat(amount1) > 0;
+  $: hasBalances = token0 && token1 && parseFloat(token0Balance) > 0 && parseFloat(token1Balance) > 0;
 </script>
 
-<Panel variant="transparent" className="!p-4">
-  <div class="flex flex-col gap-4">
-    <div class="token-input-container">
-      <!-- Token 0 Input -->
-      <div class="relative flex-grow mb-2">
-        <div class="input-with-token">
-          {#if token0}
-            <img src={token0.logo_url} alt={token0.symbol} class="token-logo" />
-          {/if}
+<div class="space-y-3">
+  <!-- Token Inputs -->
+  <div class="">
+    <!-- Token 0 Input -->
+    <Panel variant="solid" type="secondary">
+      <div class="space-y-3">
+        <!-- Token Header -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            {#if token0}
+              <img src={token0.logo_url} alt={token0.symbol} class="token-logo" />
+              <span class="text-sm font-medium text-kong-text-primary">{token0.symbol}</span>
+            {:else}
+              <div class="w-6 h-6 rounded-full bg-kong-bg-secondary border border-kong-border/30"></div>
+              <span class="text-sm text-kong-text-primary/40">Select token</span>
+            {/if}
+          </div>
+          
+          <div class="flex items-center gap-1 text-xs text-kong-text-primary/50">
+            <Wallet class="w-3 h-3" />
+            <span>
+              {token0 ? formatBalance(token0Balance, token0.decimals) : "0.00"}
+            </span>
+          </div>
+        </div>
+
+        <!-- Amount Input -->
+        <div class="amount-input-container">
           <input
             bind:this={input0Element}
             type="text"
             inputmode="decimal"
             pattern="[0-9]*"
-            placeholder="0"
+            placeholder="0.00"
             class="amount-input"
             value={displayValue0}
-            on:input={(e) => handleFormattedInput(0, e)}
+            oninput={(e) => handleFormattedInput(0, e)}
             disabled={!token0}
           />
-        </div>
-      </div>
-      <div class="balance-info">
-        <span class="text-kong-text-primary/50">
-          Available: {token0 ? formatBalance(token0Balance, token0.decimals) : "0.00"}
-          {token0?.symbol || ""}
-        </span>
-        <div class="percentage-buttons">
-          {#if token0 && parseFloat(token0Balance) > 0}
-            <button on:click={() => onPercentageClick(25)}>25%</button>
-            <button on:click={() => onPercentageClick(50)}>50%</button>
-            <button on:click={() => onPercentageClick(75)}>75%</button>
-            <button on:click={() => onPercentageClick(100)}>MAX</button>
-          {:else}
-            <button disabled>25%</button>
-            <button disabled>50%</button>
-            <button disabled>75%</button>
-            <button disabled>MAX</button>
+          {#if token0}
+            <span class="input-currency">{token0.symbol}</span>
           {/if}
         </div>
+
+        <!-- Percentage Buttons -->
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-kong-text-primary/60">Quick amounts:</span>
+          <div class="percentage-buttons">
+            {#if token0 && parseFloat(token0Balance) > 0}
+              <button onclick={() => onPercentageClick(25)} class="percentage-btn">25%</button>
+              <button onclick={() => onPercentageClick(50)} class="percentage-btn">50%</button>
+              <button onclick={() => onPercentageClick(75)} class="percentage-btn">75%</button>
+              <button onclick={() => onPercentageClick(100)} class="percentage-btn max-btn">MAX</button>
+            {:else}
+              <button disabled class="percentage-btn">25%</button>
+              <button disabled class="percentage-btn">50%</button>
+              <button disabled class="percentage-btn">75%</button>
+              <button disabled class="percentage-btn">MAX</button>
+            {/if}
+          </div>
+        </div>
+      </div>
+    </Panel>
+
+    <!-- Connection Arrow -->
+    <div class="flex justify-center -my-3">
+      <div class="p-1.5 bg-kong-bg-secondary z-10 rounded-full border border-kong-border/30">
+        <Plus class="w-5 h-5 text-kong-text-primary/40" />
       </div>
     </div>
 
-    <div class="token-input-container">
-      <!-- Token 1 Input -->
-      <div class="relative flex-grow mb-2">
-        <div class="input-with-token">
-          {#if token1}
-            <img src={token1.logo_url} alt={token1.symbol} class="token-logo" />
-          {/if}
+    <!-- Token 1 Input -->
+    <Panel variant="solid" type="secondary">
+      <div class="space-y-3">
+        <!-- Token Header -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            {#if token1}
+              <img src={token1.logo_url} alt={token1.symbol} class="token-logo" />
+              <span class="text-sm font-medium text-kong-text-primary">{token1.symbol}</span>
+            {:else}
+              <div class="w-6 h-6 rounded-full bg-kong-bg-secondary border border-kong-border/30"></div>
+              <span class="text-sm text-kong-text-primary/40">Select token</span>
+            {/if}
+          </div>
+          
+          <div class="flex items-center gap-1 text-xs text-kong-text-primary/50">
+            <Wallet class="w-3 h-3" />
+            <span>
+              {token1 ? formatBalance(token1Balance, token1.decimals) : "0.00"}
+            </span>
+          </div>
+        </div>
+
+        <!-- Amount Input -->
+        <div class="amount-input-container">
           <input
             bind:this={input1Element}
             type="text"
             inputmode="decimal"
             pattern="[0-9]*"
-            placeholder="0"
+            placeholder="0.00"
             class="amount-input"
             value={displayValue1}
-            on:input={(e) => handleFormattedInput(1, e)}
+            oninput={(e) => handleFormattedInput(1, e)}
             disabled={!token1}
           />
-        </div>
-      </div>
-      <div class="balance-info">
-        <span class="text-kong-text-primary/50">
-          Available: {token1 ? formatBalance(token1Balance, token1.decimals) : "0.00"}
-          {token1?.symbol || ""}
-        </span>
-        <div class="percentage-buttons">
-          {#if token1 && parseFloat(token1Balance) > 0}
-            <button on:click={() => onToken1PercentageClick(25)}>25%</button>
-            <button on:click={() => onToken1PercentageClick(50)}>50%</button>
-            <button on:click={() => onToken1PercentageClick(75)}>75%</button>
-            <button on:click={() => onToken1PercentageClick(100)}>MAX</button>
-          {:else}
-            <button disabled>25%</button>
-            <button disabled>50%</button>
-            <button disabled>75%</button>
-            <button disabled>MAX</button>
+          {#if token1}
+            <span class="input-currency">{token1.symbol}</span>
           {/if}
         </div>
+
+        <!-- Percentage Buttons -->
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-kong-text-primary/60">Quick amounts:</span>
+          <div class="percentage-buttons">
+            {#if token1 && parseFloat(token1Balance) > 0}
+              <button onclick={() => onToken1PercentageClick(25)} class="percentage-btn">25%</button>
+              <button onclick={() => onToken1PercentageClick(50)} class="percentage-btn">50%</button>
+              <button onclick={() => onToken1PercentageClick(75)} class="percentage-btn">75%</button>
+              <button onclick={() => onToken1PercentageClick(100)} class="percentage-btn max-btn">MAX</button>
+            {:else}
+              <button disabled class="percentage-btn">25%</button>
+              <button disabled class="percentage-btn">50%</button>
+              <button disabled class="percentage-btn">75%</button>
+              <button disabled class="percentage-btn">MAX</button>
+            {/if}
+          </div>
+        </div>
       </div>
-    </div>
+    </Panel>
   </div>
-</Panel>
+
+  <!-- Status and Summary -->
+  {#if hasAmount0 && hasAmount1 && token0 && token1}
+    <div class="space-y-3">
+      <!-- Status -->
+      <div class="flex justify-between items-center">
+        <span class="text-sm text-kong-text-primary/70">Summary</span>
+        <span class="text-xs text-kong-success bg-kong-success/10 px-2 py-1 rounded-full">
+          Amounts Set
+        </span>
+      </div>
+      
+      <!-- Summary Information -->
+      <Panel variant="solid" type="secondary" className="!p-3 bg-kong-bg-tertiary/30">
+        <div class="text-xs text-kong-text-primary/70 space-y-1">
+          <div class="flex justify-between">
+            <span>Total {token0.symbol}:</span>
+            <span class="font-medium text-kong-text-primary">{displayValue0}</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Total {token1.symbol}:</span>
+            <span class="font-medium text-kong-text-primary">{displayValue1}</span>
+          </div>
+        </div>
+      </Panel>
+    </div>
+  {/if}
+</div>
 
 <style scoped lang="postcss">
-  .token-input-container {
-    @apply bg-kong-bg-light rounded-xl p-3;
-    @apply border border-kong-border backdrop-blur-md;
-    @apply transition-all duration-200;
-    @apply hover:border-kong-border-light hover:bg-kong-bg-light/75;
+  .token-logo {
+    @apply w-6 h-6 rounded-full bg-kong-bg-primary/10 object-contain flex-shrink-0;
+    @apply border border-kong-border/30;
+  }
+
+  .amount-input-container {
+    @apply relative flex items-center;
+    @apply bg-kong-bg-secondary/30 border border-kong-border/30;
+    @apply rounded-kong-roundness transition-all duration-200;
+    @apply hover:border-kong-border/50 focus-within:border-kong-primary/50;
+    @apply focus-within:bg-kong-bg-secondary/50;
   }
 
   .amount-input {
-    @apply w-full min-w-0 bg-transparent border-none;
-    @apply text-[clamp(1.5rem,4vw,2.5rem)] font-medium tracking-tight;
-    @apply relative z-10 p-0;
-    @apply opacity-100 focus:outline-none focus:text-kong-text-primary;
-    @apply disabled:text-kong-text-primary/70 placeholder:text-kong-text-primary/30;
+    @apply flex-1 px-4 py-4 bg-transparent border-none;
+    @apply text-xl font-semibold text-kong-text-primary placeholder-kong-text-primary/30;
+    @apply focus:outline-none;
+    @apply disabled:text-kong-text-primary/40;
+    @apply transition-colors duration-200;
   }
 
-  .balance-info {
-    @apply flex flex-wrap justify-between mt-2 gap-2;
-    @apply text-[clamp(0.75rem,2vw,0.875rem)] text-kong-text-primary/50;
-  }
-
-  .input-with-token {
-    @apply flex items-center gap-3;
-  }
-
-  .token-logo {
-    @apply w-6 h-6 rounded-full bg-kong-bg-dark/20 object-contain flex-shrink-0;
-    @apply border border-kong-border;
+  .input-currency {
+    @apply px-3 py-2 text-sm font-medium text-kong-text-primary/60;
+    @apply border-l border-kong-border/30 bg-kong-bg-secondary/40;
+    @apply rounded-r-kong-roundness;
   }
 
   .percentage-buttons {
-    @apply flex flex-wrap gap-1;
+    @apply flex gap-1;
   }
 
-  .percentage-buttons button {
-    @apply px-1.5 py-0.5 text-xs rounded-md bg-kong-bg-light text-kong-text-primary/70
-           hover:bg-kong-bg-light/75 hover:text-kong-text-primary transition-all duration-200
-           disabled:opacity-40 disabled:hover:bg-kong-bg-light disabled:hover:text-kong-text-primary/70;
-    @apply border border-kong-border;
+  .percentage-btn {
+    @apply px-2 py-1 text-xs font-medium rounded;
+    @apply bg-kong-bg-secondary/50 text-kong-text-primary/60;
+    @apply border border-kong-border/30;
+    @apply hover:bg-kong-bg-secondary hover:text-kong-text-primary;
+    @apply transition-all duration-200;
+    @apply disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply disabled:hover:bg-kong-bg-secondary/50 disabled:hover:text-kong-text-primary/60;
+  }
+
+  .max-btn {
+    @apply bg-kong-primary/10 text-kong-primary border-kong-primary/30;
+    @apply hover:bg-kong-primary/20 hover:text-kong-primary;
+  }
+
+  .max-btn:disabled {
+    @apply bg-kong-bg-secondary/50 text-kong-text-primary/60 border-kong-border/30;
   }
 </style> 

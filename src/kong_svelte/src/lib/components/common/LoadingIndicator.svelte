@@ -1,12 +1,26 @@
 <script lang="ts">
-  import { Loader2 } from "lucide-svelte";
-  
-  export let text = "Loading...";
-  export let size = 20;
+  export let message = "Loading...";
   export let fullHeight = false;
 </script>
 
-<div class={`flex flex-col items-center justify-center gap-2 ${fullHeight ? 'h-full min-h-full' : 'py-6'}`}>
-  <Loader2 class="animate-spin" size={size} />
-  <p class="text-kong-text-secondary text-sm">{text}</p>
+<div class="flex flex-col items-center justify-center {fullHeight ? 'min-h-screen' : 'min-h-[300px]'}">
+  <div class="loader mb-4"></div>
+  <div class="text-kong-text-primary/70">{message}</div>
 </div>
+
+<style>
+  .loader {
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top: 4px solid #ffffff;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+</style>

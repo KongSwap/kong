@@ -7,6 +7,6 @@ if [ -z "$1" ]
 		NETWORK="--network $1"
 fi
 
-PRINCIPAL_ID=$(dfx canister id ksbtc_ledger)
+PRINCIPAL_ID=$(dfx canister id ckbtc_ledger)
 
 dfx canister call ${NETWORK} ${PRINCIPAL_ID} icrc1_total_supply '()'

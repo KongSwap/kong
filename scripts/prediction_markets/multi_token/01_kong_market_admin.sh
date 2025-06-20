@@ -5,8 +5,8 @@
 
 # Set up variables
 PREDICTION_MARKETS_CANISTER=$(dfx canister id prediction_markets_backend)
-KONG_LEDGER=$(dfx canister id kskong_ledger)
-KONG_TOKEN_ID="umunu-kh777-77774-qaaca-cai"
+KONG_LEDGER=$(dfx canister id kong_ledger)
+KONG_TOKEN_ID=$(dfx canister id kong_ledger)
 KONG_FEE=$(dfx canister call ${KONG_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
 KONG_FEE=${KONG_FEE//_/}
 
@@ -28,7 +28,7 @@ RESULT=$(dfx canister call prediction_markets_backend create_market \
   \"Prediction on Ethereum price. Market resolves YES if ETH reaches $ 5,000 on any major exchange before the end of 2025.\", \
   vec { \"Yes\"; \"No\" }, variant { Admin }, \
   variant { Duration = 120 : nat }, null, null, null, \
-  opt \"umunu-kh777-77774-qaaca-cai\")")
+  opt \"o7oak-iyaaa-aaaaq-aadzq-cai\")")
 
 # Extract market ID and check for success
 if [[ $RESULT == *"Ok"* ]]; then

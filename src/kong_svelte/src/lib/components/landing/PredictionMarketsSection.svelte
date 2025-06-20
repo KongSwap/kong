@@ -51,8 +51,6 @@
   
   // Effect to trigger animation based on visibility
   $effect(() => {
-    // Log visibility change for animation trigger
-    // console.log(`PredictionMarketsSection Animation Effect: isVisible=${isVisible}, hasTriggeredAnimation=${hasTriggeredAnimation}, mounted=${mounted}`);
     if (isVisible && !hasTriggeredAnimation && mounted) {
       triggerAnimation();
     }
@@ -78,7 +76,6 @@
       const stats = await getPredictionMarketStats();
       
       if (!mounted) {
-        console.log("PredictionMarketsSection fetchStats: Unmounted during API call. Aborting update.");
         // Note: 'finally' will still run and manage isLoadingStats if mounted state is checked there too
         return; 
       }
@@ -91,13 +88,11 @@
       tweenedActiveMarkets.set(activeMarkets);
       tweenedTotalBets.set(totalBets);
     } catch (error) {
-      console.error("PredictionMarketsSection: Error fetching stats:", error);
       errorLoadingStats = "Failed to load stats.";
       // Set default values on error
       totalMarkets = 50; // Example default
       activeMarkets = 10; // Example default
       totalBets = 2500; // Example default
-      console.log("PredictionMarketsSection: Setting default stats due to error.");
       // Update tweened values even on error with defaults
       tweenedMarkets.set(totalMarkets);
       tweenedActiveMarkets.set(activeMarkets);
@@ -105,21 +100,17 @@
     } finally {
       if (mounted) {
         isLoadingStats = false;
-      } else {
-         console.log("PredictionMarketsSection fetchStats Finally: Component unmounted, not setting isLoadingStats.");
-      }
+      } 
     }
   }
   
   // onMount lifecycle hook
   onMount(() => {
     mounted = true;
-    console.log("PredictionMarketsSection: Mounted.");
     
     // Fetch logic is now solely handled by the $effect below
     
     return () => {
-      console.log("PredictionMarketsSection: Unmounting.");
       mounted = false;
     };
   });
@@ -217,7 +208,7 @@
     <div class="crt-effects"></div>
   </div>
   
-  <div class="container max-w-7xl mx-auto px-3 md:px-8 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-8">
+  <div class=" !max-w-7xl mx-auto px-3 md:px-8 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-8">
     <!-- Text content with enhanced design -->
     <div class="flex-1 text-left mb-10 md:mb-0 z-10 transform translate-y-12 opacity-0 transition-all duration-700 ease-out {animationClass}">
       <div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 backdrop-blur-sm text-blue-300 text-xs md:text-sm font-medium mb-4 w-fit border border-blue-500/20 mx-auto md:mx-0">
@@ -295,7 +286,7 @@
     </div>
 
     <!-- iPhone with screenshot - Optimized for mobile -->
-    <div class="flex-1 flex justify-center items-center relative z-10 order-2 md:order-1 transform translate-y-12 opacity-0 transition-all duration-1000 delay-300 ease-out {animationClass}">
+    <div class="flex-1 flex justify-end justify-self-end items-end relative z-10 order-2 md:order-1 transform translate-y-12 opacity-0 transition-all duration-1000 delay-300 ease-out {animationClass}">
       <!-- Use the IphoneFrame component -->
       <IphoneFrame 
         screenshotSrc="/images/pmscreen.jpg"

@@ -31,7 +31,8 @@
     // Create perspective camera
     const aspect = container.clientWidth / container.clientHeight;
     camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000);
-    camera.position.z = 30;
+    camera.position.set(0, 10, 30); // Set fixed camera position
+    camera.lookAt(0, -5, 0); // Look slightly down for continuous stream
     
     // Create WebGL renderer with transparency
     renderer = new THREE.WebGLRenderer({ 
@@ -83,10 +84,9 @@
     const textureLoader = new THREE.TextureLoader();
     
     // First try with a texture that has a transparent background to show the logo clearly
-    const kongTexture = textureLoader.load('/titles/kong_logo.png', 
+    const kongTexture = textureLoader.load('/images/kong_logo.png', 
       // onLoad callback
       (texture) => {
-        console.log("Texture loaded successfully");
         texture.flipY = false;
         texture.minFilter = THREE.LinearFilter;
         texture.magFilter = THREE.LinearFilter;
@@ -179,9 +179,9 @@
       const velocity = {
         rotationX: (Math.random() - 0.5) * 0.02,
         rotationY: (Math.random() - 0.5) * 0.02,
-        positionX: (Math.random() - 0.5) * 0.01, // Reduced initial horizontal drift
-        positionY: -Math.random() * 0.05, // Small random initial downward speed
-        positionZ: (Math.random() - 0.5) * 0.01 // Reduced initial depth drift
+        positionX: 0, // No horizontal drift to prevent coming back to left
+        positionY: -Math.random() * 0.05 - 0.02, // Consistent downward speed
+        positionZ: 0 // No depth drift for cleaner look
       };
       
       // Store references for animation
@@ -199,9 +199,7 @@
     
     frameId = requestAnimationFrame(animate);
     
-    // Adjust camera for better view of falling tokens (Simplified)
-    camera.position.y = 10; // Fixed higher Y position
-    camera.lookAt(0, -5, 0); // Look slightly down for continuous stream
+    // Camera position is now fixed during initialization, no need to update here
     
     // Animate each token group
     tokens.forEach(group => {
@@ -212,14 +210,33 @@
       // Apply gravity
       velocity.positionY += gravity;
       
-      // Update position
-      group.position.x += velocity.positionX;
+      // Update position (remove horizontal/depth movement to prevent drift)
+      // group.position.x += velocity.positionX; // Commented out to prevent horizontal drift
       group.position.y += velocity.positionY;
-      group.position.z += velocity.positionZ;
+      // group.position.z += velocity.positionZ; // Commented out to prevent depth drift
       
       // Apply rotation (using group's rotation)
       group.rotation.x += velocity.rotationX;
       group.rotation.y += velocity.rotationY;
+
+      // Calculate opacity based on Y position for fade effect
+      const fadeStart = -100; // Start fading at this Y position
+      const fadeEnd = fallBoundaryBottom; // Fully transparent at boundary
+      
+      if (group.position.y < fadeStart) {
+        const fadeProgress = (group.position.y - fadeEnd) / (fadeStart - fadeEnd);
+        const opacity = Math.max(0, Math.min(1, fadeProgress));
+        
+        // Update material opacity
+        if (token.material) {
+          token.material.opacity = opacity;
+        }
+      } else {
+        // Ensure full opacity when above fade zone
+        if (token.material) {
+          token.material.opacity = 1;
+        }
+      }
 
       // Check if token has fallen below the bottom boundary
       if (group.position.y < fallBoundaryBottom) {
@@ -229,9 +246,15 @@
         group.position.z = (Math.random() - 0.5) * 20;
         
         // Reset vertical velocity to ensure downward movement
-        velocity.positionY = -Math.random() * 0.05; 
-        // Optionally reset horizontal/rotational velocity too
-        velocity.positionX = (Math.random() - 0.5) * 0.01;
+        velocity.positionY = -Math.random() * 0.05 - 0.02; 
+        // Keep horizontal/depth velocity at zero to prevent drift
+        velocity.positionX = 0;
+        velocity.positionZ = 0;
+        
+        // Reset opacity to full
+        if (token.material) {
+          token.material.opacity = 1;
+        }
       }
     });
     

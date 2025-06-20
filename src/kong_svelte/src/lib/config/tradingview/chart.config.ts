@@ -1,3 +1,5 @@
+import { getTradingViewColors } from './theme.utils';
+
 export function getChartConfig(params: {
   symbol: string;
   datafeed: any;
@@ -45,28 +47,15 @@ export function getChartConfig(params: {
   const precision = getPrecision(currentPrice);
   const minMove = getMinMove(currentPrice);
 
-  // Get computed CSS values from the document
-  const getThemeColor = (cssVar: string, fallback: string): string => {
-    if (typeof window === 'undefined') return fallback;
-    return getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim() || fallback;
-  };
-
-  // Get RGB values and convert to hex
-  const rgbToHex = (rgbVar: string, fallback: string): string => {
-    const rgb = getThemeColor(rgbVar, '').split(' ').map(Number);
-    if (rgb.length === 3 && !rgb.some(isNaN)) {
-      return `#${rgb.map(x => x.toString(16).padStart(2, '0')).join('')}`;
-    }
-    return fallback;
-  };
-
-  // Core theme colors
-  const bgDarkColor = rgbToHex('--bg-dark', '#000000');
-  const borderColor = rgbToHex('--border', '#333333');
-  const textSecondaryColor = rgbToHex('--text-secondary', '#AAAAAA');
-  const accentBlueColor = rgbToHex('--accent-blue', '#00A7FF');
-  const accentGreenColor = rgbToHex('--accent-green', '#05EC86');
-  const accentRedColor = rgbToHex('--accent-red', '#FF4545');
+  // Centralized theme colors
+  const {
+    bgDarkColor,
+    borderColor,
+    textSecondaryColor,
+    accentBlueColor,
+    accentGreenColor,
+    accentRedColor
+  } = getTradingViewColors();
 
   // Build the config object
   const config = {
@@ -76,14 +65,10 @@ export function getChartConfig(params: {
     container,
     library_path: '/charting_library/charting_library/',
     width: containerWidth,
-    height: isMobile ? 400 : containerHeight,
+    height: isMobile ? Math.max(350, containerHeight) : Math.max(400, containerHeight),
     locale: 'en',
     fullscreen: false,
     autosize: autosize ?? true,
-    backgroundColor: bgDarkColor,
-    backgroundType: 'solid',
-    background: bgDarkColor,
-    theme: params.theme,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Etc/UTC',
     loading_screen: { 
       backgroundColor: bgDarkColor,

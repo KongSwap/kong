@@ -1,14 +1,19 @@
 import { get, writable } from "svelte/store";
 import { type PnpInterface } from "@windoge98/plug-n-play";
 import {
+  type CanisterType,
   pnp,
   canisters as pnpCanisters,
 } from "$lib/config/auth.config";
+
+// Re-export CanisterType for other modules
+export type { CanisterType };
 import { browser } from "$app/environment";
 import { fetchBalances } from "$lib/api/balances";
 import { currentUserBalancesStore } from "$lib/stores/balancesStore";
 import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
 import { trackEvent, AnalyticsEvent } from "$lib/utils/analytics";
+import { userTokens } from "$lib/stores/userTokens";
 
 // Constants
 const AUTH_NAMESPACE = 'auth';
@@ -138,7 +143,6 @@ function createAuthStore(pnp: PnpInterface) {
         // Load balances in background
         setTimeout(async () => {
           try {
-            const { userTokens } = await import("$lib/stores/userTokens");
             await userTokens.setPrincipal(owner);
             await fetchBalances(get(userTokens).tokens, owner, true);
           } catch (error) {
@@ -166,7 +170,6 @@ function createAuthStore(pnp: PnpInterface) {
       isAuthenticating.set(false);
       connectionError.set(null);
       // Set principal to null but don't reset tokens
-      const { userTokens } = await import("$lib/stores/userTokens");
       userTokens.setPrincipal(null);
       
       storage.clear();
@@ -196,3 +199,27 @@ export const connectWallet = async (walletId: string) => {
     isAuthenticating.set(false);
   }
 };
+
+export function icrcActor({canisterId, anon = false, requiresSigning = true}: {canisterId: string, anon?: boolean, requiresSigning?: boolean}) {
+  return pnp.getActor<CanisterType["ICRC2_LEDGER"]>({canisterId, idl: canisters.icrc2.idl, anon, requiresSigning});
+}
+
+export const icpActor = ({ anon = false, requiresSigning = true}: { anon?: boolean, requiresSigning?: boolean}) => {
+  return pnp.getActor<CanisterType["ICP_LEDGER"]>({canisterId: canisters.icp.canisterId, idl: canisters.icp.idl, anon, requiresSigning});
+}
+
+export const swapActor = ({ anon = false, requiresSigning = true}: { anon?: boolean, requiresSigning?: boolean}) => {
+  return pnp.getActor<CanisterType["KONG_BACKEND"]>({canisterId: canisters.kongBackend.canisterId, idl: canisters.kongBackend.idl, anon, requiresSigning});
+}
+
+export const predictionActor = ({ anon = false, requiresSigning = true}: { anon?: boolean, requiresSigning?: boolean}) => {
+  return pnp.getActor<CanisterType["PREDICTION_MARKETS"]>({canisterId: canisters.predictionMarkets.canisterId, idl: canisters.predictionMarkets.idl, anon, requiresSigning});
+}
+
+export const trollboxActor = ({ anon = false, requiresSigning = true}: { anon?: boolean, requiresSigning?: boolean}) => {
+  return pnp.getActor<CanisterType["TROLLBOX"]>({canisterId: canisters.trollbox.canisterId, idl: canisters.trollbox.idl, anon, requiresSigning});
+}
+
+export const faucetActor = ({ anon = false, requiresSigning = true}: { anon?: boolean, requiresSigning?: boolean}) => {
+  return pnp.getActor<CanisterType["KONG_FAUCET"]>({canisterId: canisters.kongFaucet.canisterId, idl: canisters.kongFaucet.idl, anon, requiresSigning});
+} 

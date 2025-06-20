@@ -23,8 +23,7 @@ export function logMessage(message: string): void {
 	if (isLoggingEnabled) {
 		const now = new Date();
 		// tslint:disable-next-line:no-console
-		console.log(`${now.toLocaleTimeString()}.${now.getMilliseconds()}> ${message}`);
-	}
+	}	
 }
 
 export function getErrorMessage(error: string | Error | undefined): string {

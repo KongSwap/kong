@@ -10,29 +10,6 @@ export const idlFactory = ({ IDL }) => {
     'symbol' : IDL.Text,
   });
   const Result = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text });
-  const ResolutionError = IDL.Variant({
-    'MarketNotFound' : IDL.Null,
-    'MarketStillOpen' : IDL.Null,
-    'InvalidMarketStatus' : IDL.Null,
-    'TransferError' : IDL.Text,
-    'AwaitingAdminApproval' : IDL.Null,
-    'InvalidOutcome' : IDL.Null,
-    'InvalidMethod' : IDL.Null,
-    'AlreadyResolved' : IDL.Null,
-    'ResolutionMismatch' : IDL.Null,
-    'Unauthorized' : IDL.Null,
-    'AwaitingCreatorApproval' : IDL.Null,
-    'UpdateFailed' : IDL.Null,
-    'PayoutFailed' : IDL.Null,
-    'VoidingFailed' : IDL.Null,
-    'ResolutionDisagreement' : IDL.Null,
-  });
-  const ResolutionResult = IDL.Variant({
-    'Error' : ResolutionError,
-    'AwaitingAdminApproval' : IDL.Null,
-    'Success' : IDL.Null,
-    'AwaitingCreatorApproval' : IDL.Null,
-  });
   const TokenBalanceBreakdown = IDL.Record({
     'platform_fees' : IDL.Nat,
     'pending_claims' : IDL.Nat,
@@ -112,6 +89,33 @@ export const idlFactory = ({ IDL }) => {
     'current_time' : IDL.Nat,
     'outcome_index' : IDL.Nat,
   });
+  const ResolutionArgs = IDL.Record({
+    'market_id' : IDL.Nat,
+    'winning_outcomes' : IDL.Vec(IDL.Nat),
+  });
+  const ResolutionError = IDL.Variant({
+    'MarketNotFound' : IDL.Null,
+    'MarketStillOpen' : IDL.Null,
+    'InvalidMarketStatus' : IDL.Null,
+    'TransferError' : IDL.Text,
+    'AwaitingAdminApproval' : IDL.Null,
+    'InvalidOutcome' : IDL.Null,
+    'InvalidMethod' : IDL.Null,
+    'AlreadyResolved' : IDL.Null,
+    'ResolutionMismatch' : IDL.Null,
+    'Unauthorized' : IDL.Null,
+    'AwaitingCreatorApproval' : IDL.Null,
+    'UpdateFailed' : IDL.Null,
+    'PayoutFailed' : IDL.Null,
+    'VoidingFailed' : IDL.Null,
+    'ResolutionDisagreement' : IDL.Null,
+  });
+  const ResolutionResult = IDL.Variant({
+    'Error' : ResolutionError,
+    'AwaitingAdminApproval' : IDL.Null,
+    'Success' : IDL.Null,
+    'AwaitingCreatorApproval' : IDL.Null,
+  });
   const TimeWeightPoint = IDL.Record({
     'weight' : IDL.Float64,
     'absolute_time' : IDL.Nat,
@@ -132,6 +136,7 @@ export const idlFactory = ({ IDL }) => {
   const SortOption = IDL.Variant({
     'TotalPool' : SortDirection,
     'CreatedAt' : SortDirection,
+    'EndTime' : SortDirection,
   });
   const GetAllMarketsArgs = IDL.Record({
     'status_filter' : IDL.Opt(MarketStatus),
@@ -340,6 +345,11 @@ export const idlFactory = ({ IDL }) => {
     'total_expired_unresolved' : IDL.Nat,
     'markets_by_status' : MarketsByStatus,
   });
+  const StatsResult = IDL.Record({
+    'total_bets' : IDL.Nat,
+    'total_active_markets' : IDL.Nat,
+    'total_markets' : IDL.Nat,
+  });
   const UserBetInfo = IDL.Record({
     'outcome_text' : IDL.Text,
     'bet_amount' : IDL.Nat,
@@ -417,6 +427,12 @@ export const idlFactory = ({ IDL }) => {
     'targets' : IDL.Vec(IDL.Principal),
   });
   const Result_5 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : DelegationError });
+  const PlaceBetArgs = IDL.Record({
+    'token_id' : IDL.Opt(IDL.Text),
+    'market_id' : IDL.Nat,
+    'amount' : IDL.Nat,
+    'outcome_index' : IDL.Nat,
+  });
   const BetError = IDL.Variant({
     'MarketNotFound' : IDL.Null,
     'InsufficientActivationBet' : IDL.Null,
@@ -452,11 +468,6 @@ export const idlFactory = ({ IDL }) => {
   });
   return IDL.Service({
     'add_supported_token' : IDL.Func([TokenInfo], [Result], []),
-    'admin_resolve_market' : IDL.Func(
-        [IDL.Nat, IDL.Vec(IDL.Nat)],
-        [ResolutionResult],
-        [],
-      ),
     'calculate_token_balance_reconciliation' : IDL.Func(
         [],
         [BalanceReconciliationSummary],
@@ -489,11 +500,7 @@ export const idlFactory = ({ IDL }) => {
         [EstimatedReturn],
         ['query'],
       ),
-    'force_resolve_market' : IDL.Func(
-        [IDL.Nat, IDL.Vec(IDL.Nat)],
-        [ResolutionResult],
-        [],
-      ),
+    'force_resolve_market' : IDL.Func([ResolutionArgs], [ResolutionResult], []),
     'generate_time_weight_curve' : IDL.Func(
         [IDL.Nat64, IDL.Nat64],
         [IDL.Vec(TimeWeightPoint)],
@@ -555,6 +562,7 @@ export const idlFactory = ({ IDL }) => {
         [GetMarketsByStatusResult],
         ['query'],
       ),
+    'get_stats' : IDL.Func([], [StatsResult], ['query']),
     'get_supported_tokens' : IDL.Func([], [IDL.Vec(TokenInfo)], ['query']),
     'get_token_fee_percentage' : IDL.Func(
         [IDL.Text],
@@ -576,9 +584,13 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(IDL.Tuple(IDL.Nat64, FailedTransaction))],
         ['query'],
       ),
-    'get_user_claims' : IDL.Func([], [IDL.Vec(ClaimRecord)], ['query']),
+    'get_user_claims' : IDL.Func([IDL.Text], [IDL.Vec(ClaimRecord)], ['query']),
     'get_user_history' : IDL.Func([IDL.Principal], [UserHistory], ['query']),
-    'get_user_pending_claims' : IDL.Func([], [IDL.Vec(ClaimRecord)], ['query']),
+    'get_user_pending_claims' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(ClaimRecord)],
+        ['query'],
+      ),
     'icrc21_canister_call_consent_message' : IDL.Func(
         [ConsentMessageRequest],
         [Result_3],
@@ -603,17 +615,10 @@ export const idlFactory = ({ IDL }) => {
     'is_admin' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
     'mark_claim_processed' : IDL.Func([IDL.Nat64], [IDL.Bool], []),
     'mark_transaction_resolved' : IDL.Func([IDL.Nat64], [Result], []),
-    'place_bet' : IDL.Func(
-        [IDL.Nat, IDL.Nat, IDL.Nat, IDL.Opt(IDL.Text)],
-        [Result_6],
-        [],
-      ),
-    'propose_resolution' : IDL.Func(
-        [IDL.Nat, IDL.Vec(IDL.Nat)],
-        [ResolutionResult],
-        [],
-      ),
-    'resolve_via_admin' : IDL.Func(
+    'place_bet' : IDL.Func([PlaceBetArgs], [Result_6], []),
+    'propose_resolution' : IDL.Func([ResolutionArgs], [ResolutionResult], []),
+    'resolve_via_admin' : IDL.Func([ResolutionArgs], [ResolutionResult], []),
+    'resolve_via_admin_legacy' : IDL.Func(
         [IDL.Nat, IDL.Vec(IDL.Nat)],
         [ResolutionResult],
         [],

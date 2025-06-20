@@ -85,8 +85,8 @@
 
   function getPriceChangeColor(change: string) {
     const num = Number(change);
-    if (num > 0) return "text-kong-text-accent-green";
-    if (num < 0) return "text-kong-text-accent-red";
+    if (num > 0) return "text-kong-success";
+    if (num < 0) return "text-kong-error";
     return "text-kong-text-secondary";
   }
 
@@ -143,7 +143,7 @@
         {#each formattedTokens as token (token.address)}
           <div
             animate:flip={{ duration: 300 }}
-            class="sm:grid sm:grid-cols-[2fr,1.5fr,1fr,1fr,1fr] sm:gap-4 sm:items-center p-4 hover:bg-kong-bg-dark/30 transition-colors cursor-pointer"
+            class="sm:grid sm:grid-cols-[2fr,1.5fr,1fr,1fr,1fr] sm:gap-4 sm:items-center p-4 hover:bg-kong-bg-primary/30 transition-colors cursor-pointer"
           >
             <!-- Mobile View - Card-like layout -->
             <div class="flex flex-col gap-3 sm:hidden">

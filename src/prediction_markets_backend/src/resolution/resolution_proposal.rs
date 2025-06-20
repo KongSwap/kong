@@ -13,8 +13,7 @@ use crate::storage::*;
 use crate::get_current_time;
 
 pub async fn propose_resolution(
-    market_id: MarketId, 
-    winning_outcomes: Vec<OutcomeIndex>
+    args: ResolutionArgs
 ) -> ResolutionResult {
     let caller = ic_cdk::caller();
     
@@ -24,7 +23,7 @@ pub async fn propose_resolution(
     // Get the market
     let mut market = match MARKETS.with(|markets| {
         let markets_ref = markets.borrow();
-        markets_ref.get(&market_id)
+        markets_ref.get(&args.market_id)
     }) {
         Some(market) => market,
         None => return ResolutionResult::Error(ResolutionError::MarketNotFound)
@@ -46,21 +45,21 @@ pub async fn propose_resolution(
         ic_cdk::println!("Admin resolving admin-created market directly");
         
         // Finalize the market in one step when admin resolves an admin-created market
-        match finalize_market(&mut market, winning_outcomes.clone()).await {
+        match finalize_market(&mut market, args.winning_outcomes.clone()).await {
             Ok(_) => {
                 // Update market status to Closed with winning outcomes
                 market.status = MarketStatus::Closed(
-                    winning_outcomes.iter().map(|idx| idx.inner().clone()).collect()
+                    args.winning_outcomes.iter().map(|idx| idx.inner().clone()).collect()
                 );
                 market.resolved_by = Some(caller);
                 
                 // CRITICAL FIX: Persist market with updated status
                 MARKETS.with(|markets| {
                     let mut markets_ref = markets.borrow_mut();
-                    markets_ref.insert(market_id.clone(), market);
+                    markets_ref.insert(args.market_id.clone(), market);
                 });
                 
-                ic_cdk::println!("Admin-created market {} successfully resolved", market_id.to_u64());
+                ic_cdk::println!("Admin-created market {} successfully resolved", args.market_id.to_u64());
                 return ResolutionResult::Success;
             },
             Err(e) => return ResolutionResult::Error(e)
@@ -68,7 +67,7 @@ pub async fn propose_resolution(
     }
     
     // Ensure each outcome index is valid for this market
-    for outcome_index in &winning_outcomes {
+    for outcome_index in &args.winning_outcomes {
         let idx = outcome_index.to_u64() as usize;
         if idx >= market.outcomes.len() {
             return ResolutionResult::Error(ResolutionError::InvalidOutcome);
@@ -80,7 +79,7 @@ pub async fn propose_resolution(
     // Check if a proposal already exists for this market
     let existing_proposal = RESOLUTION_PROPOSALS.with(|proposals| {
         // Use clone() on the Option instead of cloned() which is for iterators
-        proposals.borrow().get(&market_id).clone()
+        proposals.borrow().get(&args.market_id).clone()
     });
     
     // Handle dual approval based on whether a proposal already exists
@@ -89,8 +88,8 @@ pub async fn propose_resolution(
         None => {
             // Create a new resolution proposal recording who proposed it and with what outcomes
             let proposal = ResolutionProposal {
-                market_id: market_id.clone(),
-                proposed_outcomes: winning_outcomes.clone(),
+                market_id: args.market_id.clone(),
+                proposed_outcomes: args.winning_outcomes.clone(),
                 creator_approved: is_caller_creator,
                 admin_approved: is_caller_admin,
                 creator: market.creator,
@@ -101,7 +100,7 @@ pub async fn propose_resolution(
             // Store the proposal in stable memory so it persists across canister upgrades
             RESOLUTION_PROPOSALS.with(|proposals| {
                 let mut proposals = proposals.borrow_mut();
-                proposals.insert(market_id.clone(), proposal.clone());
+                proposals.insert(args.market_id.clone(), proposal.clone());
             });
             
             // Provide appropriate feedback based on who initiated the proposal
@@ -124,32 +123,32 @@ pub async fn propose_resolution(
                 ic_cdk::println!("Admin reviewing creator's resolution proposal");
                 
                 // Check if admin's outcomes match creator's proposed outcomes
-                if proposal.proposed_outcomes == winning_outcomes {
+                if proposal.proposed_outcomes == args.winning_outcomes {
                     // AGREEMENT: Both creator and admin agree on outcomes
                     ic_cdk::println!("Admin confirms creator's resolution outcomes. Finalizing market.");
                     
                     // Remove proposal since we're processing it
                     RESOLUTION_PROPOSALS.with(|proposals| {
                         let mut proposals = proposals.borrow_mut();
-                        proposals.remove(&market_id);
+                        proposals.remove(&args.market_id);
                     });
                     
                     // Finalize the market with the agreed outcomes
-                    match finalize_market(&mut market, winning_outcomes.clone()).await {
+                    match finalize_market(&mut market, args.winning_outcomes.clone()).await {
                         Ok(_) => {
                             // CRITICAL FIX: Update market status to Closed with winning outcomes
                             market.status = MarketStatus::Closed(
-                                winning_outcomes.iter().map(|idx| idx.inner().clone()).collect()
+                                args.winning_outcomes.iter().map(|idx| idx.inner().clone()).collect()
                             );
                             market.resolved_by = Some(caller);
                             
                             // CRITICAL FIX: Persist updated market in storage
                             MARKETS.with(|markets| {
                                 let mut markets_ref = markets.borrow_mut();
-                                markets_ref.insert(market_id.clone(), market);
+                                markets_ref.insert(args.market_id.clone(), market);
                             });
                             
-                            ic_cdk::println!("Market {} successfully finalized and persisted", market_id.to_u64());
+                            ic_cdk::println!("Market {} successfully finalized and persisted", args.market_id.to_u64());
                             return ResolutionResult::Success;
                         },
                         Err(e) => return ResolutionResult::Error(e)
@@ -160,7 +159,7 @@ pub async fn propose_resolution(
                     
                     // In case of disagreement, void the market and burn creator's deposit
                     // as a penalty for incorrect resolution
-                    match handle_resolution_disagreement(market_id, market, proposal).await {
+                    match handle_resolution_disagreement(args.market_id, market, proposal).await {
                         Ok(_) => return ResolutionResult::Success,
                         Err(e) => return ResolutionResult::Error(e)
                     }
@@ -172,32 +171,32 @@ pub async fn propose_resolution(
                 ic_cdk::println!("Creator reviewing admin's resolution proposal");
                 
                 // Check if creator's outcomes match admin's proposed outcomes
-                if proposal.proposed_outcomes == winning_outcomes {
+                if proposal.proposed_outcomes == args.winning_outcomes {
                     // AGREEMENT: Both admin and creator agree on outcomes
                     ic_cdk::println!("Creator confirms admin's resolution outcomes. Finalizing market.");
                     
                     // Remove proposal since we're processing it
                     RESOLUTION_PROPOSALS.with(|proposals| {
                         let mut proposals = proposals.borrow_mut();
-                        proposals.remove(&market_id);
+                        proposals.remove(&args.market_id);
                     });
                     
                     // Finalize the market with the agreed outcomes
-                    match finalize_market(&mut market, winning_outcomes.clone()).await {
+                    match finalize_market(&mut market, args.winning_outcomes.clone()).await {
                         Ok(_) => {
                             // CRITICAL FIX: Update market status to Closed with winning outcomes
                             market.status = MarketStatus::Closed(
-                                winning_outcomes.iter().map(|idx| idx.inner().clone()).collect()
+                                args.winning_outcomes.iter().map(|idx| idx.inner().clone()).collect()
                             );
                             market.resolved_by = Some(proposal.admin_approver.unwrap_or(caller));
                             
                             // CRITICAL FIX: Persist updated market in storage
                             MARKETS.with(|markets| {
                                 let mut markets_ref = markets.borrow_mut();
-                                markets_ref.insert(market_id.clone(), market);
+                                markets_ref.insert(args.market_id.clone(), market);
                             });
                             
-                            ic_cdk::println!("Market {} successfully finalized and persisted", market_id.to_u64());
+                            ic_cdk::println!("Market {} successfully finalized and persisted", args.market_id.to_u64());
                             return ResolutionResult::Success;
                         },
                         Err(e) => return ResolutionResult::Error(e)
@@ -208,7 +207,7 @@ pub async fn propose_resolution(
                     
                     // If the creator disagrees with the admin's proposed resolution,
                     // the market is voided - just like when an admin disagrees with a creator
-                    match handle_resolution_disagreement(market_id, market, proposal).await {
+                    match handle_resolution_disagreement(args.market_id, market, proposal).await {
                         Ok(_) => return ResolutionResult::Success,
                         Err(e) => return ResolutionResult::Error(e)
                     }

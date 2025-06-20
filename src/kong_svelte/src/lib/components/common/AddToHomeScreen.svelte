@@ -6,7 +6,6 @@
   import { cubicOut } from "svelte/easing";
   import { isMobileBrowser } from "$lib/utils/browser";
   import type { BeforeInstallPromptEvent } from "$lib/types/pwa";
-  import { createNamespacedStore, STORAGE_KEYS } from "$lib/config/localForage.config";
 
   // State using runes
   let InstallPWADialog = $state<typeof import("$lib/components/common/InstallPWADialog.svelte").default | null>(null);
@@ -14,8 +13,7 @@
   let showPrompt = $state(false);
   let showIOSDialog = $state(false);
   let isEligible = $state(false);
-  const pwaStore = createNamespacedStore(STORAGE_KEYS.SETTINGS);
-  const PWA_PROMPT_KEY = "pwa-install-prompt";
+  const PWA_PROMPT_KEY = "settings:pwa-install-prompt";
 
   async function loadInstallDialog() {
     InstallPWADialog = (await import("$lib/components/common/InstallPWADialog.svelte")).default;
@@ -29,7 +27,7 @@
     if (!isEligible) return;
 
     // Then check if user has already interacted
-    const hasInteracted = await pwaStore.getItem(PWA_PROMPT_KEY);
+    const hasInteracted = localStorage.getItem(PWA_PROMPT_KEY);
     if (hasInteracted) return;
 
     // For iOS, show prompt immediately
@@ -46,7 +44,7 @@
     });
 
     window.addEventListener("appinstalled", () => {
-      pwaStore.setItem(PWA_PROMPT_KEY, "installed");
+      localStorage.setItem(PWA_PROMPT_KEY, "installed");
       showPrompt = false;
     });
   });
@@ -67,7 +65,7 @@
       await deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') {
-        await pwaStore.setItem(PWA_PROMPT_KEY, "installed");
+        localStorage.setItem(PWA_PROMPT_KEY, "installed");
       }
     } catch (error) {
       console.error('Installation failed:', error);
@@ -79,7 +77,7 @@
   async function dismissPrompt() {
     showPrompt = false;
     // Persist dismissal
-    await pwaStore.setItem(PWA_PROMPT_KEY, "dismissed");
+    localStorage.setItem(PWA_PROMPT_KEY, "dismissed");
   }
 
   async function closeIOSDialog({ source }: { source: 'backdrop' | 'button' }) {
@@ -89,7 +87,7 @@
       return;
     }
     if (source === 'button') {
-      await pwaStore.setItem(PWA_PROMPT_KEY, "dismissed");
+      localStorage.setItem(PWA_PROMPT_KEY, "dismissed");
     }
   }
 </script>
@@ -120,13 +118,13 @@
         <div class="mt-5 flex justify-end gap-3 sm:mt-4">
           <button 
             class="rounded-xl bg-gradient-45 from-kong-primary to-kong-primary/80 px-5 py-2.5 text-[0.9375rem] font-medium text-white transition-all hover:-translate-y-0.5 hover:brightness-110 hover:shadow-lg hover:shadow-kong-primary/40 sm:px-4 sm:py-2 sm:text-sm"
-            on:click={installPWA}
+            onclick={installPWA}
           >
             Install App
           </button>
           <button 
             class="rounded-xl px-5 py-2.5 text-[0.9375rem] font-medium text-white/90 transition-colors hover:bg-white/5 sm:px-4 sm:py-2 sm:text-sm"
-            on:click={dismissPrompt}
+            onclick={dismissPrompt}
           >
             Maybe Later
           </button>

@@ -26,9 +26,10 @@
 
 <div class="px-4 flex items-center justify-between shadow">
   <div class="text-xs py-3 font-medium text-kong-text-secondary uppercase tracking-wide">
-    {title}
     {#if count !== undefined}
       {count} {count !== 1 ? title.toLowerCase() : title.toLowerCase().replace(/s$/, '')}
+    {:else}
+      {title}
     {/if}
   </div>
   
@@ -39,8 +40,8 @@
     
     {#if onRefresh}
       <button 
-        class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-dark/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        on:click={handleRefresh}
+        class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        onclick={handleRefresh}
         disabled={isLoading || isRefreshing}
         aria-busy={isLoading || isRefreshing}
       >

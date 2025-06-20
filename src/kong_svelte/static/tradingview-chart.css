@@ -1,14 +1,16 @@
 /* Dark theme styles */
 :root.theme-dark,
 .theme-dark:root {
-  --tv-color-platform-background: rgba(8, 10, 19, 1);
-  --tv-color-pane-background: rgba(8, 10, 19, 1);
+  --tv-color-platform-background: var(--bg-dark);
+  --tv-color-pane-background: var(--bg-dark);
+  --tv-color-background: var(--bg-dark);
 }
 
 /* Light theme styles */
 :root:not(.theme-dark) {
   --tv-color-platform-background: var(--bg-dark);
   --tv-color-pane-background: var(--bg-dark);
+  --tv-color-background: var(--bg-dark);
 }
 
 /* Dark theme specific elements */
@@ -21,7 +23,7 @@
 .theme-dark .toggleButton-3zv4iS2j,
 .theme-dark .button-2ioYhFEY,
 .theme-dark .button-2ioYhFEY.isInteractive-20uLObIc {
-  background-color: rgba(8, 10, 19, 1);
+  background-color: var(--bg-dark);
   border-color: transparent;
 }
 
@@ -35,6 +37,6 @@
 :root:not(.theme-dark) .toggleButton-3zv4iS2j,
 :root:not(.theme-dark) .button-2ioYhFEY,
 :root:not(.theme-dark) .button-2ioYhFEY.isInteractive-20uLObIc {
-  background-color: #FFFFFF;
+  background-color: var(--bg-dark);
   border-color: #E5E7EB;
 }

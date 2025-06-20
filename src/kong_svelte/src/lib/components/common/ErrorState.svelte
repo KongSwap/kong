@@ -27,17 +27,17 @@
 <div class="{paddingClass[size]} text-center">
   <div class="flex justify-center mb-4">
     <div class="relative">
-      <AlertTriangle class="text-kong-accent-red {iconSizeClass[size]}" />
-      <div class="absolute inset-0 text-kong-accent-red {iconSizeClass[size]} animate-ping opacity-30"></div>
+      <AlertTriangle class="text-kong-error {iconSizeClass[size]}" />
+      <div class="absolute inset-0 text-kong-error {iconSizeClass[size]} animate-ping opacity-30"></div>
     </div>
   </div>
   
-  <p class="text-kong-accent-red mb-4 font-medium {textClass[size]}">{message}</p>
+  <p class="text-kong-error mb-4 font-medium {textClass[size]}">{message}</p>
   
   {#if retryHandler}
     <button 
       class="mt-4 px-6 py-2 bg-kong-primary hover:bg-kong-primary-hover rounded-md text-white text-sm font-medium transition-colors shadow-md hover:shadow-lg flex items-center mx-auto"
-      on:click={retryHandler}
+      onclick={retryHandler}
     >
       <span class="mr-2">Try Again</span>
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

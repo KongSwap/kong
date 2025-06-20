@@ -29,8 +29,8 @@
     const isWinner = winningOutcomes.includes(bet.outcome_index);
 
     return isWinner
-      ? { text: "Won", color: "text-kong-accent-green" }
-      : { text: "Lost", color: "text-kong-accent-red" };
+      ? { text: "Won", color: "text-kong-success" }
+      : { text: "Lost", color: "text-kong-error" };
   }
 
   const status = getOutcomeStatus();
@@ -38,8 +38,8 @@
 </script>
 
 <div
-  class="p-4 border-b border-kong-bg-dark hover:bg-kong-bg-dark/10 transition-colors cursor-pointer"
-  on:click={onClick}
+  class="p-4 border-b border-kong-bg-primary hover:bg-kong-bg-primary/10 transition-colors cursor-pointer"
+  onclick={onClick}
 >
   <div class="flex flex-col gap-1">
     <div class="flex items-start justify-between">
@@ -51,7 +51,7 @@
     </div>
     
     <div class="flex items-center justify-between text-xs mt-1">
-      <div class="px-2 py-0.5 rounded-full bg-kong-bg-dark inline-block">
+      <div class="px-2 py-0.5 rounded-full bg-kong-bg-primary inline-block">
         {bet.outcome_text}
       </div>
       <div class="{status.color} font-medium">{status.text}</div>
@@ -63,10 +63,10 @@
       </div>
       
       {#if isPending}
-        <div class="text-kong-accent-green">{formatBalance(calculatePotentialWin(), 8, 2)} KONG</div>
+        <div class="text-kong-success">{formatBalance(calculatePotentialWin(), 8, 2)} KONG</div>
       {:else}
         {#if bet.winnings && bet.winnings.length > 0}
-          <div class="text-kong-accent-green">{formatBalance(bet.winnings[0], 8, 2)} KONG</div>
+          <div class="text-kong-success">{formatBalance(bet.winnings[0], 8, 2)} KONG</div>
         {:else}
           <div class="text-kong-text-secondary">-</div>
         {/if}

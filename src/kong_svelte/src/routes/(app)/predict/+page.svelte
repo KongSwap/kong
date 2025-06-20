@@ -196,7 +196,7 @@
       }
 
       // Convert bet amount to scaled token units
-      const scaledAmount = toScaledAmount(amount, kongToken.decimals);
+      const scaledAmount = toScaledAmount(amount.toString(), kongToken.decimals);
 
       await placeBet(
         kongToken,
@@ -279,7 +279,7 @@
             theme="accent-green"
             variant="solid"
             size="md"
-            on:click={() => goto("/predict/create")}
+            onclick={() => goto("/predict/create")}
           >
             Create Market
           </ButtonV2>
@@ -289,7 +289,7 @@
             theme="secondary"
             variant="solid"
             size="md"
-            on:click={() => goto("/predict/history")}
+            onclick={() => goto("/predict/history")}
           >
             Prediction History
           </ButtonV2>
@@ -304,7 +304,7 @@
         {#each $marketStore.categories as category}
           <span
             class="cursor-pointer"
-            on:click={() =>
+            onclick={() =>
               marketStore.setCategory(category === "All" ? null : category)}
           >
             {#if $marketStore.selectedCategory === category || (category === "All" && $marketStore.selectedCategory === null)}
@@ -335,7 +335,7 @@
         >
           <button
             class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-surface-dark text-kong-text-primary hover:bg-kong-bg-light/30 transition-colors border border-kong-border/50"
-            on:click={(e) => {
+            onclick={(e) => {
               e.stopPropagation();
               statusDropdownOpen = !statusDropdownOpen;
               sortDropdownOpen = false;
@@ -357,7 +357,7 @@
                   option.value
                     ? 'bg-kong-accent-green/20 text-kong-accent-green font-medium'
                     : 'text-kong-text-primary'}"
-                  on:click={() => {
+                  onclick={() => {
                     marketStore.setStatusFilter(option.value as StatusFilter);
                     statusDropdownOpen = false;
                   }}
@@ -376,7 +376,7 @@
         >
           <button
             class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-surface-dark text-kong-text-primary hover:bg-kong-bg-light/30 transition-colors border border-kong-border/50"
-            on:click={(e) => {
+            onclick={(e) => {
               e.stopPropagation();
               sortDropdownOpen = !sortDropdownOpen;
               statusDropdownOpen = false;
@@ -398,7 +398,7 @@
                   option.value
                     ? 'bg-kong-accent-green/20 text-kong-accent-green font-medium'
                     : 'text-kong-text-primary'}"
-                  on:click={() => {
+                  onclick={() => {
                     marketStore.setSortOption(option.value as SortOption);
                     sortDropdownOpen = false;
                   }}
@@ -429,11 +429,11 @@
               <MarketSection
                 markets={$marketStore.statusFilter === "resolved"
                   ? $filteredMarkets.resolved.filter(
-                      (market) => "Closed" in (market as any).status,
+                      (market) => "Closed" in market.status,
                     )
                   : $marketStore.statusFilter === "voided"
                     ? $filteredMarkets.resolved.filter(
-                        (market) => "Voided" in (market as any).status,
+                        (market) => "Voided" in market.status,
                       )
                     : $marketStore.statusFilter === "expired"
                       ? $filteredMarkets.expired_unresolved

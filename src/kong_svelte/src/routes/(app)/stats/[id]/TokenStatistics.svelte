@@ -1,6 +1,7 @@
 <script lang="ts">
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { formatTokenName } from "$lib/utils/tokenFormatUtils";
   import Panel from "$lib/components/common/Panel.svelte";
   import {
     Droplets,
@@ -8,6 +9,8 @@
     Copy,
     PlusCircle,
     ChevronDown,
+    BadgeCheck,
+    BadgeX,
   } from "lucide-svelte";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { cubicOut } from "svelte/easing";
@@ -23,12 +26,12 @@
   // Props using $props() for Svelte 5 runes mode
   const {
     token,
-    marketCapRank = null,
+    marketCapRank = "-",
     selectedPool = null,
     totalTokenTvl = 0,
   } = $props<{
     token: Kong.Token;
-    marketCapRank: number | null;
+    marketCapRank: string;
     selectedPool?: BE.Pool | null;
     totalTokenTvl?: number;
   }>();
@@ -97,6 +100,7 @@
 
   // Update motion values with effect
   $effect(() => {
+    console.log("token", activeToken);
     if (activeToken?.metrics) {
       marketCapValue = Number(activeToken.metrics.market_cap || 0);
       volume24hValue = Number(activeToken.metrics.volume_24h || 0);
@@ -148,12 +152,36 @@
     selectedPool ? formatUsdValue(Number(selectedPool.tvl)) : "",
   );
   const formattedTotalTokenTvl = $derived(formatUsdValue(totalTokenTvl));
+
+  let priceElement: HTMLElement;
+  let priceFontSize = $state('text-3xl');
+
+  function adjustFontSize(element: HTMLElement, text: string) {
+    if (!element) return;
+    
+    const containerWidth = element.parentElement?.offsetWidth || 0;
+    const textLength = text.length;
+    
+    if (textLength > 12) {
+      priceFontSize = 'text-xl';
+    } else if (textLength > 8) {
+      priceFontSize = 'text-2xl';
+    } else {
+      priceFontSize = 'text-3xl';
+    }
+  }
+
+  $effect(() => {
+    if (priceElement && formattedPrice) {
+      adjustFontSize(priceElement, formattedPrice);
+    }
+  });
 </script>
 
-<Panel type="main">
-  <div class="flex flex-col gap-4">
+<Panel variant="solid" className="!bg-kong-bg-secondary">
+  <div class="flex flex-col gap-3">
     <!-- Token Header Section -->
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-3 min-w-0">
       <!-- Token Logo -->
       <div class="flex-shrink-0">
         <TokenImages
@@ -164,15 +192,17 @@
       </div>
 
       <!-- Token Name and Rank -->
-      <div class="flex flex-col">
-        <div class="flex flex-col items-start gap-1.5">
+      <div class="flex flex-col min-w-0 flex-1">
+        <div class="flex flex-col items-start gap-1.5 min-w-0">
           <h1
-            class="text-lg md:text-xl flex gap-x-1 items-center font-bold text-kong-text-primary leading-tight"
+            class="text-lg md:text-xl flex gap-x-1 items-center font-bold text-kong-text-primary leading-tight min-w-0 w-full"
           >
-            {token?.name || "Loading..."}
-            <div class="text-base text-kong-text-secondary font-medium">
+            <span class="truncate min-w-0 flex-1">
+              {token?.name ? formatTokenName(token.name, 25) : "Loading..."}
+            </span>
+            <span class="text-base text-kong-text-secondary font-medium flex-shrink-0 whitespace-nowrap">
               ({token?.symbol || "..."})
-            </div>
+            </span>
           </h1>
           <div class="flex flex-wrap gap-1.5 items-center">
             {#each token.standards as standard}
@@ -183,6 +213,11 @@
                 {standard}
               </Badge>
             {/each}
+            {#if token?.metrics?.is_verified}
+              <Badge variant="green" size="xs"><BadgeCheck size="14" /> Verified</Badge>
+            {:else}
+              <Badge variant="yellow" size="xs"><BadgeX size="14" /> Unverified</Badge>
+            {/if}
           </div>
 
           {#if marketCapRank !== null}
@@ -207,7 +242,7 @@
             Price
             {#if formattedPriceChange24h}
               <span
-                class={`text-xs font-bold ${formattedPriceChange24h > 0 ? "text-kong-accent-green" : "text-kong-accent-red"}`}
+                class={`text-xs font-bold ${formattedPriceChange24h > 0 ? "text-kong-success" : "text-kong-error"}`}
               >
                 {formattedPriceChange24h > 0
                   ? "+"
@@ -217,11 +252,15 @@
           </div>
 
           <div
-            class="text-3xl font-medium text-kong-text-primary leading-none flex gap-x-1.5"
+            class="font-medium text-kong-text-primary leading-none flex flex-wrap gap-x-1.5 responsive-price overflow-hidden"
             class:flash-green-text={priceFlash === "up"}
             class:flash-red-text={priceFlash === "down"}
+            class:text-3xl={priceFontSize === 'text-3xl'}
+            class:text-2xl={priceFontSize === 'text-2xl'}
+            class:text-xl={priceFontSize === 'text-xl'}
+            bind:this={priceElement}
           >
-            ${formattedPrice}
+            <span class="truncate">${formattedPrice}</span>
           </div>
         </div>
 
@@ -248,9 +287,9 @@
             theme="accent-blue"
             size="sm"
             className="!w-1/2 text-nowrap flex justify-center items-center"
-            on:click={() =>
+            onclick={() =>
               goto(
-                `/pools/add?token0=${selectedPool.address_0}&token1=${selectedPool.address_1}`,
+                `/pools/${selectedPool.address_0}_${selectedPool.address_1}/position`,
               )}
           >
             <div class="flex items-center gap-1.5">
@@ -262,9 +301,9 @@
             theme="accent-green"
             size="sm"
             className="!w-1/2 text-nowrap flex justify-center items-center"
-            on:click={() =>
+            onclick={() =>
               goto(
-                `/swap?from=${selectedPool.address_1}&to=${selectedPool.address_0}`,
+                `/pro?from=${selectedPool.address_1}&to=${selectedPool.address_0}`,
               )}
           >
             <div class="flex items-center gap-1.5">
@@ -293,7 +332,7 @@
             <ButtonV2
               variant="outline"
               size="sm"
-              className="!border-kong-border w-full bg-kong-bg-dark/70 hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 {$panelRoundness} transition-all duration-200 !py-3"
+              className="!border-kong-border w-full bg-kong-bg-primary/70 hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 {$panelRoundness} transition-all duration-200 !py-3"
             >
               <div class="flex items-center gap-2 justify-between w-full">
                 <span class="text-sm font-mono truncate">{token?.address}</span>
@@ -307,7 +346,7 @@
           <svelte:fragment let:getItemClass>
             <button
               class={getItemClass()}
-              on:click={() => {
+              onclick={() => {
                 copyToClipboard(token?.address);
                 isAddressDropdownOpen = false;
               }}
@@ -319,7 +358,7 @@
             <div class="h-px w-full bg-white/5"></div>
             <button
               class={getItemClass()}
-              on:click={() => {
+              onclick={() => {
                 window.open(
                   `https://nns.ic0.app/tokens/?import-ledger-id=${token?.address}`,
                   "_blank",
@@ -404,6 +443,17 @@
 
   .flash-red-text {
     animation: flashRed 1s ease-out;
+  }
+
+  .responsive-price {
+    transition: font-size 0.2s ease;
+    max-width: 100%;
+  }
+
+  /* Ensure price text doesn't overflow */
+  .responsive-price span {
+    max-width: 100%;
+    display: inline-block;
   }
 
   @keyframes flashGreen {

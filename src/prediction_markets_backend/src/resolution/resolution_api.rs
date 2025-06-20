@@ -5,7 +5,7 @@
 //! while delegating to the more specialized implementation modules.
 
 use crate::resolution::resolution_proposal;
-use crate::types::{MarketId, OutcomeIndex};
+use crate::types::ResolutionArgs;
 use crate::resolution::resolution::ResolutionResult;
 
 /// Resolve the market through admin decision (public API endpoint)
@@ -17,8 +17,7 @@ use crate::resolution::resolution::ResolutionResult;
 /// For user-created markets: requires dual approval between creator and admin
 ///
 /// # Parameters
-/// * `market_id` - ID of the market to resolve
-/// * `winning_outcomes` - Vector of outcome indices that won
+/// * `args` - Struct containing market ID and winning outcomes
 ///
 /// # Returns
 /// * `ResolutionResult` - Success, waiting state, or error reason if the resolution fails
@@ -27,21 +26,27 @@ use crate::resolution::resolution::ResolutionResult;
 /// Only market creators and admins can call this function successfully.
 // Note: #[update] attribute removed to avoid conflict with the original function in dual_approval.rs
 pub async fn resolve_via_admin(
-    market_id: MarketId, 
-    winning_outcomes: Vec<OutcomeIndex>
+    args: ResolutionArgs
 ) -> ResolutionResult {
     // This function is now just a wrapper around propose_resolution
     // for backward compatibility
-    resolution_proposal::propose_resolution(market_id, winning_outcomes).await
+    resolution_proposal::propose_resolution(args).await
+}
+
+/// Original function signature kept for backward compatibility
+pub async fn resolve_via_admin_legacy(
+    args: ResolutionArgs
+) -> ResolutionResult {
+    // Forward to new implementation
+    resolve_via_admin(args).await
 }
 
 /// Re-export the propose_resolution function to maintain a consistent API
 pub async fn propose_resolution(
-    market_id: MarketId, 
-    winning_outcomes: Vec<OutcomeIndex>
+    args: ResolutionArgs
 ) -> ResolutionResult {
     // Forward to the implementation in resolution_proposal
-    resolution_proposal::propose_resolution(market_id, winning_outcomes).await
+    resolution_proposal::propose_resolution(args).await
 }
 
 // Re-export the force_resolve_market and void_market functions

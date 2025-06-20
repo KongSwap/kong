@@ -234,17 +234,17 @@
   <div class="modal-footer">
     <div class="action-buttons">
       {#if validation.anyExceeding}
-        <ButtonV2 theme="warning" variant="outline" size="md" isDisabled={true} fullWidth={true}>
+        <ButtonV2 theme="warning" variant="outline" size="lg" isDisabled={true} fullWidth={true}>
           <span>Insufficient Balance</span>
         </ButtonV2>
       {:else}
         <ButtonV2
           theme="accent-green"
           variant="solid"
-          size="md"
+          size="lg"
           isDisabled={!state.amounts[0] || !state.amounts[1] || state.isCalculating}
           fullWidth={true}
-          on:click={handleAddLiquidity}
+          onclick={handleAddLiquidity}
         >
           {#if state.isCalculating}
             <div class="button-content">
@@ -266,7 +266,7 @@
   }
 
   .summary-container {
-    @apply p-3 rounded-lg bg-kong-bg-light/50 backdrop-blur-sm 
+    @apply p-3 rounded-lg bg-kong-bg-secondary/50 backdrop-blur-sm 
            border border-kong-border/10 space-y-2;
   }
 
@@ -279,8 +279,8 @@
   }
 
   .error-message {
-    @apply p-3 rounded-lg bg-kong-accent-red/10 border border-kong-accent-red/20 
-           text-kong-accent-red text-xs backdrop-blur-sm flex items-center gap-2;
+    @apply p-3 rounded-lg bg-kong-error/10 border border-kong-error/20 
+           text-kong-error text-xs backdrop-blur-sm flex items-center gap-2;
   }
 
   .warning-message {
@@ -294,8 +294,7 @@
   }
 
   .modal-footer {
-    @apply border-t border-kong-border/10 mt-4 bg-kong-bg-dark/90 
-           backdrop-blur-md w-full;
+    @apply border-t border-kong-border/10 mt-4 w-full;
   }
 
   .action-buttons {

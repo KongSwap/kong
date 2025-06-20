@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Star } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import { formatTokenName } from "$lib/utils/tokenFormatUtils";
 
   const props = $props<{
     token: Kong.Token;
@@ -26,7 +27,7 @@
   class:disabled={props.otherPanelToken?.address === props.token.address}
   class:blocked={props.blockedTokenIds.includes(props.token.address)}
   class:not-enabled={props.isApiToken}
-  on:click={props.onTokenClick}
+  onclick={props.onTokenClick}
 >
   <!-- Token info section (left side) -->
   <div class="token-info">
@@ -43,7 +44,7 @@
         <button
           class="favorite-button"
           class:active={props.isFavorite}
-          on:click={props.onFavoriteClick}
+          onclick={props.onFavoriteClick}
           title={props.isFavorite ? "Remove from favorites" : "Add to favorites"}
         >
           <Star
@@ -53,7 +54,7 @@
         </button>
         <span class="token-symbol">{props.token.symbol}</span>
       </div>
-      <span class="token-name">{props.token.name}</span>
+      <span class="token-name">{formatTokenName(props.token.name, 30)}</span>
     </div>
   </div>
 
@@ -63,7 +64,7 @@
       <!-- Enable button for API tokens -->
       <button
         class="enable-token-button"
-        on:click={props.onEnableClick}
+        onclick={props.onEnableClick}
         disabled={props.enablingTokenId === props.token.address}
       >
         {#if props.enablingTokenId === props.token.address}
@@ -110,7 +111,7 @@
 
 <style lang="postcss" scoped>
   .token-item {
-    @apply flex items-center justify-between p-3 mx-2 rounded-lg bg-kong-bg-dark cursor-pointer transition-all duration-200 touch-pan-y select-none;
+    @apply flex items-center justify-between p-3 mx-2 rounded-lg bg-kong-bg-primary cursor-pointer transition-all duration-200 touch-pan-y select-none;
     height: 64px; /* Fixed height to match TOKEN_ITEM_HEIGHT minus padding */
     box-sizing: border-box;
   }
@@ -219,7 +220,7 @@
   }
 
   .selected-indicator {
-    @apply text-kong-bg-dark;
+    @apply text-kong-bg-primary;
     background: theme('colors.kong.accent-green');
     border-radius: 50%;
     padding: 4px;

@@ -29,9 +29,7 @@
       if (!principal || principal === "anonymous") {
         throw new Error("No wallet connected");
       }
-      
-      console.log('Loading wallet data for:', principal);
-      
+            
       // This will handle loading state internally in the store
       await WalletDataService.initializeWallet(principal);
     } catch (err) {
@@ -43,11 +41,6 @@
   // Monitor wallet data changes
   $effect(() => {
     const walletData = $walletDataStore;
-    // Using the most recent value in the console log doesn't trigger reactivity
-    console.log('Wallet data updated for', walletData.currentWallet, ':', 
-      'tokens:', walletData.tokens?.length || 0, 
-      'balances:', Object.keys(walletData.balances || {}).length);
-    
     // Update local error state only when it changes
     if (walletData.error) {
       error = walletData.error;
@@ -68,11 +61,9 @@
       // But avoid reloading if we're already loading for this principal
       if ((currentWallet !== currentPrincipal || !hasBalances) && 
           !(isAlreadyLoading && currentWallet === currentPrincipal)) {
-        console.log('Loading wallet data due to principal change or missing balances');
         lastLoadedPrincipal = currentPrincipal;
         loadWalletData();
       } else {
-        console.log(`Wallet data already loaded for ${currentPrincipal}`);
         lastLoadedPrincipal = currentPrincipal;
       }
     } else if (!currentPrincipal && previousPrincipal) {
@@ -119,14 +110,14 @@
         <div class="flex flex-col gap-3">
           <h3 class="text-sm uppercase font-medium text-kong-text-primary">Wallet ID</h3>
           
-          <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-kong-bg-dark/30">
+          <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-kong-bg-primary/30">
             <div class="text-sm font-mono text-kong-text-secondary truncate">
               {formatShortAddress(principal || '')}
             </div>
             
             <button 
-              class="p-1.5 rounded-md hover:bg-kong-bg-dark/80 transition-colors text-kong-text-secondary hover:text-kong-primary flex items-center"
-              on:click={copyPrincipalToClipboard}
+              class="p-1.5 rounded-md hover:bg-kong-bg-primary/80 transition-colors text-kong-text-secondary hover:text-kong-primary flex items-center"
+              onclick={copyPrincipalToClipboard}
               title="Copy principal ID to clipboard"
               disabled={!principal}
             >
@@ -139,7 +130,7 @@
           </div>
           
           {#if showCopiedIndicator}
-            <div class="text-xs text-center text-kong-text-accent-green">
+            <div class="text-xs text-center text-kong-success">
               Copied to clipboard!
             </div>
           {/if}

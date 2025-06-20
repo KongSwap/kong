@@ -17,6 +17,7 @@ use super::delegation::*;
 use crate::market::estimate_return_types::*;
 use crate::constants::PLATFORM_FEE_PERCENTAGE;
 use crate::storage::{DELEGATIONS, MARKETS};
+use crate::{ResolutionArgs, PlaceBetArgs};
 
 // Helper function to get current time in nanoseconds as a Timestamp type
 pub fn get_current_time() -> Timestamp {
@@ -55,25 +56,16 @@ pub fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageR
     let caller_principal = caller();
     
     let consent_message = match consent_msg_request.method.as_str() {
-        "create_message" => {
-            let message = decode_one::<String>(&consent_msg_request.arg)
-                .map_err(|e| ErrorInfo { 
-                    description: format!("Failed to decode message: {}", e) 
-                })?;
-
-            ConsentMessage::GenericDisplayMessage(format!(
-                "# Approve KongSwap Prediction Markets Message\n\nMessage: {}\n\nFrom: {}",
-                message,
-                caller_principal
-            ))
-        },
-        // Add other method matches here as needed
-        _ => ConsentMessage::GenericDisplayMessage(
+        "resolve_via_admin | resolve_via_admin_legacy | propose_resolution" => handle_resolution_consent(&consent_msg_request, caller_principal),
+        "void_market" => handle_void_market_consent(&consent_msg_request, caller_principal),
+        "place_bet" => handle_place_bet_consent(&consent_msg_request, caller_principal),
+        // Default case for other methods
+        _ => Ok(ConsentMessage::GenericDisplayMessage(
             format!("Approve KongSwap Prediction Markets to execute {}?", 
                 consent_msg_request.method,
             )
-        ),
-    };
+        )),
+    }?;
 
     let metadata = ConsentMessageMetadata {
         language: "en".to_string(),
@@ -81,6 +73,164 @@ pub fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageR
     };
 
     Ok(ConsentInfo { metadata, consent_message })
+}
+
+// Helper function for "resolve_via_admin" consent
+fn handle_resolution_consent(
+    consent_msg_request: &ConsentMessageRequest,
+    caller_principal: Principal
+) -> Result<ConsentMessage, ErrorInfo> {
+    // Try to decode the parameters using our shared type
+    let args = match decode_one::<ResolutionArgs>(&consent_msg_request.arg) {
+        Ok(args) => args,
+        Err(decode_err) => {
+            // If we can't decode properly, provide a generic message with the error
+            return Ok(ConsentMessage::GenericDisplayMessage(
+                format!("# Resolve KongSwap Prediction Market\n\nYou are about to resolve a prediction market as an admin.\n\nThis action is irreversible and will distribute payouts to winners.\n\nRequested by: {}. Error: {}", 
+                    caller_principal, 
+                    decode_err
+                )
+            ));
+        }
+    };
+    
+    // Get market_id and outcome indices directly from the args
+    let market_id = args.market_id;
+    let winning_outcome_indices: Vec<u64> = args.winning_outcomes.iter()
+        .map(|o| o.to_u64())
+        .collect();
+        
+    // Try to get market details to show more context
+    let market_details = MARKETS.with(|markets| {
+        let markets_ref = markets.borrow();
+        markets_ref.get(&market_id).map(|market| {
+            let question = market.question.clone();
+            let outcomes = market.outcomes.clone();
+            (question, outcomes)
+        })
+    });
+    
+    // Format the consent message based on whether we could retrieve market details
+    if let Some((question, outcomes)) = market_details {
+        // Get the names of the winning outcomes
+        let winning_outcome_names: Vec<String> = winning_outcome_indices.iter()
+            .filter_map(|&idx| {
+                if idx < outcomes.len() as u64 {
+                    Some(outcomes[idx as usize].clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        
+        Ok(ConsentMessage::GenericDisplayMessage(format!(
+            "# Resolve KongSwap Prediction Market\n\nQuestion: {}\n\nSelected outcome{}: {}\n\nThis action is irreversible and will distribute payouts to winners.\n\nRequested by: {}",
+            question,
+            if winning_outcome_names.len() > 1 { "s" } else { "" },
+            winning_outcome_names.join(", "),
+            caller_principal
+        )))
+    } else {
+        // Generic message if we couldn't get market details
+        Ok(ConsentMessage::GenericDisplayMessage(format!(
+            "# Resolve KongSwap Prediction Market\n\nMarket ID: {}\n\nSelected outcome{}: {}\n\nThis action is irreversible and will distribute payouts to winners.\n\nRequested by: {}",
+            market_id.to_u64(),
+            if winning_outcome_indices.len() > 1 { "s" } else { "" },
+            winning_outcome_indices.iter().map(|o| o.to_string()).collect::<Vec<String>>().join(", "),
+            caller_principal
+        )))
+    }
+}
+
+// Helper function for "void_market" consent
+fn handle_void_market_consent(
+    consent_msg_request: &ConsentMessageRequest,
+    caller_principal: Principal
+) -> Result<ConsentMessage, ErrorInfo> {
+    // Try decoding as a direct nat
+    let market_id = match decode_one::<candid::Nat>(&consent_msg_request.arg) {
+        Ok(id) => id,
+        Err(_) => {
+            // Handle failure by using a generic message instead
+            return Ok(ConsentMessage::GenericDisplayMessage(
+                format!("# Void KongSwap Prediction Market\n\nYou are about to void a prediction market and return all bets to users.\n\nThis action is irreversible and should only be used when a market cannot be properly resolved.\n\nRequested by: {}", 
+                    caller_principal
+                )
+            ));
+        }
+    };
+
+    Ok(ConsentMessage::GenericDisplayMessage(format!(
+        "# Void KongSwap Prediction Market\n\nYou are about to void market #{} and return all bets to users.\n\nThis action is irreversible and should only be used when a market cannot be properly resolved.\n\nRequested by: {}",
+        market_id,
+        caller_principal
+    )))
+}
+
+// Helper function for "place_bet" consent
+fn handle_place_bet_consent(
+    consent_msg_request: &ConsentMessageRequest,
+    caller_principal: Principal
+) -> Result<ConsentMessage, ErrorInfo> {
+    // Try to decode place_bet parameters
+    match decode_one::<PlaceBetArgs>(&consent_msg_request.arg) {
+        Ok(args) => {
+            // Use MarketId directly 
+            let market_id_val = args.market_id.clone();
+            
+            // Try to get market data to show more context
+            let market_data = match MARKETS.with(|markets| {
+                let markets_ref = markets.borrow();
+                markets_ref.get(&market_id_val).map(|m| m.clone())
+            }) {
+                Some(market) => {
+                    let outcome_idx = args.outcome_index.to_u64() as usize;
+                    let outcome_name = if outcome_idx < market.outcomes.len() {
+                        market.outcomes[outcome_idx].clone()
+                    } else {
+                        format!("Outcome #{}", args.outcome_index.to_u64())
+                    };
+                    
+                    // Get token info for better display
+                    let token_id = args.token_id.unwrap_or_else(|| market.token_id.clone());
+                    let token_info = get_token_info(&token_id);
+                    let token_symbol = token_info.as_ref().map(|info| info.symbol.clone()).unwrap_or_else(|| token_id.clone());
+                    let decimals = token_info.map(|info| info.decimals).unwrap_or(0) as u32;
+                    
+                    // Format amount using TokenAmount directly
+                    let amount_decimal = args.amount.to_f64() / 10f64.powi(decimals as i32);
+                    
+                    format!(
+                        "# Place Bet on KongSwap Prediction Market\n\nMarket: {}\n\nOutcome: {}\n\nAmount: {} {}\n\nThis will transfer tokens from your account to the prediction market canister.",
+                        market.question,
+                        outcome_name,
+                        amount_decimal,
+                        token_symbol
+                    )
+                },
+                None => {
+                    // If we can't find the market, provide more generic message
+                    format!(
+                        "# Place Bet on KongSwap Prediction Market\n\nMarket ID: {}\n\nOutcome: {}\n\nAmount: {}\n\nThis will transfer tokens from your account to the prediction market canister.",
+                        args.market_id.to_u64(),
+                        args.outcome_index.to_u64(),
+                        args.amount.to_u64()
+                    )
+                }
+            };
+            
+            Ok(ConsentMessage::GenericDisplayMessage(market_data))
+        },
+        Err(e) => {
+            // If we can't decode properly, return a generic message with error details for debugging
+            Ok(ConsentMessage::GenericDisplayMessage(
+                format!("# Place Bet on KongSwap Prediction Market\n\nYou are about to place a bet on a prediction market.\n\nThis will transfer tokens from your account to the prediction market canister.\n\nRequested by: {}\n\nDebug info: Failed to decode args: {}", 
+                    caller_principal,
+                    e
+                )
+            ))
+        }
+    }
 }
 
 /// Returns current delegations for the caller that match the requested targets

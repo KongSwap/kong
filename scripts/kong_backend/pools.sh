@@ -16,6 +16,6 @@ dfx canister call ${NETWORK} ${KONG_CANISTER} pools --output json '(opt "all")' 
 #dfx canister call ${NETWORK} ${KONG_CANISTER} pools --output json '(opt "IC.ckUSDT_IC.ckUSDT")' | jq
 #dfx canister call ${NETWORK} ${KONG_CANISTER} pools --output json '(opt "IC.ckBTC_IC.ckUSDT")' | jq
 #dfx canister call ${NETWORK} ${KONG_CANISTER} pools --output json '(opt "IC.ckETH_IC.ckUSDT")' | jq
-#dfx canister call ${NETWORK} ${KONG_CANISTER} pools --output json '(opt "IC.zw6xu-taaaa-aaaar-qaicq-cai_IC.zdzgz-siaaa-aaaar-qaiba-cai")' | jq
+#dfx canister call ${NETWORK} ${KONG_CANISTER} pools --output json '(opt "IC.zw6xu-taaaa-aaaar-qaicq-cai_IC.cngnf-vqaaa-aaaar-qag4q-cai")' | jq
 #dfx canister call ${NETWORK} ${KONG_CANISTER} pools --output json '(opt "zw6xu-taaaa")' | jq
 #dfx canister call ${NETWORK} ${KONG_CANISTER} pools --output json '(opt "ckBTC")' | jq

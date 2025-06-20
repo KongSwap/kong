@@ -61,7 +61,6 @@ export class WalletDataService {
    */
   public static async initializeWallet(principalId: string): Promise<void> {
     if (!principalId || principalId === "anonymous") {
-      console.log('No principal ID or anonymous user');
       walletDataStore.update(state => ({
         ...state,
         tokens: [],
@@ -76,7 +75,6 @@ export class WalletDataService {
     // If the wallet has changed, reset the store first
     const currentState = get(walletDataStore);
     if (currentState.currentWallet && currentState.currentWallet !== principalId) {
-      console.log(`Wallet changed from ${currentState.currentWallet} to ${principalId}, resetting wallet data`);
       this.reset();
       
       // Also reset the wallet pool list store
@@ -85,13 +83,11 @@ export class WalletDataService {
 
     // If initialization for this wallet is already in progress, return the existing promise
     if (initializationInProgress && lastInitializedWallet === principalId && initializationPromise) {
-      console.log(`Initialization already in progress for wallet ${principalId}, returning existing promise`);
       return initializationPromise;
     }
     
     // Prevent starting a new initialization if we're already loading for this wallet
     if (currentState.isLoading && currentState.currentWallet === principalId) {
-      console.log(`Already loading wallet data for ${principalId}, skipping redundant initialization`);
       return;
     }
 
@@ -113,8 +109,6 @@ export class WalletDataService {
     // Create a promise for this initialization
     initializationPromise = new Promise<void>(async (resolve) => {
       try {
-        console.log(`Starting initialization for wallet ${principalId}`);
-
         // Load tokens first - use cache if available and not expired
         let tokens: Kong.Token[] = [];
         
@@ -123,10 +117,8 @@ export class WalletDataService {
           tokenCache.lastUpdated && 
           Date.now() - tokenCache.lastUpdated < TOKEN_CACHE_EXPIRY
         ) {
-          console.log('Using cached tokens');
           tokens = tokenCache.tokens;
         } else {
-          console.log('Token cache expired or empty, loading fresh tokens');
           tokens = await this.loadAllTokens();
           // Update the token cache
           tokenCache = {
@@ -176,8 +168,6 @@ export class WalletDataService {
           ...state,
           isLoading: false
         }));
-        
-        console.log(`Successfully initialized wallet data for ${principalId}`);
       } catch (error) {
         console.error("Error initializing wallet data:", error);
         
@@ -211,12 +201,10 @@ export class WalletDataService {
     const principalId = currentState.currentWallet;
     
     if (!principalId || principalId === "anonymous") {
-      console.log('No wallet to refresh balances for');
       return;
     }
     
     if (currentState.isLoading) {
-      console.log('Already loading data, skipping balance refresh');
       return;
     }
     
@@ -245,11 +233,8 @@ export class WalletDataService {
           lastUpdated: Date.now(),
           isLoading: false
         }));
-        
-        console.log(`Successfully refreshed balances for ${principalId}`);
       } else {
         // If no tokens, we need to initialize completely
-        console.log('No tokens available, initializing wallet data');
         await this.initializeWallet(principalId);
       }
     } catch (error) {
@@ -272,42 +257,26 @@ export class WalletDataService {
    */
   public static async loadLiquidityPositions(principalId: string): Promise<void> {
     if (!principalId || principalId === "anonymous") {
-      console.log(`Skipping liquidity positions load for anonymous or empty principal`);
       return;
     }
 
     // Check if we already have pools for this principal
     const currentStore = get(walletPoolListStore);
-    console.log(`Checking liquidity positions for ${principalId}:`, {
-      currentWalletId: currentStore.walletId,
-      poolsCount: currentStore.processedPools.length,
-      isLoading: currentStore.loading
-    });
     
     if (currentStore.walletId === principalId && 
         currentStore.processedPools.length > 0) {
-      console.log(`Already have liquidity positions for ${principalId}, no need to reload`);
       return;
     }
 
     try {
-      console.log(`Loading liquidity positions for ${principalId}`);
       await walletPoolListStore.fetchPoolsForWallet(principalId);
       
       // Verify the data was loaded correctly
       const updatedStore = get(walletPoolListStore);
-      console.log(`Liquidity positions load result for ${principalId}:`, {
-        walletId: updatedStore.walletId,
-        poolsCount: updatedStore.processedPools.length,
-        error: updatedStore.error
-      });
       
       if (updatedStore.processedPools.length > 0) {
-        console.log(`Successfully loaded ${updatedStore.processedPools.length} liquidity positions for ${principalId}`);
       } else if (updatedStore.error) {
         console.error(`Error loading liquidity positions: ${updatedStore.error}`);
-      } else {
-        console.log(`No liquidity positions found for ${principalId}`);
       }
     } catch (error) {
       console.error("Error loading liquidity positions:", error);
@@ -320,7 +289,6 @@ export class WalletDataService {
    * This is useful when new tokens are added to the system
    */
   public static async refreshTokenCache(): Promise<Kong.Token[]> {
-    console.log('Force refreshing token cache');
     try {
       const tokens = await this.loadAllTokens();
       
@@ -356,8 +324,6 @@ export class WalletDataService {
     
     // Paginate through all tokens with delay between requests
     while (hasMorePages) {
-      console.log(`Fetching tokens page ${currentPage}`);
-      
       let retryCount = 0;
       let success = false;
       
@@ -402,7 +368,6 @@ export class WalletDataService {
       }
     }
     
-    console.log(`Fetched ${allTokens.length} tokens in total`);
     return allTokens;
   }
 
@@ -416,12 +381,10 @@ export class WalletDataService {
     options = { forceRefresh: false }
   ): Promise<Record<string, TokenBalance>> {
     if (!principalId || principalId === "anonymous") {
-      console.log('No wallet ID or anonymous user');
       return {};
     }
 
     if (!tokens || tokens.length === 0) {
-      console.log('No tokens provided');
       return {};
     }
 
@@ -508,8 +471,6 @@ export class WalletDataService {
         currentWallet: principalId
       }));
       
-      console.log('Starting token metadata load for', principalId);
-      
       // Check if we have tokens in the cache
       let tokens: Kong.Token[] = [];
       
@@ -518,10 +479,8 @@ export class WalletDataService {
         tokenCache.lastUpdated && 
         Date.now() - tokenCache.lastUpdated < TOKEN_CACHE_EXPIRY
       ) {
-        console.log('Using cached tokens for metadata-only load');
         tokens = tokenCache.tokens;
       } else {
-        console.log('Token cache expired or empty, loading fresh tokens for metadata-only load');
         tokens = await this.loadAllTokens();
         
         // Update the token cache
