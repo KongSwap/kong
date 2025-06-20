@@ -19,6 +19,9 @@
   import { snsService, icpGovernanceService } from '$lib/utils/snsUtils';
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
   import TokenChart from "./TokenChart.svelte";
+  import UserPoolBalance from "$lib/components/liquidity/create_pool/UserPoolBalance.svelte";
+  import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
+  import { auth } from "$lib/stores/auth";
 
   // Consolidated state
   let state = $state({
@@ -46,7 +49,10 @@
     
     // Chart dimensions
     mobileChartHeight: "calc(40vh)",
-    desktopChartHeight: "calc(50vh)"
+    desktopChartHeight: "calc(50vh)",
+    
+    // User pool position
+    hasUserPoolPosition: false
   });
 
   // Local refs
@@ -131,6 +137,7 @@
           if (ckusdcPool) {
             state.selectedPool = ckusdcPool;
             updateChartReadiness();
+            checkUserPoolPosition();
             return;
           }
         }
@@ -144,6 +151,7 @@
         if (bestPool) {
           state.selectedPool = bestPool;
           updateChartReadiness();
+          checkUserPoolPosition();
         }
       }
 

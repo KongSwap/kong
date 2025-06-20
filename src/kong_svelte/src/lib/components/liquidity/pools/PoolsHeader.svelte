@@ -89,30 +89,15 @@
 
         <!-- CTA section -->
         <div class="mt-8 text-center">
-          <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button
-              class="group relative px-8 py-3 bg-gradient-to-r from-kong-primary to-kong-accent-blue text-white font-semibold {$panelRoundness} transition-all duration-300 hover:scale-105"
-              onclick={() => goto("/pools/add")}
-            >
-              <span class="relative z-10 flex items-center gap-2">
-                <Plus size={20} />
-                Start Earning Now
-              </span>
-              <div
-                class="absolute inset-0 bg-gradient-to-r from-kong-accent-blue to-kong-primary rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-              ></div>
-            </button>
-
-            <div class="flex items-center gap-4 text-sm text-kong-text-secondary">
-              <div class="flex items-center gap-1">
-                <Droplets class="w-4 h-4 text-kong-primary" />
-                <span>200+ Active Pools</span>
-              </div>
-              <div class="hidden sm:block w-px h-4 bg-kong-border"></div>
-              <div class="flex items-center gap-1">
-                <span class="text-kong-success">●</span>
-                <span>0.3% Swap Fee</span>
-              </div>
+          <div class="flex items-center justify-center gap-4 text-sm text-kong-text-secondary">
+            <div class="flex items-center gap-1">
+              <Droplets class="w-4 h-4 text-kong-primary" />
+              <span>200+ Active Pools</span>
+            </div>
+            <div class="hidden sm:block w-px h-4 bg-kong-border"></div>
+            <div class="flex items-center gap-1">
+              <span class="text-kong-success">●</span>
+              <span>0.3% Swap Fee</span>
             </div>
           </div>
         </div>

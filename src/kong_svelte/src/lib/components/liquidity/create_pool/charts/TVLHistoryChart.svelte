@@ -250,9 +250,9 @@
   });
 </script>
 
-<Panel variant="solid" type="secondary" className="!overflow-visible">
+<Panel variant="solid" type="secondary" className="!overflow-visible !p-0">
   <div class="flex flex-col w-full h-full">
-    <h3 class="flex items-center justify-between py-3 px-5 text-sm uppercase font-medium text-kong-text-primary/90">
+    <h3 class="flex items-center justify-between py-3 px-3 text-sm uppercase font-medium text-kong-text-primary/90">
       TVL History
       <div class="flex items-center gap-2">
         <div class="text-kong-text-primary/90">

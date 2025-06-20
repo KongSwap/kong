@@ -289,7 +289,7 @@
             className="!w-1/2 text-nowrap flex justify-center items-center"
             onclick={() =>
               goto(
-                `/pools/add?token0=${selectedPool.address_0}&token1=${selectedPool.address_1}`,
+                `/pools/${selectedPool.address_0}_${selectedPool.address_1}/position`,
               )}
           >
             <div class="flex items-center gap-1.5">

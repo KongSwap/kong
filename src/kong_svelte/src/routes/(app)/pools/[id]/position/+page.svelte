@@ -158,30 +158,24 @@
     try {
       isLoading = true;
       error = null;
-      
-      console.log('[loadPoolData] Starting to load pool data for:', { address0, address1, poolId });
-      
+            
       // Ensure live pools are loaded
       if ($livePools.length === 0) {
         console.log('[loadPoolData] No live pools loaded, fetching...');
         await loadPools();
       }
-      console.log('[loadPoolData] Live pools loaded:', $livePools.length);
       
       let userPool = null;
       
       // Only try to get user pool data if connected
       if ($auth.isConnected) {
-        console.log('[loadPoolData] User is connected, loading user pools...');
         
         // Initialize user pools if not already done
         if (!hasInitialized) {
-          console.log('[loadPoolData] Initializing currentUserPoolsStore...');
           await currentUserPoolsStore.initialize();
           hasInitialized = true;
         } else if ($currentUserPoolsStore.filteredPools.length === 0 && !$currentUserPoolsStore.loading) {
           // Re-initialize if pools are empty and not loading
-          console.log('[loadPoolData] Re-initializing empty currentUserPoolsStore...');
           await currentUserPoolsStore.initialize();
         }
         
@@ -192,38 +186,25 @@
           RETRY_DELAYS.storeLoading.delay
         );
         
-        console.log('[loadPoolData] currentUserPoolsStore state:', {
-          processedPools: $currentUserPoolsStore.processedPools.length,
-          filteredPools: $currentUserPoolsStore.filteredPools.length,
-          loading: $currentUserPoolsStore.loading
-        });
-        
         // Find the specific pool from user's pools
         // Check processedPools instead of filteredPools to include pools with zero balance
         userPool = $currentUserPoolsStore.processedPools.find(
           p => p.address_0 === address0 && p.address_1 === address1
         );
         
-        console.log('[loadPoolData] User pool found in processedPools:', userPool ? 'Yes' : 'No');
         
         // If not found in processedPools, check filteredPools as fallback
         if (!userPool) {
           userPool = $currentUserPoolsStore.filteredPools.find(
             p => p.address_0 === address0 && p.address_1 === address1
           );
-          console.log('[loadPoolData] User pool found in filteredPools:', userPool ? 'Yes' : 'No');
         }
       }
       
       // If user has a pool, use it. Otherwise, look for pool in livePools or create minimal object
       if (userPool) {
-        console.log('[loadPoolData] Using user pool data');
         pool = userPool;
       } else {
-        // User doesn't have a position, try to find pool in livePools
-        console.log('[loadPoolData] Searching for pool in livePools...');
-        console.log('[loadPoolData] Looking for:', { address0, address1 });
-        
         // Log first few pools to debug
         if ($livePools.length > 0) {
           console.log('[loadPoolData] Sample livePools:', $livePools.slice(0, 3).map(p => ({
@@ -236,7 +217,6 @@
           p => p.address_0 === address0 && p.address_1 === address1
         );
         
-        console.log('[loadPoolData] Live pool found:', livePoolData ? 'Yes' : 'No');
         if (livePoolData) {
           console.log('[loadPoolData] Live pool data:', {
             symbol_0: livePoolData.symbol_0,
@@ -249,7 +229,6 @@
           ? { ...livePoolData, ...getUserPoolDefaults() }
           : createMinimalPool(address0, address1);
           
-        console.log('[loadPoolData] Final pool data:', pool);
       }
       
       // Fetch token data
@@ -412,7 +391,7 @@
   <div class="flex flex-col max-w-[1300px] mx-auto px-4 pb-8">
     <!-- Header -->
     <div class="pb-8">
-      <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
           <TokenImages tokens={[token0, token1]} size={32} overlap={true} />
           <h1 class="text-2xl font-bold text-kong-text-primary">

@@ -114,15 +114,6 @@
                 />
               </button>
             </div>
-
-            <!-- Add Button -->
-            <button
-              class="bg-kong-primary text-white rounded-lg px-4 py-2 hover:bg-kong-primary-hover flex items-center gap-2 transition-all duration-200 shadow-md"
-              onclick={() => goto("/pools/add")}
-            >
-              <Plus size={16} />
-              <span class="text-sm font-medium">Add</span>
-            </button>
           </div>
         {/if}
       </div>
