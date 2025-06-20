@@ -56,10 +56,7 @@
   
           // Immediately check system preference if no theme found
           if (!initialTheme) {
-            const prefersDark = window.matchMedia(
-              "(prefers-color-scheme: dark)",
-            ).matches;
-            initialTheme = prefersDark ? "dark" : "light";
+            initialTheme = "dark";
           }
   
           // Apply theme class right away
