@@ -45,8 +45,8 @@
     showDropdown: false,
     
     // Chart dimensions
-    mobileChartHeight: "calc(40vh + 100px)",
-    desktopChartHeight: "calc(60vh - 60px)"
+    mobileChartHeight: "calc(40vh)",
+    desktopChartHeight: "calc(50vh)"
   });
 
   // Local refs
@@ -59,10 +59,10 @@
     const height = window.innerHeight;
     
     if (height < 768) {
-      state.mobileChartHeight = height < 480 ? "calc(35vh + 80px)" : "calc(40vh + 100px)";
+      state.mobileChartHeight = height < 480 ? "calc(35vh)" : "calc(40vh)";
     } else {
-      state.desktopChartHeight = height > 1079 ? "calc(55vh - 60px)" 
-        : height > 1023 ? "calc(45vh - 60px)" : "calc(45vh - 60px)";
+      state.desktopChartHeight = height > 1079 ? "calc(50vh)" 
+        : height > 1023 ? "calc(45vh)" : "calc(45vh)";
     }
   }
 
@@ -315,7 +315,7 @@
         </Panel>
 
         {#if state.token && state.token.address === $page.params.id}
-          <TransactionFeed token={state.token} className="w-full !bg-kong-bg-secondary" />
+          <TransactionFeed token={state.token} />
         {/if}
 
         {#if state.token?.address && GOVERNANCE_CANISTER_IDS[state.token.address]}
@@ -379,7 +379,7 @@
               
               <div class={`${state.token?.address && GOVERNANCE_CANISTER_IDS[state.token.address] ? 'lg:w-1/2' : 'lg:w-full'} flex flex-col`}>
                 {#if state.token && state.token.address === $page.params.id}
-                  <TransactionFeed token={state.token} className="w-full !p-0 !bg-kong-bg-secondary" />
+                  <TransactionFeed token={state.token} />
                 {/if}
               </div>
             </div>

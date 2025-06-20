@@ -105,12 +105,17 @@ export const fetchChartData = async (
 
   const url = `${API_URL}/api/swaps/ohlc?pay_token_id=${payTokenId}&receive_token_id=${receiveTokenId}&start_time=${startTime}&end_time=${endTime}&interval=${interval}`;
   
+  console.log("[API] Fetching chart data from:", url);
+  
   try {
     const response = await fetch(url);
     const data = await response.json();
     
+    console.log("[API] Response status:", response.status);
+    console.log("[API] Response data sample:", data?.slice(0, 2));
+    
     if (!response.ok) {
-      console.error('API error:', data);
+      console.error('[API] Chart data error:', { status: response.status, data });
       return [];
     }
     

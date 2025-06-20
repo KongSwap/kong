@@ -1,6 +1,7 @@
 <script lang="ts">
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { formatTokenName } from "$lib/utils/tokenFormatUtils";
   import Panel from "$lib/components/common/Panel.svelte";
   import {
     Droplets,
@@ -197,7 +198,7 @@
             class="text-lg md:text-xl flex gap-x-1 items-center font-bold text-kong-text-primary leading-tight min-w-0 w-full"
           >
             <span class="truncate min-w-0 flex-1">
-              {token?.name || "Loading..."}
+              {token?.name ? formatTokenName(token.name, 25) : "Loading..."}
             </span>
             <span class="text-base text-kong-text-secondary font-medium flex-shrink-0 whitespace-nowrap">
               ({token?.symbol || "..."})

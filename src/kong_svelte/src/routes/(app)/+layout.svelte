@@ -164,9 +164,9 @@
       <Navbar />
     </div>
     <PageWrapper page={$page.url.pathname} enableBackground={hasThemedBackground}>
-      <main class="flex flex-grow relative">
-        <div class="w-full mx-auto h-full relative">
-          <div class="page-content w-full h-full">
+      <main class="flex relative">
+        <div class="w-full mx-auto relative">
+          <div class="page-content w-full">
             {@render children?.()}
           </div>
         </div>

@@ -3,6 +3,7 @@
   import SendTokens from "$lib/components/sidebar/SendTokens.svelte";
   import TransferConfirmationModal from "$lib/components/wallet/TransferConfirmationModal.svelte";
   import { createEventDispatcher } from "svelte";
+  import { formatTokenName } from "$lib/utils/tokenFormatUtils";
 
   export let token: Kong.Token;
 
@@ -44,7 +45,7 @@
 <Modal
   isOpen={true}
   onClose={handleClose}
-  title="Send {token.name}"
+  title="Send {formatTokenName(token.name, 30)}"
   width="500px"
   variant="transparent"
   height="auto"

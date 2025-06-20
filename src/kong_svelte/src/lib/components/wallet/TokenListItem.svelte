@@ -4,6 +4,7 @@
 	import TokenImages from "$lib/components/common/TokenImages.svelte";
 	import Badge from "$lib/components/common/Badge.svelte";
 	import { currentUserBalancesStore } from "$lib/stores/balancesStore";
+	import { formatTokenName } from "$lib/utils/tokenFormatUtils";
 
 	// Define props
 	export let token: Kong.Token;
@@ -74,7 +75,7 @@
 			<div class="flex flex-col justify-center">
 				<div class="flex items-center gap-1.5">
 					<span class="font-medium text-kong-text-primary text-sm leading-tight">
-						{token.name}
+						{formatTokenName(token.name, 25)}
 					</span>
 				</div>
 				<div class="text-xs text-kong-text-secondary mt-1 leading-tight">

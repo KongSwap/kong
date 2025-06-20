@@ -3,6 +3,7 @@
   import { Coins, ArrowRight } from 'lucide-svelte';
   import { createEventDispatcher } from 'svelte';
   import { getPriceChangeClass } from '$lib/utils/statsUtils';
+  import { formatTokenName } from '$lib/utils/tokenFormatUtils';
 
   export let tokens: Kong.Token[] = [];
   export let selectedIndex = -1;

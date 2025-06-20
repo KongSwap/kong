@@ -233,14 +233,12 @@ function getTokenAliases(symbol: string): string {
 
 function filterPools(pools: ProcessedPool[], query: string): ProcessedPool[] {
   return pools.filter(poolItem => {
-    // If there's no search query, include all pools with any balance
+    // If there's no search query, show all user pools (including zero balance)
     if (!query) {
-      return Number(poolItem.usd_balance) > 0;
+      return true;
     }
-    // Otherwise filter by both search and balance
-    const matchesSearch = poolItem.searchableText.includes(query.toLowerCase());
-    const hasBalance = Number(poolItem.usd_balance) > 0;
-    return matchesSearch && hasBalance;
+    // For search queries, filter by searchable text
+    return poolItem.searchableText.includes(query.toLowerCase());
   });
 }
 
