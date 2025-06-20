@@ -31,18 +31,24 @@ vi.mock('$lib/stores/tokenStore', () => {
     }
   };
 
-  const balancesStoreValue = {
-    'token0-id': { in_tokens: '200000000000' },
-    'token1-id': { in_tokens: '200000000000' }
-  };
-
   return {
     tokenStore: {
       subscribe: vi.fn((callback) => {
         callback(storeValue);
         return { unsubscribe: vi.fn() };
       })
-    },
+    }
+  };
+});
+
+// Mock the balancesStore separately
+vi.mock('$lib/stores/balancesStore', () => {
+  const balancesStoreValue = {
+    'token0-id': { in_tokens: BigInt('200000000000'), in_usd: '200' },
+    'token1-id': { in_tokens: BigInt('200000000000'), in_usd: '200' }
+  };
+
+  return {
     currentUserBalancesStore: {
       subscribe: vi.fn((callback) => {
         callback(balancesStoreValue);
