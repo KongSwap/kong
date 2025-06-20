@@ -12,8 +12,7 @@ if [ "${NETWORK}" != "local" ]; then
     NETWORK_FLAG="--network ${NETWORK}"
 fi
 IDENTITY="--identity kong_user1"
-KONG_BACKEND=$(dfx canister id ${NETWOR
-K_FLAG} kong_backend)
+KONG_BACKEND=$(dfx canister id ${NETWORK_FLAG} kong_backend)
 
 # Token configurations
 SOL_AMOUNT=10_000_000  # 0.01 SOL (9 decimals)
@@ -125,12 +124,12 @@ print_info "Transaction: $SOL_TX_SIG"
 # Step 3: Wait for transaction confirmation
 print_header "STEP 3: WAIT FOR CONFIRMATION"
 print_info "Waiting for transaction confirmation..."
-sleep 15
+sleep 20
 
 # Step 4: Approve ksUSDT spending
 print_header "STEP 4: APPROVE KSUSDT"
 EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 300000000000" | bc)  # 5 minutes from now
-APPROVE_AMOUNT=$(echo "${KSUSDT_AMOUNT} + ${KSUSDT_FEE}" | bc)
+APPROVE_AMOUNT=$((KSUSDT_AMOUNT + KSUSDT_FEE))
 
 print_info "Approving $APPROVE_AMOUNT ksUSDT..."
 APPROVE_RESULT=$(dfx canister call ${NETWORK_FLAG} ${IDENTITY} ${KSUSDT_LEDGER} icrc2_approve "(record {

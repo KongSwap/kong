@@ -16,6 +16,9 @@ use crate::stable_pool::{pool_map, stable_pool::StablePool};
 use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
+use crate::chains::chains::SOL_CHAIN;
+use crate::swap::create_solana_swap_job::create_solana_swap_job;
+use crate::solana::utils::validation;
 use crate::stable_tx::{remove_liquidity_tx::RemoveLiquidityTx, stable_tx::StableTx, tx_map};
 use crate::stable_user::user_map;
 
@@ -37,6 +40,7 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
     let (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
         check_arguments(&args).await?;
     let ts = ICNetwork::get_time();
+    let args_clone = args.clone();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
     let caller_id = ICNetwork::caller_id();
 
@@ -50,6 +54,7 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
         &payout_lp_fee_0,
         &payout_amount_1,
         &payout_lp_fee_1,
+        &args_clone,
         ts,
     )
     .await
@@ -77,6 +82,7 @@ pub async fn remove_liquidity_from_pool(
     let (pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
         check_arguments_with_user(&args, user_id).await?;
     let ts = ICNetwork::get_time();
+    let args_clone = args.clone();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
     request_map::update_status(request_id, StatusCode::RemoveLiquidityFromPool, None);
 
@@ -90,6 +96,7 @@ pub async fn remove_liquidity_from_pool(
         &payout_lp_fee_0,
         &payout_amount_1,
         &payout_lp_fee_1,
+        &args_clone,
         ts,
     )
     .await
@@ -113,6 +120,7 @@ pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, St
     let (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
         check_arguments(&args).await?;
     let ts = ICNetwork::get_time();
+    let args_clone = args.clone();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
     let caller_id = ICNetwork::caller_id();
 
@@ -127,6 +135,7 @@ pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, St
             &payout_lp_fee_0,
             &payout_amount_1,
             &payout_lp_fee_1,
+            &args_clone,
             ts,
         )
         .await
@@ -240,6 +249,7 @@ async fn process_remove_liquidity(
     payout_lp_fee_0: &Nat,
     payout_amount_1: &Nat,
     payout_lp_fee_1: &Nat,
+    args: &RemoveLiquidityArgs,
     ts: u64,
 ) -> Result<RemoveLiquidityReply, String> {
     // LP token
@@ -268,6 +278,7 @@ async fn process_remove_liquidity(
         payout_amount_1,
         payout_lp_fee_1,
         remove_lp_token_amount,
+        args,
         ts,
     )
     .await
@@ -358,6 +369,7 @@ async fn send_payout_tokens(
     payout_amount_1: &Nat,
     payout_lp_fee_1: &Nat,
     remove_lp_token_amount: &Nat,
+    args: &RemoveLiquidityArgs,
     ts: u64,
 ) -> Result<RemoveLiquidityReply, String> {
     // Token0
@@ -377,6 +389,7 @@ async fn send_payout_tokens(
         &token_0,
         payout_amount_0,
         payout_lp_fee_0,
+        args.payout_address_0.as_ref(),  // Pass Solana address if provided
         &mut transfer_ids,
         &mut claim_ids,
         ts,
@@ -392,6 +405,7 @@ async fn send_payout_tokens(
         &token_1,
         payout_amount_1,
         payout_lp_fee_1,
+        args.payout_address_1.as_ref(),  // Pass Solana address if provided
         &mut transfer_ids,
         &mut claim_ids,
         ts,
@@ -430,6 +444,7 @@ async fn transfer_token(
     token: &StableToken,
     payout_amount: &Nat,
     payout_lp_fee: &Nat,
+    payout_address: Option<&String>,  // NEW parameter for Solana addresses
     transfer_ids: &mut Vec<u64>,
     claim_ids: &mut Vec<u64>,
     ts: u64,
@@ -445,39 +460,120 @@ async fn transfer_token(
         TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1, None),
     };
 
-    match icrc1_transfer(&amount_with_gas, to_principal_id, token, None).await {
-        Ok(block_id) => {
-            let transfer_id = transfer_map::insert(&StableTransfer {
-                transfer_id: 0,
-                request_id,
-                is_send: false,
-                amount: amount_with_gas,
-                token_id,
-                tx_id: TxId::BlockIndex(block_id),
-                ts,
-            });
-            transfer_ids.push(transfer_id);
-            match token_index {
-                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReceiveToken0Success, None),
-                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1Success, None),
-            };
+    // Check if this is a Solana token that needs special handling
+    if token.chain() == SOL_CHAIN {
+        // Validate Solana address was provided
+        let solana_address = match payout_address {
+            Some(addr) => {
+                match validation::validate_address(addr) {
+                    Ok(_) => Ok(addr.to_string()),
+                    Err(e) => Err(format!("Invalid Solana address: {}", e))
+                }
+            }
+            None => Err("Solana token payouts require payout_address".to_string())
+        };
+            
+        match solana_address {
+            Ok(address) => {
+                // Create Solana swap job for payout
+                match create_solana_swap_job(
+                    request_id,
+                    user_id,
+                    token,
+                    &amount,  // Use full amount, not amount_with_gas
+                    &Address::SolanaAddress(address.to_string())
+                ).await {
+                    Ok(job_id) => {
+                        let transfer_id = transfer_map::insert(&StableTransfer {
+                            transfer_id: 0,
+                            request_id,
+                            is_send: false,
+                            amount: amount.clone(),  // Use full amount for Solana
+                            token_id,
+                            tx_id: TxId::TransactionId(format!("job_{}", job_id)),
+                            ts,
+                        });
+                        transfer_ids.push(transfer_id);
+                        match token_index {
+                            TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReceiveToken0Success, 
+                                Some(&format!("Solana swap job #{} created", job_id))),
+                            TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1Success, 
+                                Some(&format!("Solana swap job #{} created", job_id))),
+                        };
+                    }
+                    Err(e) => {
+                        let claim = StableClaim::new(
+                            user_id,
+                            token_id,
+                            &amount,
+                            Some(request_id),
+                            Some(Address::SolanaAddress(address.to_string())),
+                            ts,
+                        );
+                        let claim_id = claim_map::insert(&claim);
+                        claim_ids.push(claim_id);
+                        let message = format!("Saved as claim #{}. Failed to create Solana job: {}", claim_id, e);
+                        match token_index {
+                            TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReceiveToken0Failed, Some(&message)),
+                            TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1Failed, Some(&message)),
+                        };
+                    }
+                }
+            }
+            Err(e) => {
+                let claim = StableClaim::new(
+                    user_id,
+                    token_id,
+                    &amount,
+                    Some(request_id),
+                    Some(Address::PrincipalId(*to_principal_id)),  // Fallback to principal
+                    ts,
+                );
+                let claim_id = claim_map::insert(&claim);
+                claim_ids.push(claim_id);
+                let message = format!("Saved as claim #{}. {}", claim_id, e);
+                match token_index {
+                    TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReceiveToken0Failed, Some(&message)),
+                    TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1Failed, Some(&message)),
+                };
+            }
         }
-        Err(e) => {
-            let claim = StableClaim::new(
-                user_id,
-                token_id,
-                &amount,
-                Some(request_id),
-                Some(Address::PrincipalId(*to_principal_id)),
-                ts,
-            );
-            let claim_id = claim_map::insert(&claim);
-            claim_ids.push(claim_id);
-            let message = format!("Saved as claim #{}. {}", claim_id, e);
-            match token_index {
-                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReceiveToken0Failed, Some(&message)),
-                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1Failed, Some(&message)),
-            };
+    } else {
+        // Standard IC token transfer
+        match icrc1_transfer(&amount_with_gas, to_principal_id, token, None).await {
+            Ok(block_id) => {
+                let transfer_id = transfer_map::insert(&StableTransfer {
+                    transfer_id: 0,
+                    request_id,
+                    is_send: false,
+                    amount: amount_with_gas,
+                    token_id,
+                    tx_id: TxId::BlockIndex(block_id),
+                    ts,
+                });
+                transfer_ids.push(transfer_id);
+                match token_index {
+                    TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReceiveToken0Success, None),
+                    TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1Success, None),
+                };
+            }
+            Err(e) => {
+                let claim = StableClaim::new(
+                    user_id,
+                    token_id,
+                    &amount,
+                    Some(request_id),
+                    Some(Address::PrincipalId(*to_principal_id)),
+                    ts,
+                );
+                let claim_id = claim_map::insert(&claim);
+                claim_ids.push(claim_id);
+                let message = format!("Saved as claim #{}. {}", claim_id, e);
+                match token_index {
+                    TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReceiveToken0Failed, Some(&message)),
+                    TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1Failed, Some(&message)),
+                };
+            }
         }
     }
 }

@@ -82,45 +82,101 @@ async fn send_claim(
 
     request_map::update_status(request_id, StatusCode::ClaimToken, None);
 
-    let amount_with_gas = nat_subtract(amount, &token.fee()).unwrap_or(nat_zero());
-    match match to_address {
-        AccountId(to_account_id) => icp_transfer(&amount_with_gas, to_account_id, token, None).await,
-        PrincipalId(to_principal_id) => icrc1_transfer(&amount_with_gas, to_principal_id, token, None).await,
-        SolanaAddress(_) => {
-            // Solana tokens require special handling via swap jobs
-            // For now, return an error as Solana claims need to be processed differently
-            Err("Solana token claims not yet implemented".to_string())
+    match to_address {
+        AccountId(to_account_id) => {
+            let amount_with_gas = nat_subtract(amount, &token.fee()).unwrap_or(nat_zero());
+            match icp_transfer(&amount_with_gas, to_account_id, token, None).await {
+                Ok(tx_id) => {
+                    let transfer_id = transfer_map::insert(&StableTransfer {
+                        transfer_id: 0,
+                        request_id,
+                        is_send: false,
+                        amount: amount_with_gas,
+                        token_id: token.token_id(),
+                        tx_id: TxId::BlockIndex(tx_id),
+                        ts,
+                    });
+                    transfer_ids.push(transfer_id);
+                    claim_map::update_claimed_status(claim.claim_id, request_id, transfer_id);
+                    request_map::update_status(request_id, StatusCode::ClaimTokenSuccess, None);
+                    Ok(())
+                }
+                Err(e) => {
+                    // revert claim status to unclaimed or claimable
+                    match claim_status {
+                        ClaimStatus::Claimable => claim_map::update_claimable_status(claim.claim_id, request_id),
+                        _ => claim_map::update_unclaimed_status(claim.claim_id, request_id),
+                    };
+                    request_map::update_status(request_id, StatusCode::ClaimTokenFailed, Some(&e));
+                    Err(format!("Failed to send claim_id #{}. {}", claim.claim_id, e))
+                }
+            }
         }
-    } {
-        Ok(tx_id) => {
-            let transfer_id = transfer_map::insert(&StableTransfer {
-                transfer_id: 0,
-                request_id,
-                is_send: false,
-                amount: amount_with_gas,
-                token_id: token.token_id(),
-                tx_id: TxId::BlockIndex(tx_id),
-                ts,
-            });
-            transfer_ids.push(transfer_id);
-
-            // claim successful. update claim status
-            claim_map::update_claimed_status(claim.claim_id, request_id, transfer_id);
-
-            request_map::update_status(request_id, StatusCode::ClaimTokenSuccess, None);
-
-            Ok(())
+        PrincipalId(to_principal_id) => {
+            let amount_with_gas = nat_subtract(amount, &token.fee()).unwrap_or(nat_zero());
+            match icrc1_transfer(&amount_with_gas, to_principal_id, token, None).await {
+                Ok(tx_id) => {
+                    let transfer_id = transfer_map::insert(&StableTransfer {
+                        transfer_id: 0,
+                        request_id,
+                        is_send: false,
+                        amount: amount_with_gas,
+                        token_id: token.token_id(),
+                        tx_id: TxId::BlockIndex(tx_id),
+                        ts,
+                    });
+                    transfer_ids.push(transfer_id);
+                    claim_map::update_claimed_status(claim.claim_id, request_id, transfer_id);
+                    request_map::update_status(request_id, StatusCode::ClaimTokenSuccess, None);
+                    Ok(())
+                }
+                Err(e) => {
+                    // revert claim status to unclaimed or claimable
+                    match claim_status {
+                        ClaimStatus::Claimable => claim_map::update_claimable_status(claim.claim_id, request_id),
+                        _ => claim_map::update_unclaimed_status(claim.claim_id, request_id),
+                    };
+                    request_map::update_status(request_id, StatusCode::ClaimTokenFailed, Some(&e));
+                    Err(format!("Failed to send claim_id #{}. {}", claim.claim_id, e))
+                }
+            }
         }
-        Err(e) => {
-            // revert claim status to unclaimed or claimable
-            match claim_status {
-                ClaimStatus::Claimable => claim_map::update_claimable_status(claim.claim_id, request_id),
-                _ => claim_map::update_unclaimed_status(claim.claim_id, request_id),
-            };
-
-            request_map::update_status(request_id, StatusCode::ClaimTokenFailed, Some(&e));
-
-            Err(format!("Failed to send claim_id #{}. {}", claim.claim_id, e))
+        SolanaAddress(solana_address) => {
+            // Create Solana swap job for failed claim
+            match crate::swap::create_solana_swap_job::create_solana_swap_job(
+                request_id,  // Use the claim request_id
+                claim.user_id,  // Use user_id from claim
+                token,
+                amount,  // Use full amount for Solana
+                &Address::SolanaAddress(solana_address.clone())
+            ).await {
+                Ok(job_id) => {
+                    let transfer_id = transfer_map::insert(&StableTransfer {
+                        transfer_id: 0,
+                        request_id,
+                        is_send: false,
+                        amount: amount.clone(),
+                        token_id: token.token_id(),
+                        tx_id: TxId::TransactionId(format!("job_{}", job_id)),
+                        ts,
+                    });
+                    transfer_ids.push(transfer_id);
+                    claim_map::update_claimed_status(claim.claim_id, request_id, transfer_id);
+                    request_map::update_status(request_id, StatusCode::ClaimTokenSuccess, 
+                        Some(&format!("Solana swap job #{} created", job_id)));
+                    Ok(())
+                }
+                Err(e) => {
+                    // revert claim status to unclaimed or claimable
+                    match claim_status {
+                        ClaimStatus::Claimable => claim_map::update_claimable_status(claim.claim_id, request_id),
+                        _ => claim_map::update_unclaimed_status(claim.claim_id, request_id),
+                    };
+                    let message = format!("Failed to create Solana job: {}", e);
+                    request_map::update_status(request_id, StatusCode::ClaimTokenFailed, Some(&message));
+                    Err(format!("Failed to send claim_id #{}. {}", claim.claim_id, message))
+                }
+            }
         }
     }
 }

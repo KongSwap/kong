@@ -3,10 +3,12 @@ use ic_cdk::{query, update};
 use crate::ic::guards::caller_is_proxy;
 use crate::ic::network::ICNetwork;
 use crate::stable_memory::{
-    with_solana_latest_blockhash_mut, with_swap_job_queue, with_swap_job_queue_mut
+    with_solana_latest_blockhash_mut, with_swap_job_queue, with_swap_job_queue_mut,
+    store_transaction_notification
 };
 use crate::swap::swap_job::{SwapJob, SwapJobStatus};
 use crate::solana::latest_blockhash::LatestBlockhash;
+use std::ops::Bound::{Excluded, Unbounded};
 
 /// Update the latest Solana blockhash (called by proxy)
 #[update(guard = "caller_is_proxy")]
@@ -24,29 +26,18 @@ pub fn update_solana_latest_blockhash(blockhash: String) -> Result<(), String> {
 
 /// Get pending Solana swap jobs for proxy processing
 #[query]
-pub fn get_pending_solana_swaps(job_id: Option<u64>) -> Result<Vec<SwapJob>, String> {
+pub fn get_pending_solana_swaps(after_job_id: Option<u64>) -> Result<Vec<SwapJob>, String> {
     const MAX_BATCH_SIZE: usize = 100;
-    let mut jobs = Vec::new();
     
     with_swap_job_queue(|queue| {
-        for (id, job) in queue.iter() {
-            // Pagination support
-            if let Some(min_job_id) = job_id {
-                if id <= min_job_id {
-                    continue;
-                }
-            }
-            
-            if job.status == SwapJobStatus::Pending {
-                jobs.push(job.clone());
-                if jobs.len() >= MAX_BATCH_SIZE {
-                    break;
-                }
-            }
-        }
-    });
-
-    Ok(jobs)
+        Ok(queue
+            .range((after_job_id.map_or(Unbounded, Excluded), Unbounded))
+            .filter_map(|(_, job)| {
+                matches!(job.status, SwapJobStatus::Pending).then(|| job.clone())
+            })
+            .take(MAX_BATCH_SIZE)
+            .collect())
+    })
 }
 
 /// Update a Solana swap job status (called by proxy after transaction execution)
@@ -126,8 +117,7 @@ pub fn notify_solana_transfer(
     signature: String,
     metadata: Option<String>,
 ) -> Result<(), String> {
-    use super::notifications::store_transaction_notification;
-    use super::types::TransactionNotification;
+    use crate::solana::proxy::types::TransactionNotification;
     
     let notification = TransactionNotification {
         signature: signature.clone(),
@@ -138,37 +128,4 @@ pub fn notify_solana_transfer(
     
     store_transaction_notification(notification);
     Ok(())
-}
-
-/// Clean up expired jobs (called periodically)
-#[update(guard = "caller_is_proxy")]
-pub fn cleanup_expired_solana_jobs() -> Result<u32, String> {
-    const FIVE_MINUTES_NANOS: u64 = 5 * 60 * 1_000_000_000;
-    let current_time = ICNetwork::get_time();
-    let mut expired_count = 0u32;
-    
-    with_swap_job_queue_mut(|queue| {
-        let mut jobs_to_update = Vec::new();
-        
-        // Find expired pending jobs
-        for (id, job) in queue.iter() {
-            if job.status == SwapJobStatus::Pending && 
-               current_time > job.created_at + FIVE_MINUTES_NANOS {
-                jobs_to_update.push(id);
-            }
-        }
-        
-        // Update expired jobs
-        for job_id in jobs_to_update {
-            if let Some(mut job) = queue.get(&job_id) {
-                job.status = SwapJobStatus::Failed;
-                job.error_message = Some("Transaction expired after 5 minutes".to_string());
-                job.updated_at = current_time;
-                queue.insert(job_id, job);
-                expired_count += 1;
-            }
-        }
-    });
-    
-    Ok(expired_count)
 }

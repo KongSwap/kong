@@ -22,7 +22,6 @@ pub mod stable_lp_token;
 pub mod stable_memory;
 pub mod stable_pool;
 pub mod stable_request;
-pub mod stable_solana_tx;
 pub mod stable_token;
 pub mod stable_transfer;
 pub mod stable_tx;
@@ -35,4 +34,4 @@ pub mod user;
 pub mod user_balances;
 
 pub const APP_NAME: &str = "KongSwap";
-pub const APP_VERSION: &str = "v0.0.22";
+pub const APP_VERSION: &str = "v0.0.26";

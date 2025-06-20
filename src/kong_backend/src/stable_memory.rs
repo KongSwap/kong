@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 use crate::solana::latest_blockhash::LatestBlockhash;
+use crate::solana::proxy::types::{TransactionNotification, TransactionNotificationId};
 use crate::stable_claim::stable_claim::{StableClaim, StableClaimId};
 use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
 use crate::stable_lp_token::stable_lp_token::{StableLPToken, StableLPTokenId};
@@ -115,6 +116,14 @@ thread_local! {
         RefCell::new(StableBTreeMap::init(memory_manager.get(SOLANA_SWAP_JOB_QUEUE_ID)))
     });
 
+    // Stable map for Solana transaction notifications
+    pub static SOLANA_TX_NOTIFICATIONS: RefCell<StableBTreeMap<TransactionNotificationId, TransactionNotification, Memory>> = 
+        with_memory_manager(|memory_manager| {
+            RefCell::new(StableBTreeMap::init(
+                memory_manager.get(SOLANA_TX_NOTIFICATIONS_ID)
+            ))
+        });
+
     //
     // Archive Stable Memory
     //
@@ -192,4 +201,75 @@ pub fn with_swap_job_queue<R>(f: impl FnOnce(&StableBTreeMap<u64, SwapJob, Memor
 /// Helper function to mutate the swap job queue
 pub fn with_swap_job_queue_mut<R>(f: impl FnOnce(&mut StableBTreeMap<u64, SwapJob, Memory>) -> R) -> R {
     SOLANA_SWAP_JOB_QUEUE.with(|cell| f(&mut cell.borrow_mut()))
+}
+
+/// Helper function to access solana transaction notifications
+pub fn with_solana_tx_notifications<R>(f: impl FnOnce(&StableBTreeMap<TransactionNotificationId, TransactionNotification, Memory>) -> R) -> R {
+    SOLANA_TX_NOTIFICATIONS.with(|cell| f(&cell.borrow()))
+}
+
+/// Helper function to mutate solana transaction notifications
+pub fn with_solana_tx_notifications_mut<R>(f: impl FnOnce(&mut StableBTreeMap<TransactionNotificationId, TransactionNotification, Memory>) -> R) -> R {
+    SOLANA_TX_NOTIFICATIONS.with(|cell| f(&mut cell.borrow_mut()))
+}
+
+/// Store a transaction notification
+pub fn store_transaction_notification(notification: TransactionNotification) {
+    with_solana_tx_notifications_mut(|notifications| {
+        let key = TransactionNotificationId(notification.signature.clone());
+        notifications.insert(key, notification);
+    });
+}
+
+/// Get a transaction by signature
+pub fn get_solana_transaction(signature: String) -> Option<TransactionNotification> {
+    with_solana_tx_notifications(|notifications| {
+        let key = TransactionNotificationId(signature);
+        notifications.get(&key)
+    })
+}
+
+/// Check if a transaction exists
+pub fn transaction_exists(signature: &str) -> bool {
+    with_solana_tx_notifications(|notifications| {
+        let key = TransactionNotificationId(signature.to_string());
+        notifications.contains_key(&key)
+    })
+}
+
+/// Get transaction count for metrics
+pub fn get_transaction_count() -> u64 {
+    with_solana_tx_notifications(|notifications| {
+        notifications.len()
+    })
+}
+
+/// Clean up old notifications (older than 24 hours)
+pub fn cleanup_old_notifications() -> u32 {
+    use crate::ic::network::ICNetwork;
+    
+    const TWENTY_FOUR_HOURS_NANOS: u64 = 24 * 60 * 60 * 1_000_000_000;
+    let current_time = ICNetwork::get_time();
+    let cutoff_time = current_time.saturating_sub(TWENTY_FOUR_HOURS_NANOS);
+    
+    let mut removed_count = 0u32;
+    
+    with_solana_tx_notifications_mut(|notifications| {
+        let mut to_remove = Vec::new();
+        
+        // Find old entries
+        for (key, notification) in notifications.iter() {
+            if notification.timestamp < cutoff_time {
+                to_remove.push(key.clone());
+            }
+        }
+        
+        // Remove them
+        for key in to_remove {
+            notifications.remove(&key);
+            removed_count += 1;
+        }
+    });
+    
+    removed_count
 }

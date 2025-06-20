@@ -1,16 +1,15 @@
 pub mod endpoints;
-pub mod notifications;
 pub mod types;
 
 // Re-export commonly used types
 pub use endpoints::{
-    cleanup_expired_solana_jobs,
     get_pending_solana_swaps,
     notify_solana_transfer,
     update_solana_latest_blockhash,
     update_solana_swap,
 };
-pub use notifications::{
+// Transaction notification functions are now in stable_memory
+pub use crate::stable_memory::{
     get_solana_transaction,
     store_transaction_notification,
     transaction_exists,

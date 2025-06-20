@@ -11,7 +11,7 @@ use crate::ic::address::Address;
 use crate::ic::network::ICNetwork;
 use crate::stable_memory::{get_cached_solana_address, get_next_solana_swap_job_id, with_swap_job_queue_mut, with_solana_latest_blockhash};
 use crate::stable_token::{stable_token::StableToken, token::Token};
-use crate::solana::transaction::builder::TransactionBuilder;
+use crate::solana::transaction::builder::{TransactionBuilder, SplTransferWithAtaParams};
 use crate::solana::transaction::sign::sign_transaction;
 
 use super::swap_job::{SwapJob, SwapJobParams, SwapJobStatus};
@@ -76,10 +76,25 @@ pub async fn create_solana_swap_job(
             ).await
             .map_err(|e| format!("Failed to build SOL transfer: {}", e))?
         } else {
-            // SPL token transfer
-            // For SPL tokens, we need to build a transfer with ATA creation
-            // This is a simplified version - kong_rpc will handle the actual ATA computation
-            return Err("SPL token transfers not yet fully implemented in kong_backend".to_string());
+            // SPL token transfer with ATA creation
+            let from_token_account = builder.derive_associated_token_account(&kong_address, &sol_token.mint_address)
+                .map_err(|e| format!("Failed to derive source ATA: {}", e))?;
+            let to_token_account = builder.derive_associated_token_account(&destination_address, &sol_token.mint_address)
+                .map_err(|e| format!("Failed to derive destination ATA: {}", e))?;
+
+            let params = SplTransferWithAtaParams {
+                from_address: &kong_address,
+                from_token_account: &from_token_account,
+                to_wallet_address: &destination_address,
+                to_token_account: &to_token_account,
+                mint_address: &sol_token.mint_address,
+                fee_payer: &kong_address,
+                amount: amount_u64,
+                memo: Some(format!("Kong swap job #{}", job_id)),
+            };
+            
+            builder.build_transfer_spl_with_ata_transaction(params).await
+                .map_err(|e| format!("Failed to build SPL transfer with ATA: {}", e))?
         };
 
         // Sign the transaction

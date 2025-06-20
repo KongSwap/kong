@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# note: quick hot changes with existing LP pools
+# cargo clean:   Bash(dfx deploy kong_backend --upgrade-unchanged)
 # Setup directories
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"

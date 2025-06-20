@@ -3,6 +3,8 @@ use icrc_ledger_types::icrc1::account::Account;
 
 use super::add_liquidity::TokenIndex;
 use super::add_liquidity_args::AddLiquidityArgs;
+use super::liquidity_payment_verifier::LiquidityPaymentVerifier;
+use crate::chains::chains::SOL_CHAIN;
 use super::add_liquidity_reply::AddLiquidityReply;
 use super::add_liquidity_reply_helpers::{to_add_liquidity_reply, to_add_liquidity_reply_failed};
 
@@ -28,9 +30,9 @@ use crate::stable_user::user_map;
 pub async fn add_liquidity_transfer_from(args: AddLiquidityArgs) -> Result<AddLiquidityReply, String> {
     let (user_id, pool, add_amount_0, add_amount_1) = check_arguments(&args).await?;
     let ts = ICNetwork::get_time();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args), ts));
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
-    let result = match process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts).await {
+    let result = match process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, &args, ts).await {
         Ok(reply) => {
             request_map::update_status(request_id, StatusCode::Success, None);
             Ok(reply)
@@ -51,7 +53,7 @@ pub async fn add_liquidity_transfer_from_async(args: AddLiquidityArgs) -> Result
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
     ic_cdk::spawn(async move {
-        match process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts).await {
+        match process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, &args, ts).await {
             Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
             Err(_) => request_map::update_status(request_id, StatusCode::Failed, None),
         };
@@ -79,16 +81,26 @@ async fn check_arguments(args: &AddLiquidityArgs) -> Result<(u32, StablePool, Na
     if token_0.is_removed() {
         Err("Token_0 is suspended or removed".to_string())?
     }
-    if !token_0.is_icrc2() {
-        Err("Token_0 must support ICRC2".to_string())?
+    // Check for ICRC2 support or Solana signature
+    if token_0.chain() == SOL_CHAIN {
+        if args.signature_0.is_none() {
+            Err("Token_0: Solana tokens require signature for verification".to_string())?
+        }
+    } else if !token_0.is_icrc2() {
+        Err("Token_0 must support ICRC2 or provide signature for Solana".to_string())?
     }
 
     let token_1 = pool.token_1();
     if token_1.is_removed() {
         Err("Token_1 is suspended or removed".to_string())?
     }
-    if !token_1.is_icrc2() {
-        Err("Token_1 must support ICRC2".to_string())?
+    // Check for ICRC2 support or Solana signature
+    if token_1.chain() == SOL_CHAIN {
+        if args.signature_1.is_none() {
+            Err("Token_1: Solana tokens require signature for verification".to_string())?
+        }
+    } else if !token_1.is_icrc2() {
+        Err("Token_1 must support ICRC2 or provide signature for Solana".to_string())?
     }
 
     // make sure user is registered, if not create a new user
@@ -190,6 +202,7 @@ async fn process_add_liquidity(
     pool: &StablePool,
     add_amount_0: &Nat,
     add_amount_1: &Nat,
+    args: &AddLiquidityArgs,
     ts: u64,
 ) -> Result<AddLiquidityReply, String> {
     // Token0
@@ -203,32 +216,90 @@ async fn process_add_liquidity(
 
     request_map::update_status(request_id, StatusCode::Start, None);
 
-    // transfer_from token_0. if this fails, nothing to return so just return the error
-    transfer_from_token(
-        request_id,
-        &caller_id,
-        &TokenIndex::Token0,
-        &token_0,
-        add_amount_0,
-        &kong_backend,
-        &mut transfer_ids,
-        ts,
-    )
-    .await
-    .map_err(|e| format!("Token_0 transfer_from failed. {}", e))?;
+    // Handle token_0 transfer (IC or Solana)
+    if token_0.chain() == SOL_CHAIN {
+        // Verify Solana payment with signature
+        let verifier = LiquidityPaymentVerifier::new(ICNetwork::caller());
+        let tx_id_0 = args.tx_id_0.as_ref().ok_or("Token_0: Solana tokens require tx_id")?;
+        let signature_0 = args.signature_0.as_ref().ok_or("Token_0: Solana tokens require signature")?;
+        
+        verifier.verify_liquidity_payment(&args, &token_0, add_amount_0, tx_id_0, signature_0).await
+            .map_err(|e| format!("Token_0 Solana payment verification failed. {}", e))?;
+        
+        // Record the transfer
+        let transfer_id = transfer_map::insert(&StableTransfer {
+            transfer_id: 0,
+            request_id,
+            is_send: true,
+            amount: add_amount_0.clone(),
+            token_id: token_0.token_id(),
+            tx_id: tx_id_0.clone(),
+            ts,
+        });
+        transfer_ids.push(transfer_id);
+        request_map::update_status(request_id, StatusCode::SendToken0Success, None);
+    } else {
+        // Standard ICRC2 transfer
+        transfer_from_token(
+            request_id,
+            &caller_id,
+            &TokenIndex::Token0,
+            &token_0,
+            add_amount_0,
+            &kong_backend,
+            &mut transfer_ids,
+            ts,
+        )
+        .await
+        .map_err(|e| format!("Token_0 transfer_from failed. {}", e))?;
+    }
 
-    // transfer_from token_1. if this fails, return token_0 back to user
-    if let Err(e) = transfer_from_token(
-        request_id,
-        &caller_id,
-        &TokenIndex::Token1,
-        &token_1,
-        add_amount_1,
-        &kong_backend,
-        &mut transfer_ids,
-        ts,
-    )
-    .await
+    // Handle token_1 transfer (IC or Solana)
+    let token_1_result = if token_1.chain() == SOL_CHAIN {
+        // Verify Solana payment with signature
+        let verifier = LiquidityPaymentVerifier::new(ICNetwork::caller());
+        let tx_id_1 = args.tx_id_1.as_ref().ok_or("Token_1: Solana tokens require tx_id".to_string());
+        let signature_1 = args.signature_1.as_ref().ok_or("Token_1: Solana tokens require signature".to_string());
+        
+        match (tx_id_1, signature_1) {
+            (Ok(tx_id), Ok(sig)) => {
+                match verifier.verify_liquidity_payment(&args, &token_1, add_amount_1, tx_id, sig).await {
+                    Ok(_) => {
+                        // Record the transfer
+                        let transfer_id = transfer_map::insert(&StableTransfer {
+                            transfer_id: 0,
+                            request_id,
+                            is_send: true,
+                            amount: add_amount_1.clone(),
+                            token_id: token_1.token_id(),
+                            tx_id: tx_id.clone(),
+                            ts,
+                        });
+                        transfer_ids.push(transfer_id);
+                        request_map::update_status(request_id, StatusCode::SendToken1Success, None);
+                        Ok(())
+                    },
+                    Err(e) => Err(format!("Token_1 Solana payment verification failed. {}", e))
+                }
+            },
+            (Err(e), _) | (_, Err(e)) => Err(e)
+        }
+    } else {
+        // Standard ICRC2 transfer
+        transfer_from_token(
+            request_id,
+            &caller_id,
+            &TokenIndex::Token1,
+            &token_1,
+            add_amount_1,
+            &kong_backend,
+            &mut transfer_ids,
+            ts,
+        )
+        .await
+    };
+    
+    if let Err(e) = token_1_result
     {
         return_tokens(
             request_id,

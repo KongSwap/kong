@@ -9,7 +9,7 @@ use crate::ic::network::ICNetwork;
 use crate::ic::verify_transfer::verify_transfer;
 use crate::stable_transfer::tx_id::TxId;
 use crate::stable_token::stable_token::StableToken;
-use crate::stable_solana_tx::solana_tx_map;
+use crate::stable_memory::get_solana_transaction;
 
 use super::swap_args::SwapArgs;
 use super::message_builder::CanonicalSwapMessage;
@@ -116,12 +116,29 @@ async fn verify_solana_payment(args: &SwapArgs, pay_amount: u64) -> Result<Payme
     };
 
     // First, extract the sender from the transaction
+    ICNetwork::info_log(&format!("Extracting sender from transaction: {}", tx_signature_str));
     let sender_pubkey = extract_sender_from_transaction(&tx_signature_str).await?;
+    ICNetwork::info_log(&format!("Extracted sender: {}", sender_pubkey));
     
     // Create canonical message with extracted sender and verify signature
+    // TODO: Important integration note for Solana swaps:
+    // The canonical message uses token symbols from SwapArgs (e.g., "SOL", "ksUSDT")
+    // NOT the full chain-prefixed format (e.g., "SOL.11111111...", "IC.zdzgz-siaaa...")
+    // 
+    // Integrators must sign the message with the exact format:
+    // - pay_token: "SOL" (not "SOL.11111111111111111111111111111111")
+    // - receive_token: "ksUSDT" (not "IC.zdzgz-siaaa-aaaar-qaiba-cai")
+    // - pay_address: The actual Solana wallet address that sent the transaction
+    // 
+    // The pay_address is extracted from the Solana transaction by kong_rpc,
+    // so the signature must match this extracted address exactly.
+    // 
+    // Future improvement: Consider accepting both formats or providing a 
+    // signature helper endpoint that returns the exact message to sign.
     let canonical_message = CanonicalSwapMessage::from_swap_args(args)
         .with_sender(sender_pubkey.clone());
     let message_to_verify = canonical_message.to_signing_message();
+    ICNetwork::info_log(&format!("Message to verify: {}", message_to_verify));
     
     verify_canonical_message(&message_to_verify, &sender_pubkey, signature)
         .map_err(|e| format!("Signature verification failed: {}", e))?;
@@ -146,7 +163,7 @@ async fn verify_solana_payment(args: &SwapArgs, pay_amount: u64) -> Result<Payme
 
 /// Extract sender public key from a Solana transaction
 async fn extract_sender_from_transaction(tx_signature: &str) -> Result<String, String> {
-    let transaction = solana_tx_map::get(tx_signature)
+    let transaction = get_solana_transaction(tx_signature.to_string())
         .ok_or_else(|| format!("Solana transaction {} not found. Make sure kong_rpc has processed this transaction.", tx_signature))?;
     
     // Parse metadata to extract sender
@@ -175,7 +192,7 @@ async fn verify_solana_transaction(
     expected_sender: &str,
     expected_amount: u64,
 ) -> Result<(), String> {
-    let transaction = solana_tx_map::get(tx_signature)
+    let transaction = get_solana_transaction(tx_signature.to_string())
         .ok_or_else(|| format!("Solana transaction {} not found. Make sure kong_rpc has processed this transaction.", tx_signature))?;
     
     // Check transaction status

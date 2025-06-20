@@ -1,21 +1,22 @@
-//! Pool-specific payment verification module
-//! Handles verification of incoming payments for pool creation
+//! Liquidity-specific payment verification module
+//! Handles verification of incoming payments for liquidity provision
 
 use anyhow::Result;
 use candid::{Nat, Principal};
 use num_traits::ToPrimitive;
 
 use crate::stable_token::stable_token::StableToken;
+use crate::stable_token::token::Token;
 use crate::stable_transfer::tx_id::TxId;
 use crate::swap::verify_canonical_message::verify_canonical_message;
 use crate::ic::network::ICNetwork;
 use crate::stable_memory::get_solana_transaction;
 
-use super::message_builder::CanonicalAddPoolMessage;
-use super::add_pool_args::AddPoolArgs;
+use super::message_builder::CanonicalAddLiquidityMessage;
+use super::add_liquidity_args::AddLiquidityArgs;
 
-/// Result of pool payment verification
-pub enum PoolPaymentVerification {
+/// Result of liquidity payment verification
+pub enum LiquidityPaymentVerification {
     /// Solana/SPL payment verified via signature and transaction
     SolanaPayment {
         tx_signature: String,
@@ -24,48 +25,42 @@ pub enum PoolPaymentVerification {
     },
 }
 
-/// Pool payment verifier that handles cross-chain pool creation payments
-pub struct PoolPaymentVerifier {
+/// Liquidity payment verifier that handles cross-chain liquidity provision payments
+pub struct LiquidityPaymentVerifier {
     _caller: Principal,
 }
 
-impl PoolPaymentVerifier {
-    /// Create a new PoolPaymentVerifier instance
+impl LiquidityPaymentVerifier {
+    /// Create a new LiquidityPaymentVerifier instance
     pub fn new(caller: Principal) -> Self {
         Self { _caller: caller }
     }
 
-    /// Verify payment for pool creation with signature
-    pub async fn verify_pool_payment(
+    /// Verify payment for liquidity provision with signature
+    pub async fn verify_liquidity_payment(
         &self,
-        args: &AddPoolArgs,
+        args: &AddLiquidityArgs,
         token: &StableToken,
         amount: &Nat,
         tx_id: &TxId,
         signature: &str,
-    ) -> Result<PoolPaymentVerification, String> {
-        // Only Solana tokens are supported for cross-chain pool creation
-        match token {
-            StableToken::Solana(_) => {
-                verify_solana_pool_payment(args, amount, tx_id, signature).await
-            }
-            StableToken::IC(_) => {
-                Err("IC tokens don't require signature verification for pool creation".to_string())
-            }
-            StableToken::LP(_) => {
-                Err("LP tokens cannot be used for pool creation".to_string())
-            }
+    ) -> Result<LiquidityPaymentVerification, String> {
+        // Only Solana tokens are supported for cross-chain liquidity provision
+        if token.chain() == crate::chains::chains::SOL_CHAIN {
+            verify_solana_liquidity_payment(args, amount, tx_id, signature).await
+        } else {
+            Err("Only Solana tokens require signature verification for liquidity provision".to_string())
         }
     }
 }
 
-/// Verify Solana payment for pool creation
-async fn verify_solana_pool_payment(
-    args: &AddPoolArgs,
+/// Verify Solana payment for liquidity provision
+async fn verify_solana_liquidity_payment(
+    args: &AddLiquidityArgs,
     amount: &Nat,
     tx_id: &TxId,
     signature: &str,
-) -> Result<PoolPaymentVerification, String> {
+) -> Result<LiquidityPaymentVerification, String> {
     // Extract transaction signature
     let tx_signature_str = match tx_id {
         TxId::TransactionId(hash) => hash.clone(),
@@ -75,26 +70,26 @@ async fn verify_solana_pool_payment(
     // Extract sender from the transaction
     let sender_pubkey = extract_sender_from_transaction(&tx_signature_str).await?;
     
-    // Create canonical pool message and verify signature
-    let canonical_message = CanonicalAddPoolMessage::from_add_pool_args(args);
+    // Create canonical liquidity message and verify signature
+    let canonical_message = CanonicalAddLiquidityMessage::from_add_liquidity_args(args);
     let message_to_verify = canonical_message.to_signing_message();
     
     verify_canonical_message(&message_to_verify, &sender_pubkey, signature)
-        .map_err(|e| format!("Pool signature verification failed: {}", e))?;
+        .map_err(|e| format!("Liquidity signature verification failed: {}", e))?;
     
     // Check timestamp freshness (5 minutes)
     let current_time_ms = ICNetwork::get_time() / 1_000_000;
     let message_timestamp = args.timestamp.unwrap_or(current_time_ms);
     let age_ms = current_time_ms.saturating_sub(message_timestamp);
     if age_ms > 300_000 {
-        return Err(format!("Pool creation signature timestamp too old: {} ms", age_ms));
+        return Err(format!("Liquidity provision signature timestamp too old: {} ms", age_ms));
     }
 
     // Verify the actual Solana transaction
     let amount_u64 = amount.0.to_u64().ok_or("Amount too large")?;
     verify_solana_transaction(&tx_signature_str, &sender_pubkey, amount_u64).await?;
     
-    Ok(PoolPaymentVerification::SolanaPayment {
+    Ok(LiquidityPaymentVerification::SolanaPayment {
         tx_signature: tx_signature_str,
         from_address: sender_pubkey,
         amount: amount_u64,
@@ -103,13 +98,8 @@ async fn verify_solana_pool_payment(
 
 /// Extract sender public key from a Solana transaction
 async fn extract_sender_from_transaction(tx_signature: &str) -> Result<String, String> {
-    ic_cdk::println!("DEBUG: Looking up transaction: {}", tx_signature);
     let transaction = get_solana_transaction(tx_signature.to_string())
-        .ok_or_else(|| {
-            ic_cdk::println!("DEBUG: Transaction {} not found in notifications storage", tx_signature);
-            format!("Solana transaction {} not found. Make sure kong_rpc has processed this transaction.", tx_signature)
-        })?;
-    ic_cdk::println!("DEBUG: Found transaction with status: {}", transaction.status);
+        .ok_or_else(|| format!("Solana transaction {} not found. Make sure kong_rpc has processed this transaction.", tx_signature))?;
     
     // Parse metadata to extract sender
     if let Some(metadata_json) = &transaction.metadata {

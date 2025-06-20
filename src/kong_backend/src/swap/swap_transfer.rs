@@ -142,6 +142,9 @@ async fn check_arguments(args: &SwapArgs, request_id: u64, ts: u64) -> Result<(S
 
     let pay_amount = args.pay_amount.clone();
 
+    // Debug log
+    ICNetwork::info_log(&format!("swap_transfer: signature present: {}", args.signature.is_some()));
+    
     // Check if this is a cross-chain swap based on signature presence
     if args.signature.is_some() {
         // Cross-chain payment path - use payment verifier
@@ -184,18 +187,19 @@ async fn check_arguments(args: &SwapArgs, request_id: u64, ts: u64) -> Result<(S
         }
     } else {
         // IC-only path (backward compatible) - original flow
-        // check pay_tx_id is valid block index
+        // For IC tokens, we need a valid block index
         let transfer_id = match &args.pay_tx_id {
             Some(pay_tx_id) => match pay_tx_id {
                 TxId::BlockIndex(pay_tx_id) => verify_transfer_token(request_id, &pay_token, pay_tx_id, &pay_amount, ts).await?,
-                _ => {
+                TxId::TransactionId(_) => {
+                    // TransactionId is only valid for cross-chain swaps with signatures
                     request_map::update_status(request_id, StatusCode::PayTxIdNotSupported, None);
-                    Err("Pay tx_id not supported".to_string())?
+                    Err("TransactionId requires signature for cross-chain swaps. For IC tokens, use BlockIndex.".to_string())?
                 }
             },
             None => {
                 request_map::update_status(request_id, StatusCode::PayTxIdNotFound, None);
-                Err("Pay tx_id required".to_string())?
+                Err("Pay tx_id required for IC token swaps".to_string())?
             }
         };
         Ok((pay_token, pay_amount, transfer_id))
