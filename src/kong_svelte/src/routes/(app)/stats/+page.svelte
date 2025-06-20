@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { writable, derived } from "svelte/store";
   import Panel from "$lib/components/common/Panel.svelte";
   import { ChevronDown } from "lucide-svelte";
-  import { onMount, onDestroy } from "svelte";
+  import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { browser } from "$app/environment";
   import TokenCardMobile from "$lib/components/stats/TokenCardMobile.svelte";
@@ -23,44 +22,35 @@
   const REFRESH_INTERVAL = 10000;
   const DEFAULT_ITEMS_PER_PAGE = 50;
 
-  // Consolidated state
-  const state = writable({
-    tokens: [] as FE.StatsToken[],
-    totalCount: 0,
-    currentPage: 1,
-    itemsPerPage: DEFAULT_ITEMS_PER_PAGE,
-    searchTerm: "",
-    isLoading: true,
-    poolTotals: { total_volume_24h: 0, total_tvl: 0, total_fees_24h: 0 },
-    topTokens: { gainers: [], losers: [], hottest: [], top_volume: [] },
-    sortBy: "market_cap",
-    sortDirection: "desc" as "asc" | "desc"
-  });
+  // State using Svelte 5 runes
+  let tokens = $state<FE.StatsToken[]>([]);
+  let totalCount = $state(0);
+  let currentPage = $state(1);
+  let itemsPerPage = $state(DEFAULT_ITEMS_PER_PAGE);
+  let searchTerm = $state("");
+  let isLoading = $state(true);
+  let poolTotals = $state({ total_volume_24h: 0, total_tvl: 0, total_fees_24h: 0 });
+  let topTokens = $state({ gainers: [], losers: [], hottest: [], top_volume: [] });
+  let sortBy = $state("market_cap");
+  let sortDirection = $state<"asc" | "desc">("desc");
 
   // Price flash state
-  const priceFlashStates = writable(new Map<string, { class: string; timeout: ReturnType<typeof setTimeout> }>());
-  const previousPrices = writable(new Map<string, number>());
+  let priceFlashStates = $state(new Map<string, { class: string; timeout: ReturnType<typeof setTimeout> }>());
+  let previousPrices = $state(new Map<string, number>());
 
   // Local variables
-  let isMobile = false;
+  let isMobile = $state(false);
   let refreshInterval: ReturnType<typeof setInterval>;
   let searchTimeout: ReturnType<typeof setTimeout>;
   let isInitialLoad = true;
 
-  // Derived stores
-  const isLoading = derived(state, $state => $state.isLoading);
-  const currentPage = derived(state, $state => $state.currentPage);
-  const itemsPerPage = derived(state, $state => $state.itemsPerPage);
-  const searchTerm = derived(state, $state => $state.searchTerm);
-  const totalCount = derived(state, $state => $state.totalCount);
-  const poolTotals = derived(state, $state => $state.poolTotals);
-  const topGainers = derived(state, $state => $state.topTokens.gainers);
-  const topLosers = derived(state, $state => $state.topTokens.losers);
-  const topVolumeTokens = derived(state, $state => $state.topTokens.top_volume);
+  // Derived values
+  const topGainers = $derived(topTokens.gainers);
+  const topLosers = $derived(topTokens.losers);
+  const topVolumeTokens = $derived(topTokens.top_volume);
 
   // Sorted tokens for mobile
-  const sortedTokens = derived(state, $state => {
-    const { tokens, sortBy, sortDirection } = $state;
+  const sortedTokens = $derived(() => {
     return [...tokens].sort((a, b) => {
       let aVal = 0, bVal = 0;
       switch (sortBy) {
@@ -73,29 +63,27 @@
     });
   });
 
-    // Price flash functionality
-  function updatePriceFlashes(tokens: FE.StatsToken[]) {
+  // Price flash functionality
+  function updatePriceFlashes(newTokens: FE.StatsToken[]) {
     if (isInitialLoad) {
       // On initial load, just store prices without flashing
-      previousPrices.update(prev => {
-        const newPrices = new Map(prev);
-        tokens.forEach(token => {
-          newPrices.set(token.address, Number(token.metrics?.price || 0));
-        });
-        return newPrices;
+      const newPrices = new Map(previousPrices);
+      newTokens.forEach(token => {
+        newPrices.set(token.address, Number(token.metrics?.price || 0));
       });
+      previousPrices = newPrices;
       isInitialLoad = false;
       return;
     }
 
     // Create completely new Maps to ensure reactivity
-    const currentPrices = new Map($previousPrices);
+    const currentPrices = new Map(previousPrices);
     const newFlashStates = new Map();
     
     // Copy existing flash states (excluding expired ones)
-    const existingFlashStates = $priceFlashStates;
+    const existingFlashStates = priceFlashStates;
     
-    tokens.forEach(token => {
+    newTokens.forEach(token => {
       const currentPrice = Number(token.metrics?.price || 0);
       const prevPrice = currentPrices.get(token.address);
       
@@ -110,11 +98,9 @@
         
         // Set new flash state with timeout
         const timeout = setTimeout(() => {
-          priceFlashStates.update(states => {
-            const newStates = new Map(states);
-            newStates.delete(token.address);
-            return newStates;
-          });
+          const newStates = new Map(priceFlashStates);
+          newStates.delete(token.address);
+          priceFlashStates = newStates;
         }, 2000);
         
         newFlashStates.set(token.address, { class: flashClass, timeout });
@@ -125,18 +111,17 @@
     });
     
     // Set the new states
-    priceFlashStates.set(newFlashStates);
-    previousPrices.set(currentPrices);
+    priceFlashStates = newFlashStates;
+    previousPrices = currentPrices;
   }
 
   // Data fetching
   async function fetchData(showLoading = false) {
-    if (showLoading) state.update(s => ({ ...s, isLoading: true }));
+    if (showLoading) isLoading = true;
     
     try {
-      const currentState = $state;
       const [tokensRes, totalsRes, topTokensRes] = await Promise.all([
-        fetchTokens({ page: currentState.currentPage, limit: currentState.itemsPerPage, search: currentState.searchTerm }),
+        fetchTokens({ page: currentPage, limit: itemsPerPage, search: searchTerm }),
         fetchPoolTotals(),
         fetchTopTokens(),
       ]);
@@ -144,28 +129,25 @@
       // Update price flashes before updating state
       updatePriceFlashes(tokensRes.tokens);
 
-      state.update(s => ({
-        ...s,
-        tokens: tokensRes.tokens,
-        totalCount: tokensRes.total_count,
-        poolTotals: totalsRes,
-        topTokens: topTokensRes,
-        isLoading: false
-      }));
+      tokens = tokensRes.tokens;
+      totalCount = tokensRes.total_count;
+      poolTotals = totalsRes;
+      topTokens = topTokensRes;
+      isLoading = false;
     } catch (error) {
       console.error("Error fetching data:", error);
-      state.update(s => ({ ...s, isLoading: false }));
+      isLoading = false;
     }
   }
 
   // Search handling with debounce
   function handleSearch(e: Event) {
     const value = (e.target as HTMLInputElement).value;
-    state.update(s => ({ ...s, searchTerm: value }));
+    searchTerm = value;
     
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-      state.update(s => ({ ...s, currentPage: 1 }));
+      currentPage = 1;
       updateURL();
       fetchData(true);
     }, 300);
@@ -173,14 +155,15 @@
 
   // Page change
   function changePage(newPage: number) {
-    state.update(s => ({ ...s, currentPage: newPage }));
+    currentPage = newPage;
     updateURL();
     fetchData(true);
   }
 
   // Page size change
   function changePageSize(newPageSize: number) {
-    state.update(s => ({ ...s, itemsPerPage: newPageSize, currentPage: 1 }));
+    itemsPerPage = newPageSize;
+    currentPage = 1;
     updateURL();
     fetchData(true);
   }
@@ -189,11 +172,10 @@
   function updateURL() {
     if (!browser) return;
     const url = new URL(page.url);
-    const currentState = $state;
     
-    url.searchParams.set("page", currentState.currentPage.toString());
-    if (currentState.searchTerm) {
-      url.searchParams.set("search", currentState.searchTerm);
+    url.searchParams.set("page", currentPage.toString());
+    if (searchTerm) {
+      url.searchParams.set("search", searchTerm);
     } else {
       url.searchParams.delete("search");
     }
@@ -202,12 +184,13 @@
   }
 
   // Sorting for mobile
-  function toggleSort(sortBy: string) {
-    state.update(s => ({
-      ...s,
-      sortBy,
-      sortDirection: s.sortBy === sortBy && s.sortDirection === "desc" ? "asc" : "desc"
-    }));
+  function toggleSort(newSortBy: string) {
+    if (sortBy === newSortBy && sortDirection === "desc") {
+      sortDirection = "asc";
+    } else {
+      sortDirection = "desc";
+    }
+    sortBy = newSortBy;
   }
 
 
@@ -220,14 +203,11 @@
          : Number(change) < 0 ? "text-kong-error" : "";
   }
 
-  // Store the current flash states for reactivity
-  $: currentFlashStates = $priceFlashStates;
-  
   // Table configuration (reactive to pass topTokens and priceFlashStates data)
-  $: tableColumns = [
+  const tableColumns = $derived([
     { key: "#", title: "#", align: "center" as const, sortable: false, formatter: (row) => `${row.metrics?.market_cap_rank}` },
-    { key: "token", title: "Token", align: "left" as const, component: TokenCell, sortable: false, componentProps: { topTokens: $state.topTokens } },
-    { key: "price", title: "Price", align: "right" as const, sortable: false, component: PriceCell, componentProps: { priceFlashStates: currentFlashStates } },
+    { key: "token", title: "Token", align: "left" as const, component: TokenCell, sortable: false, componentProps: { topTokens } },
+    { key: "price", title: "Price", align: "right" as const, sortable: false, component: PriceCell, componentProps: { priceFlashStates } },
     { key: "price_change_24h", title: "24h", align: "right" as const, sortable: false, formatter: (row) => {
       const value = row.metrics?.price_change_24h || 0;
       return `${value > 0 ? "+" : ""}${formatToNonZeroDecimal(value)}%`;
@@ -235,7 +215,7 @@
     { key: "volume_24h", title: "Vol", align: "right" as const, sortable: false, formatter: (row) => formatUsdValue(row.metrics?.volume_24h || 0) },
     { key: "market_cap", title: "MCap", align: "right" as const, sortable: false, formatter: (row) => formatUsdValue(row.metrics?.market_cap || 0) },
     { key: "tvl", title: "TVL(:MC)", align: "right" as const, sortable: false, isHtml: true, formatter: (row) => `<div class="flex flex-col gap-0">${formatUsdValue(row.metrics?.tvl || 0)}  <span class="text-xs text-kong-text-secondary">(${(Number(row.metrics?.tvl) / Number(row.metrics?.market_cap) * 100).toFixed(2)}%)</span></div>` },
-  ];
+  ]);
 
   // Initialize and cleanup
   onMount(() => {
@@ -248,10 +228,11 @@
 
     // Initialize from URL
     const urlParams = new URLSearchParams(page.url.search);
-    const currentPage = parseInt(urlParams.get("page") || "1");
+    const pageParam = parseInt(urlParams.get("page") || "1");
     const search = urlParams.get("search") || "";
     
-    state.update(s => ({ ...s, currentPage, searchTerm: search }));
+    currentPage = pageParam;
+    searchTerm = search;
     
     // Initial fetch and setup interval
     fetchData(true);
@@ -259,18 +240,14 @@
 
     return () => {
       window.removeEventListener("resize", handleResize);
+      if (refreshInterval) clearInterval(refreshInterval);
+      if (searchTimeout) clearTimeout(searchTimeout);
+      
+      // Clean up price flash timeouts
+      priceFlashStates.forEach(state => {
+        if (state.timeout) clearTimeout(state.timeout);
+      });
     };
-  });
-
-  onDestroy(() => {
-    if (refreshInterval) clearInterval(refreshInterval);
-    if (searchTimeout) clearTimeout(searchTimeout);
-    
-    // Clean up price flash timeouts
-    const flashStates = $priceFlashStates;
-    flashStates.forEach(state => {
-      if (state.timeout) clearTimeout(state.timeout);
-    });
   });
 </script>
 
@@ -278,12 +255,12 @@
   <title>Market Stats - KongSwap</title>
 </svelte:head>
 
-<section class="flex flex-col md:flex-row w-full gap-4 px-4 min-h-screen">
+<section class="flex flex-col md:flex-row w-full gap-4 px-4">
   <!-- Sidebar -->
   <div class="w-full md:w-[330px] flex flex-col gap-2 order-1">
-    <PlatformStats poolTotals={$poolTotals} isLoading={$isLoading} />
-    <BiggestMovers topGainers={$topGainers} topLosers={$topLosers} isLoading={$isLoading} panelRoundness={$panelRoundness} />
-    <TopVolume topVolumeTokens={$topVolumeTokens} isLoading={$isLoading} panelRoundness={$panelRoundness} />
+    <PlatformStats {poolTotals} {isLoading} />
+    <BiggestMovers {topGainers} {topLosers} {isLoading} panelRoundness={$panelRoundness} />
+    <TopVolume {topVolumeTokens} {isLoading} panelRoundness={$panelRoundness} />
   </div>
 
   <!-- Main Content -->
@@ -301,18 +278,18 @@
             placeholder={isMobile ? "Search tokens..." : "Search tokens by name, symbol, or canister ID"}
             class="w-full pl-10 pr-4 py-2 rounded-full bg-kong-bg-secondary/60 border border-kong-border/40 text-kong-text-primary placeholder-[#8890a4] focus:outline-none focus:ring-2 focus:ring-kong-primary/40 focus:border-kong-primary transition-all duration-200 shadow-sm"
             oninput={handleSearch}
-            value={$searchTerm}
+            value={searchTerm}
           />
         </div>
       </div>
 
       <!-- Content -->
-      {#if $isLoading && $sortedTokens.length === 0}
+      {#if isLoading && sortedTokens().length === 0}
         <div class="flex flex-col items-center justify-center h-64 text-center">
           <div class="h-4 w-32 bg-kong-bg-secondary rounded mb-4"></div>
           <div class="h-4 w-48 bg-kong-bg-secondary rounded"></div>
         </div>
-      {:else if $sortedTokens.length === 0}
+      {:else if sortedTokens().length === 0}
         <div class="flex flex-col items-center justify-center h-64 text-center">
           <p class="text-gray-400">No tokens found matching your search criteria</p>
         </div>
@@ -320,15 +297,15 @@
         <div class="flex-1 {$panelRoundness}">
           {#if !isMobile}
             <StatsGrid
-              data={$sortedTokens}
+              data={sortedTokens()}
               rowKey="canister_id"
-              isLoading={$isLoading}
+              {isLoading}
               columns={tableColumns}
-              itemsPerPage={$itemsPerPage}
+              {itemsPerPage}
               defaultSort={{ column: "market_cap", direction: "desc" }}
               onRowClick={(row) => goto(`/stats/${row.address}`)}
-              totalItems={$totalCount}
-              currentPage={$currentPage}
+              totalItems={totalCount}
+              {currentPage}
               onPageChange={changePage}
               onPageSizeChange={changePageSize}
             />
@@ -345,13 +322,13 @@
                     { key: "price_change", label: "% (24h)" }
                   ] as sort}
                     <button
-                      class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 {$state.sortBy === sort.key
+                      class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 {sortBy === sort.key
                         ? 'bg-kong-primary text-kong-text-on-primary shadow-md'
                         : 'bg-kong-bg-primary/40 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-primary/60'}"
                       onclick={() => toggleSort(sort.key)}
                     >
                       {sort.label}
-                      <ChevronDown size={14} class="transition-transform {$state.sortDirection === 'asc' && $state.sortBy === sort.key ? 'rotate-180' : ''}" />
+                      <ChevronDown size={14} class="transition-transform {sortDirection === 'asc' && sortBy === sort.key ? 'rotate-180' : ''}" />
                     </button>
                   {/each}
                 </div>
@@ -360,9 +337,9 @@
               <!-- Token List -->
               <div class="flex-1 overflow-auto">
                 <div class="flex flex-col gap-1 py-2">
-                  {#each $sortedTokens as token (token.address)}
+                  {#each sortedTokens() as token (token.address)}
                     <button class="w-full" onclick={() => goto(`/stats/${token.address}`)}>
-                      <TokenCardMobile {token} trendClass={getTrendClass(token)} showIcons={true} section="stats-list" paddingClass="px-3 py-1.5" topTokens={$state.topTokens} />
+                      <TokenCardMobile {token} trendClass={getTrendClass(token)} showIcons={true} section="stats-list" paddingClass="px-3 py-1.5" {topTokens} />
                     </button>
                   {/each}
                 </div>
@@ -371,19 +348,19 @@
               <!-- Mobile Pagination -->
               <div class="sticky bottom-0 flex items-center justify-between px-4 py-2 border-t border-kong-border backdrop-blur-md !rounded-b-lg">
                 <button
-                  class="px-3 py-1 rounded text-sm {$currentPage === 1 ? 'text-kong-text-secondary bg-kong-bg-secondary opacity-50 cursor-not-allowed' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
-                  onclick={() => changePage($currentPage - 1)}
-                  disabled={$currentPage === 1}
+                  class="px-3 py-1 rounded text-sm {currentPage === 1 ? 'text-kong-text-secondary bg-kong-bg-secondary opacity-50 cursor-not-allowed' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
+                  onclick={() => changePage(currentPage - 1)}
+                  disabled={currentPage === 1}
                 >
                   Previous
                 </button>
                 <span class="text-sm text-kong-text-secondary">
-                  Page {$currentPage} of {Math.max(1, Math.ceil($totalCount / $itemsPerPage))}
+                  Page {currentPage} of {Math.max(1, Math.ceil(totalCount / itemsPerPage))}
                 </span>
                 <button
-                  class="px-3 py-1 rounded text-sm {$currentPage >= Math.ceil($totalCount / $itemsPerPage) ? 'text-kong-text-secondary bg-kong-bg-secondary opacity-50 cursor-not-allowed' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
-                  onclick={() => changePage($currentPage + 1)}
-                  disabled={$currentPage >= Math.ceil($totalCount / $itemsPerPage)}
+                  class="px-3 py-1 rounded text-sm {currentPage >= Math.ceil(totalCount / itemsPerPage) ? 'text-kong-text-secondary bg-kong-bg-secondary opacity-50 cursor-not-allowed' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
+                  onclick={() => changePage(currentPage + 1)}
+                  disabled={currentPage >= Math.ceil(totalCount / itemsPerPage)}
                 >
                   Next
                 </button>

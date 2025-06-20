@@ -192,6 +192,18 @@
       return;
     }
     
+    // Check if the container is visible before initializing
+    if (chartContainer.offsetParent === null) {
+      console.log("[Chart] Container not visible, deferring initialization");
+      // Try again after a delay
+      setTimeout(() => {
+        if (state.isMounted && !chart) {
+          fetchAndUpdateChart();
+        }
+      }, 500);
+      return;
+    }
+    
     try {
       console.log("[Chart] Starting initialization with:", { 
         quoteToken: quoteToken.symbol, 
@@ -265,7 +277,7 @@
   const checkDimensions = () => 
     new Promise<{width: number, height: number}>((resolve, reject) => {
       let attempts = 0;
-      const maxAttempts = 50; // 50 frames = ~800ms at 60fps
+      const maxAttempts = 20; // Reduced from 50 to 20 attempts
       
       const check = () => {
         attempts++;
@@ -276,20 +288,38 @@
           return;
         }
         
+        // Check if element is visible
+        const isVisible = chartWrapper.offsetParent !== null;
+        if (!isVisible && attempts < 5) {
+          // If not visible yet, wait longer between checks
+          setTimeout(check, 100);
+          return;
+        }
+        
         chartWrapper?.offsetHeight; // Force reflow
         const width = chartWrapper?.clientWidth;
         const height = chartWrapper?.clientHeight;
         
-        console.log(`[Chart] Dimension check attempt ${attempts}:`, { width, height });
+        // Only log every 5th attempt to reduce console spam
+        if (attempts % 5 === 0 || (width && height)) {
+          console.log(`[Chart] Dimension check attempt ${attempts}:`, { width, height, isVisible });
+        }
         
-        if (width && height) {
+        if (width && height && width > 0 && height > 0) {
           resolve({ width, height });
         } else if (attempts >= maxAttempts) {
-          console.error("[Chart] Failed to get dimensions after", maxAttempts, "attempts");
-          // Fallback to default dimensions
-          resolve({ width: 800, height: 600 });
+          console.warn("[Chart] Using fallback dimensions after", maxAttempts, "attempts");
+          // Use parent container dimensions as fallback
+          const parentWidth = chartWrapper.parentElement?.clientWidth || 800;
+          const parentHeight = chartWrapper.parentElement?.clientHeight || 600;
+          resolve({ width: parentWidth, height: Math.max(400, parentHeight) });
         } else {
-          requestAnimationFrame(check);
+          // Use setTimeout for first few attempts, then RAF
+          if (attempts < 5) {
+            setTimeout(check, 50);
+          } else {
+            requestAnimationFrame(check);
+          }
         }
       };
       check();
