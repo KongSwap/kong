@@ -37,7 +37,7 @@
   import { fly, fade } from "svelte/transition";
   import { quintOut } from "svelte/easing";
   import { onMount } from "svelte";
-  import { recentWalletsStore, type RecentWallet } from "$lib/stores/recentWalletsStore";
+  import { recentWalletsStore } from "$lib/stores/recentWalletsStore";
 
   interface WalletInfo {
     id: string;

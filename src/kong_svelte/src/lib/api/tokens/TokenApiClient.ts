@@ -269,8 +269,8 @@ const createRawTokenData = (canisterId: string, tokenData: any, tokenId: number)
 
   return {
     canister_id: canisterId,
-    name: name.toString(),
-    symbol: symbol.toString(),
+    name: IcrcToken.formatOdinSymbol(name.toString()),
+    symbol: IcrcToken.formatOdinSymbol(symbol.toString()),
     decimals: Number(decimals),
     address: canisterId,
     fee: fee.toString(),
@@ -342,6 +342,8 @@ export const fetchTopTokens = async (): Promise<{
         const token = item.token || item;
         return {
           ...token,
+          name: IcrcToken.formatOdinSymbol(token.name || ''),
+          symbol: IcrcToken.formatOdinSymbol(token.symbol || ''),
           canister_id: token.canister_id,
           address: token.canister_id, // Keep address for backward compatibility
           metrics: {

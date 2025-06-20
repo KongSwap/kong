@@ -187,15 +187,43 @@
 
   // Initialize chart
   const initChart = async () => {
-    if (!chartContainer || !quoteToken?.id || !baseToken?.id) return;
+    if (!chartContainer || !quoteToken?.id || !baseToken?.id) {
+      console.warn("[Chart] Missing required data:", { chartContainer: !!chartContainer, quoteTokenId: quoteToken?.id, baseTokenId: baseToken?.id });
+      return;
+    }
     
     try {
+      console.log("[Chart] Starting initialization with:", { 
+        quoteToken: quoteToken.symbol, 
+        baseToken: baseToken.symbol, 
+        poolId 
+      });
+      
       setTradingViewRootVars();
-      const dimensions = await checkDimensions();      
-      await loadTradingViewLibrary();
+      
+      // Load library first before checking dimensions
+      try {
+        await loadTradingViewLibrary();
+        console.log("[Chart] TradingView library loaded, window.TradingView:", !!window.TradingView);
+      } catch (libError) {
+        console.error("[Chart] Failed to load TradingView library:", libError);
+        throw libError;
+      }
+      
+      let dimensions;
+      try {
+        dimensions = await checkDimensions();
+        console.log("[Chart] Container dimensions:", dimensions);
+      } catch (dimError) {
+        console.error("[Chart] Failed to get dimensions:", dimError);
+        // Use fallback dimensions
+        dimensions = { width: 800, height: 600 };
+      }
       
       const pool = $livePools.find(p => p.pool_id === poolId);
       const price = pool?.price || 1000;
+      console.log("[Chart] Pool data:", { poolId, price, poolFound: !!pool });
+      
       const datafeed = new KongDatafeed(
         quoteToken.id, baseToken.id, price, 
         quoteToken.decimals || 8, baseToken.decimals || 8
@@ -204,7 +232,7 @@
       window.removeEventListener('error', handleTradingViewError);
       window.addEventListener('error', handleTradingViewError, true);
 
-      const widget = new window.TradingView.widget(getChartConfig({
+      const config = getChartConfig({
         symbol: symbol || `${baseToken.symbol}/${quoteToken.symbol}`,
         datafeed, container: chartContainer,
         containerWidth: dimensions.width, containerHeight: dimensions.height,
@@ -212,11 +240,15 @@
         theme: state.currentTheme,
         quoteTokenDecimals: quoteToken.decimals || 8,
         baseTokenDecimals: baseToken.decimals || 8
-      }));
+      });
+      console.log("[Chart] Widget config:", config);
+
+      const widget = new window.TradingView.widget(config);
       
       widget.datafeed = datafeed;
 
       widget.onChartReady(() => {
+        console.log("[Chart] Chart ready!");
         widget._ready = true;
         chartStore.set(widget);
         pool && updateTradingViewPriceScale(widget, pool);
@@ -225,18 +257,40 @@
 
     } catch (error) {
       console.error("[Chart] Initialization failed:", error);
+      console.error("[Chart] Error stack:", error.stack);
     }
   };
 
   // Get dimensions for chart
   const checkDimensions = () => 
-    new Promise<{width: number, height: number}>((resolve) => {
+    new Promise<{width: number, height: number}>((resolve, reject) => {
+      let attempts = 0;
+      const maxAttempts = 50; // 50 frames = ~800ms at 60fps
+      
       const check = () => {
+        attempts++;
+        
+        if (!chartWrapper) {
+          console.error("[Chart] chartWrapper is null");
+          reject(new Error("Chart wrapper not found"));
+          return;
+        }
+        
         chartWrapper?.offsetHeight; // Force reflow
         const width = chartWrapper?.clientWidth;
         const height = chartWrapper?.clientHeight;
         
-        width && height ? resolve({ width, height }) : requestAnimationFrame(check);
+        console.log(`[Chart] Dimension check attempt ${attempts}:`, { width, height });
+        
+        if (width && height) {
+          resolve({ width, height });
+        } else if (attempts >= maxAttempts) {
+          console.error("[Chart] Failed to get dimensions after", maxAttempts, "attempts");
+          // Fallback to default dimensions
+          resolve({ width: 800, height: 600 });
+        } else {
+          requestAnimationFrame(check);
+        }
       };
       check();
     });
@@ -319,9 +373,9 @@
       });
 </script>
 
-<div class="panel !{$panelRoundness} {className}">
-  <div class="flex h-full" bind:this={chartWrapper}>
-    <div class="flex h-full w-full relative" bind:this={chartContainer}>
+<div class="panel !{$panelRoundness} {className}" style="min-height: 400px;">
+  <div class="flex h-full" bind:this={chartWrapper} style="min-height: 400px;">
+    <div class="flex h-full w-full relative" bind:this={chartContainer} style="min-height: 400px;">
       {#if state.hasNoData}
         <div class="absolute inset-0 bg-transparent flex flex-col items-center justify-center p-4 text-center">
           <svg
@@ -382,7 +436,8 @@
     @apply relative text-kong-text-primary flex flex-col;
     @apply bg-kong-bg-secondary backdrop-blur-md;
     @apply border border-kong-border/50;
-    @apply min-h-[50vh];
+    @apply min-h-[35vh];
+    height: 100%;
   }
 
   /* Update loading and no-data states to use theme colors */

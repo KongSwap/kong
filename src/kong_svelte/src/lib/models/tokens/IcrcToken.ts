@@ -5,6 +5,37 @@ import { BaseModel } from '../BaseModel';
 
 export class IcrcToken extends BaseModel {
   /**
+   * Formats ODIN token names and symbols by removing excessive bullet separators
+   * @param value - The name or symbol to format
+   * @returns Formatted string
+   */
+  private static formatOdinToken(value: string): string {
+    // Check if this is an ODIN token with bullet separators
+    if (value.includes('•') && value.includes('ODIN')) {
+      // Split by bullet and keep only the first part and ODIN
+      const parts = value.split('•');
+      if (parts.length > 2) {
+        // Return first part + ODIN (e.g., "GHOSTNODE•ODIN")
+        return `${parts[0]}`;
+      }
+    }
+    return value;
+  }
+
+  public static formatOdinSymbol(value: string): string {
+    // Check if this is an ODIN token with bullet separators
+    if (value.includes('•') && value.includes('ODIN')) {
+      // Split by bullet and keep only the first part and ODIN
+      const parts = value.split('•');
+      if (parts.length > 2) {
+        // Return first part + ODIN (e.g., "GHOSTNODE•ODIN")
+        return `${parts[0]}`;
+      }
+    }
+    return value;
+  }
+
+  /**
    * Serializes a token metadata response
    * @param response - The raw token metadata response
    * @returns Formatted token metadata as Kong.Token
@@ -26,8 +57,8 @@ export class IcrcToken extends BaseModel {
 
       return {
         id: Number(data.token_id),
-        name: this.toString(data.name),
-        symbol: this.toString(data.symbol),
+        name: this.formatOdinToken(this.toString(data.name)),
+        symbol: this.formatOdinSymbol(this.toString(data.symbol)),
         address: this.toString(data.address || data.canister_id), // Use canister_id as address
         fee: this.toNumber(data.fee),
         fee_fixed: this.toString(data.fee_fixed || data.fee).replace("_", ""),

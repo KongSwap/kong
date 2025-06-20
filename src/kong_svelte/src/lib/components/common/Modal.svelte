@@ -1,6 +1,6 @@
 <script lang="ts">
   import { browser } from "$app/environment";
-  // import Panel from "./Panel.svelte";
+  import Panel from "./Panel.svelte";
   import { fade } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
   import Portal from "svelte-portal";

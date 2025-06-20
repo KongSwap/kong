@@ -109,6 +109,15 @@ export class KongDatafeed {
     onHistoryCallback: (bars: Bar[], meta: { noData: boolean }) => void,
     onErrorCallback: (error: string) => void
   ): Promise<void> {
+    console.log("[Datafeed] getBars called with:", { 
+      symbol: symbolInfo.name, 
+      resolution, 
+      from: new Date(periodParams.from * 1000).toISOString(), 
+      to: new Date(periodParams.to * 1000).toISOString(),
+      fromTokenId: this.fromTokenId,
+      toTokenId: this.toTokenId
+    });
+    
     try {
       const data = await fetchChartData(
         this.fromTokenId,
@@ -118,7 +127,14 @@ export class KongDatafeed {
         resolution
       );
 
+      console.log("[Datafeed] Fetched data:", { 
+        dataLength: data?.length || 0, 
+        firstBar: data?.[0], 
+        lastBar: data?.[data?.length - 1] 
+      });
+
       if (!data || data.length === 0) {
+        console.warn("[Datafeed] No data received");
         onHistoryCallback([], { noData: true });
         return;
       }

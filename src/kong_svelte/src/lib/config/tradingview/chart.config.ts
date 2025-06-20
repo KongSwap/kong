@@ -65,7 +65,7 @@ export function getChartConfig(params: {
     container,
     library_path: '/charting_library/charting_library/',
     width: containerWidth,
-    height: isMobile ? 450 : containerHeight,
+    height: isMobile ? Math.max(350, containerHeight) : Math.max(400, containerHeight),
     locale: 'en',
     fullscreen: false,
     autosize: autosize ?? true,

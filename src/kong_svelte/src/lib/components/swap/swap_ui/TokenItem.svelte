@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Star } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import { formatTokenName } from "$lib/utils/tokenFormatUtils";
 
   const props = $props<{
     token: Kong.Token;
@@ -53,7 +54,7 @@
         </button>
         <span class="token-symbol">{props.token.symbol}</span>
       </div>
-      <span class="token-name">{props.token.name}</span>
+      <span class="token-name">{formatTokenName(props.token.name, 30)}</span>
     </div>
   </div>
 

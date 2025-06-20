@@ -303,11 +303,25 @@
 
   const handleViewChange = (view: string) => {
     activePoolView.set(view);
+    
+    // Clear search when switching views
+    if (view === "user") {
+      // Apply current search to user pools
+      currentUserPoolsStore.setSearchQuery(searchInput);
+      currentUserPoolsStore.updateFilteredPools();
+    }
   };
 
   const handleSearchInputChange = (value: string) => {
     searchInput = value;
-    handleSearch();
+    
+    // If viewing user pools, update the store's search query
+    if ($activePoolView === "user") {
+      currentUserPoolsStore.setSearchQuery(value);
+      currentUserPoolsStore.updateFilteredPools();
+    } else {
+      handleSearch();
+    }
   };
 
   const handleSortColumnChange = (column: string) => {
@@ -443,12 +457,33 @@
                 >
                   {#each $userPoolsWithDetails as pool (pool.key)}
                     {@const livePool = $livePools.find(p => p.address_0 === pool.address_0 && p.address_1 === pool.address_1)}
-                    {@const poolForCard = livePool || {
+                    {@const poolForCard = livePool ? {
+                      ...livePool,
+                      // Keep user pool data for display
+                    } : {
                       ...pool,
-                      rolling_24h_apy: livePool?.rolling_24h_apy || 0,
-                      tvl: livePool?.tvl || 0,
-                      rolling_24h_volume: livePool?.rolling_24h_volume || 0,
-                      name: pool.name || `${pool.symbol_0}/${pool.symbol_1} Pool`
+                      // Convert ts from bigint to number
+                      ts: Number(pool.ts || 0),
+                      // Add missing properties for pools not in live data
+                      balance_0: BigInt(0),
+                      balance_1: BigInt(0),
+                      lp_fee_0: BigInt(0),
+                      lp_fee_1: BigInt(0),
+                      rolling_24h_apy: "0",
+                      tvl: BigInt(0),
+                      rolling_24h_volume: BigInt(0),
+                      rolling_24h_lp_fee: BigInt(0),
+                      rolling_24h_num_swaps: BigInt(0),
+                      pool_id: 0,
+                      lp_token_supply: BigInt(0),
+                      total_volume: BigInt(0),
+                      total_lp_fee: BigInt(0),
+                      lp_fee_bps: 30, // Default 0.3% fee
+                      is_removed: false,
+                      price: 0,
+                      name: pool.name || `${pool.symbol_0}/${pool.symbol_1} Pool`,
+                      token0: pool.token0,
+                      token1: pool.token1
                     }}
                     <PoolCard
                       pool={poolForCard}
