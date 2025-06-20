@@ -44,7 +44,7 @@
   import TokenTicker from "./TokenTicker.svelte";
 
   // Types
-  type NavTabId = "pro" | "predict" | "earn" | "stats";
+  type NavTabId = "swap" | "pro" | "predict" | "pools" | "more";
   type WalletTab = "notifications" | "chat" | "wallet";
 
   // Navigation configuration
@@ -124,13 +124,12 @@
 
   // Path to tab mapping
   const PATH_TO_TAB: Record<string, NavTabId> = {
+    "/": "swap",
     "/pro": "pro",
     "/predict": "predict",
-    "/pools": "earn",
-    "/airdrop-claims": "earn",
-    "/stats": "stats",
-    "/stats/bubbles": "stats",
-    "/stats/leaderboard": "stats",
+    "/pools": "pools",
+    "/airdrop-claims": "more",
+    "/stats": "more",
   };
 
   // State
@@ -147,13 +146,23 @@
   let activeTab = $derived.by(() => {
     const path = page.url.pathname;
 
-    for (const [prefix, tab] of Object.entries(PATH_TO_TAB)) {
-      if (path.startsWith(prefix)) {
-        return tab;
+    if (path === "/") {
+      return "swap";
+    }
+
+    const firstSegment = path.split("/")[1];
+    if (firstSegment) {
+      const key = `/${firstSegment}`;
+      if (Object.hasOwn(PATH_TO_TAB, key)) {
+        return PATH_TO_TAB[key];
       }
     }
+
+    // Fallback for paths not found in the map
     return "null";
   });
+
+  $inspect(activeTab);
 
   // Constants
   const MOBILE_LOGO_PATH = "/titles/logo-white-wide.png";

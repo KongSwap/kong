@@ -6,6 +6,7 @@
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
   import TokenInfoEnhanced from "./TokenInfoEnhanced.svelte";
   import { app } from "$lib/state/app.state.svelte";
+  import { DEFAULT_TOKENS } from "$lib/constants/canisterConstants";
 
   let { initialFromToken, initialToToken } = $props<{ initialFromToken: Kong.Token | null, initialToToken: Kong.Token | null }>();
 
@@ -17,12 +18,23 @@
   let isMobile = $derived(app.isMobile);
 
   // Get the pool based on selected tokens
-  let selectedPool = $derived($livePools?.find(p => {
+  let selectedPool = $derived.by(() => {
     if (!fromToken?.address || !toToken?.address) return null;
+
+    let pool = $livePools?.find(p => {
+      return (p.address_0 === fromToken.address && p.address_1 === toToken.address) ||
+             (p.address_1 === fromToken.address && p.address_0 === toToken.address);
+    });
+
+    if (!pool) {
+      pool = $livePools?.find(p => {
+        return (p.address_0 === DEFAULT_TOKENS.icp && p.address_1 === toToken.address) ||
+               (p.address_1 === DEFAULT_TOKENS.icp && p.address_0 === toToken.address);
+      });
+    }
     
-    return (p.address_0 === fromToken.address && p.address_1 === toToken.address) ||
-           (p.address_1 === fromToken.address && p.address_0 === toToken.address);
-  }));
+    return pool;
+  }); 
 
   let selectedPoolId = $derived(selectedPool?.pool_id);
   let baseToken = $derived(selectedPool?.address_0 === fromToken?.address ? fromToken : toToken);

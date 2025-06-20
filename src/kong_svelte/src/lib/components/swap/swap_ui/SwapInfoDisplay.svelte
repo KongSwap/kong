@@ -198,50 +198,57 @@
   });
 </script>
 
+{#snippet loadingDots()}
+  <div class="loading-dots">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+{/snippet}
+
+{#snippet infoValue(content, additionalClass = "")}
+  <div class="info-value {additionalClass}">
+    {#if isLoading}
+      {@render loadingDots()}
+    {:else if content !== null && content !== undefined}
+      {@html content}
+    {:else}
+      <span class="text-kong-text-secondary/50">-</span>
+    {/if}
+  </div>
+{/snippet}
+
 {#if showDisplay}
   <div class="swap-info-display {$transparentSwapPanel ? 'transparent-swap-panel' : ''}" transition:fade={{ duration: 200 }}>
     <div class="info-grid">
       <!-- Exchange Rate -->
-       {#if !isMobile}
-      <div class="info-item">
-        <div class="info-label">
-          <TrendingUp size={14} class="info-icon" />
-          <span>Rate</span>
+      {#if !isMobile}
+        <div class="info-item">
+          <div class="info-label">
+            <TrendingUp size={14} class="info-icon" />
+            <span>Rate</span>
+          </div>
+          {@render infoValue(
+            exchangeRate() && payToken && receiveToken 
+              ? `<span class="rate-text">1 ${payToken.symbol} = ${exchangeRate()} ${receiveToken.symbol}</span>`
+              : null,
+            "rate-value"
+          )}
         </div>
-        <div class="info-value rate-value">
-          {#if isLoading}
-            <span class="loading-dots">
-              <span></span>
-              <span></span>
-              <span></span>
-            </span>
-          {:else if exchangeRate() && payToken && receiveToken}
-            <span class="rate-text">1 {payToken.symbol} = {exchangeRate()} {receiveToken.symbol}</span>
-          {:else}
-            <span class="text-kong-text-secondary/50">-</span>
-          {/if}
-        </div>
-      </div>
       {/if}
+      
       <!-- Price Impact -->
       <div class="info-item">
         <div class="info-label">
           <Activity size={14} class="info-icon" />
           <span>Price Impact</span>
         </div>
-        <div class="info-value impact-{priceImpactLevel()}">
-          {#if isLoading}
-            <span class="loading-dots">
-              <span></span>
-              <span></span>
-              <span></span>
-            </span>
-          {:else if payToken && receiveToken && payAmount && receiveAmount && payAmount !== "0" && receiveAmount !== "0"}
-            <span>{priceImpact.toFixed(2)}%</span>
-          {:else}
-            <span class="text-kong-text-secondary/50">-</span>
-          {/if}
-        </div>
+        {@render infoValue(
+          payToken && receiveToken && payAmount && receiveAmount && payAmount !== "0" && receiveAmount !== "0"
+            ? `<span>${priceImpact.toFixed(2)}%</span>`
+            : null,
+          `impact-${priceImpactLevel()}`
+        )}
       </div>
 
       <!-- Total Fees -->
@@ -250,19 +257,9 @@
           <DollarSign size={14} class="info-icon" />
           <span>Total Fees</span>
         </div>
-        <div class="info-value">
-          {#if isLoading}
-            <span class="loading-dots">
-              <span></span>
-              <span></span>
-              <span></span>
-            </span>
-          {:else if totalFeesUsd() > 0}
-            <span>${formatToNonZeroDecimal(totalFeesUsd())}</span>
-          {:else}
-            <span class="text-kong-text-secondary/50">-</span>
-          {/if}
-        </div>
+        {@render infoValue(
+          totalFeesUsd() > 0 ? `<span>$${formatToNonZeroDecimal(totalFeesUsd())}</span>` : null
+        )}
       </div>
     </div>
   </div>
@@ -274,7 +271,7 @@
   }
 
   .info-grid {
-    @apply grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 
+    @apply grid grid-cols-2 md:grid-cols-3 gap-4 p-4 
            bg-kong-bg-tertiary border border-kong-border
            rounded-xl backdrop-blur-md;
   }
@@ -288,7 +285,8 @@
   }
 
   .info-value {
-    @apply text-sm font-semibold text-kong-text-primary text-center;
+    @apply text-sm font-semibold text-kong-text-primary text-center
+           min-h-[1.25rem] flex items-center justify-center;
   }
 
   /* Rate value specific styling */
@@ -316,7 +314,7 @@
 
   /* Loading animation */
   .loading-dots {
-    @apply flex gap-1 items-center;
+    @apply flex gap-1 items-center justify-center h-5;
   }
 
   .loading-dots span {
@@ -346,7 +344,7 @@
     }
 
     .info-value {
-      @apply text-xs;
+      @apply text-xs min-h-[1rem];
     }
 
     .info-icon {
@@ -355,6 +353,14 @@
 
     .rate-text {
       @apply text-[10px];
+    }
+
+    .loading-dots {
+      @apply h-4;
+    }
+
+    .loading-dots span {
+      @apply w-1 h-1;
     }
   }
 </style> 
