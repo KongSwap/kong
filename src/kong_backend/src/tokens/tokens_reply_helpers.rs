@@ -50,6 +50,7 @@ pub fn to_token_reply(token: &StableToken) -> TokensReply {
             decimals: token.decimals(),
             fee: token.fee(),
             total_supply: solana_token.total_supply.clone(),
+            is_spl_token: solana_token.is_spl_token,
         }),
     }
 }

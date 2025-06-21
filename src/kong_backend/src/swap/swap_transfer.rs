@@ -140,6 +140,19 @@ async fn check_arguments(args: &SwapArgs, request_id: u64, ts: u64) -> Result<(S
         request_map::update_status(request_id, StatusCode::PayTokenNotFound, Some(e));
     })?;
 
+    // Debug log token info
+    match &pay_token {
+        StableToken::Solana(sol_token) => {
+            ICNetwork::info_log(&format!(
+                "DEBUG: Pay token lookup for '{}' found Solana token: mint={}, is_spl_token={}", 
+                &args.pay_token, sol_token.mint_address, sol_token.is_spl_token
+            ));
+        }
+        _ => {
+            ICNetwork::info_log(&format!("DEBUG: Pay token '{}' is not a Solana token", &args.pay_token));
+        }
+    }
+
     let pay_amount = args.pay_amount.clone();
 
     // Debug log

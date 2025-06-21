@@ -79,3 +79,43 @@ fn update_tokens(stable_tokens: String) -> Result<String, String> {
 
     Ok("Tokens updated".to_string())
 }
+
+/// Fix is_spl_token field for existing Solana tokens
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn fix_solana_token_spl_flag() -> Result<String, String> {
+    // Get all tokens that need fixing
+    let tokens_to_fix: Vec<StableToken> = TOKEN_MAP.with(|m| {
+        m.borrow()
+            .iter()
+            .filter_map(|(_, token)| {
+                if let StableToken::Solana(sol_token) = &token {
+                    // Check if this is native SOL (should have is_spl_token = false)
+                    let should_be_spl = sol_token.mint_address != "11111111111111111111111111111111";
+                    
+                    if sol_token.is_spl_token != should_be_spl {
+                        // Create fixed token
+                        let mut fixed_sol_token = sol_token.clone();
+                        fixed_sol_token.is_spl_token = should_be_spl;
+                        Some(StableToken::Solana(fixed_sol_token))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect()
+    });
+    
+    // Update tokens outside of TOKEN_MAP borrow
+    let fixed_count = tokens_to_fix.len();
+    for token in tokens_to_fix {
+        token_map::update(&token);
+    }
+    
+    if fixed_count > 0 {
+        Ok(format!("Fixed is_spl_token field for {} Solana tokens", fixed_count))
+    } else {
+        Ok("No Solana tokens needed fixing".to_string())
+    }
+}

@@ -21,7 +21,7 @@ USDC_CHAIN="SOL"
 USDC_ADDRESS="4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"  # Devnet USDC
 
 # ksUSDT configuration
-KSUSDT_SYMBOL="ksUSDT"
+KSUSDT_SYMBOL="ksUSDT"k
 KSUSDT_CHAIN="IC"
 KSUSDT_LEDGER=$(dfx canister id ${NETWORK_FLAG} $(echo ${KSUSDT_SYMBOL} | tr '[:upper:]' '[:lower:]')_ledger)
 KSUSDT_AMOUNT=1_000_000  # 1 ksUSDT (6 decimals)
