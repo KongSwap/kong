@@ -102,22 +102,22 @@
 
   onMount(() => {
         // Prevent body scrolling when modal is open
-    const body = document.body;
-    const scrollY = window.scrollY;
-    body.style.position = 'fixed';
-    body.style.top = `-${scrollY}px`;
-    body.style.width = '100%';
-    body.style.overflow = 'hidden';
+    // const body = document.body;
+    // const scrollY = window.scrollY;
+    // body.style.position = 'fixed';
+    // body.style.top = `-${scrollY}px`;
+    // body.style.width = '100%';
+    // body.style.overflow = 'hidden';
   });
 
   onDestroy(() => {
     // Restore body scrolling when modal is closed
-    const body = document.body;
-    const scrollY = body.style.top;
-    body.style.position = '';
-    body.style.top = '';
-    body.style.width = '';
-    body.style.overflow = '';
+    // const body = document.body;
+    // const scrollY = body.style.top;
+    // body.style.position = '';
+    // body.style.top = '';
+    // body.style.width = '';
+    // body.style.overflow = '';
   });
 </script>
 

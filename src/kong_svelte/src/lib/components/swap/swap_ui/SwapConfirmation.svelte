@@ -42,14 +42,6 @@
   onMount(() => {
     mounted = true;
     
-    // Prevent body scrolling when modal is open
-    const body = document.body;
-    const scrollY = window.scrollY;
-    body.style.position = 'fixed';
-    body.style.top = `-${scrollY}px`;
-    body.style.width = '100%';
-    body.style.overflow = 'hidden';
-    
     // Create fewer floating particles for better performance
     particles = Array.from({ length: 6 }, (_, i) => ({
       id: i,
@@ -58,21 +50,6 @@
       size: Math.random() * 4 + 2,
       delay: Math.random() * 10
     }));
-  });
-  
-  onDestroy(() => {
-    // Restore body scrolling when modal is closed
-    const body = document.body;
-    const scrollY = body.style.top;
-    body.style.position = '';
-    body.style.top = '';
-    body.style.width = '';
-    body.style.overflow = '';
-    
-    // Restore scroll position
-    if (scrollY) {
-      window.scrollTo(0, parseInt(scrollY || '0') * -1);
-    }
   });
 
   async function handleConfirm() {
