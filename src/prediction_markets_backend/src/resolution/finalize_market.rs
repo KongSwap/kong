@@ -167,42 +167,40 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
     // Update resolution details with pool information
     resolution_details.total_winning_pool = total_winning_pool.clone();
 
-    ic_cdk::println!("Total winning pool: {}", total_winning_pool.to_u64());
-    ic_cdk::println!("Total market pool: {}", market.total_pool.to_u64());
+    ic_cdk::println!("Total winning pool: {}", total_winning_pool);
+    ic_cdk::println!("Total market pool: {}", market.total_pool);
 
     // Calculate the total profit (losing bets)
-    let total_profit = market.total_pool.to_u64() as u64 - total_winning_pool.to_u64();
-    resolution_details.total_profit = TokenAmount::from(total_profit);
+    let total_profit = market.total_pool.clone() - total_winning_pool.clone();
+    resolution_details.total_profit = total_profit.clone();
 
     ic_cdk::println!("Total profit (losing bets): {}", total_profit);
 
     // Calculate platform fee based on profit (1% for KONG, 2% for others)
     let fee_percentage = token_info.fee_percentage;
-    let platform_fee_amount = total_profit * fee_percentage / 10000;
-    let platform_fee = TokenAmount::from(platform_fee_amount);
+    let platform_fee = total_profit.clone() * fee_percentage / 10000;
 
     // Update platform fee in resolution details
     resolution_details.platform_fee_amount = platform_fee.clone();
 
     // Calculate the remaining winning pool (for distribution)
-    let remaining_pool_u64 = total_winning_pool.to_u64();
-    let remaining_pool = TokenAmount::from(remaining_pool_u64);
+    let remaining_pool = TokenAmount::from(total_winning_pool.clone());
 
     ic_cdk::println!(
         "Platform fee ({}% of profit): {} {}",
         token_info.fee_percentage / 100,
-        platform_fee.to_u64() / 10u64.pow(token_info.decimals as u32),
+        platform_fee.to_f64() / 10f64.powf(token_info.decimals as f64),
         token_info.symbol
     );
 
     ic_cdk::println!(
         "Winning pool for distribution: {} {}",
-        remaining_pool.to_u64() / 10u64.pow(token_info.decimals as u32),
+        remaining_pool.to_f64() / 10f64.powf(token_info.decimals as f64),
         token_info.symbol
     );
 
     // Process the platform fee (burn for KONG, transfer to fee collector for other tokens)
-    if platform_fee.to_u64() > token_info.transfer_fee.to_u64() {
+    if platform_fee > token_info.transfer_fee {
         match handle_fee_transfer(platform_fee.clone(), token_id).await {
             Ok(Some(tx_id)) => {
                 // Store transaction ID in resolution details
@@ -211,7 +209,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
 
                 ic_cdk::println!(
                     "Successfully burned platform fee of {} {} (Transaction ID: {})",
-                    platform_fee.to_u64() / 10u64.pow(token_info.decimals as u32),
+                    platform_fee.to_f64() / 10f64.powf(token_info.decimals as f64),
                     token_info.symbol,
                     tx_id
                 );
@@ -219,7 +217,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             Ok(None) => {
                 ic_cdk::println!(
                     "Successfully burned platform fee of {} {}",
-                    platform_fee.to_u64() / 10u64.pow(token_info.decimals as u32),
+                    platform_fee.to_f64() / 10f64.powf(token_info.decimals as f64),
                     token_info.symbol
                 );
             }
@@ -348,8 +346,8 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             resolution_details.total_weighted_contribution = Some(total_weighted_contribution);
 
             // Use the profit and fee values already calculated
-            let total_profit_f64 = total_profit as f64;
-            let platform_fee_on_profit = platform_fee.to_u64() as f64;
+            let total_profit_f64 = total_profit.clone().to_f64();
+            let platform_fee_on_profit = platform_fee.to_f64();
 
             // Calculate the distributable profit after fees
             let distributable_profit = total_profit_f64 - platform_fee_on_profit;
@@ -361,7 +359,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             // Note: This will potentially be adjusted by the safety check below
 
             // Guaranteed return is the original bet amount for each winner
-            let total_guaranteed_return = total_winning_pool.to_u64() as f64;
+            let total_guaranteed_return = total_winning_pool.to_f64();
 
             // Financial Safety System: Guaranteed Return Floor with Maximum Cap
             //
@@ -370,7 +368,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             // 2. Total distributions never exceed the available market pool (maximum cap)
             //
             // The system dynamically adjusts the bonus pool if necessary to maintain these guarantees.
-            let max_distribution = market.total_pool.to_u64() as f64 - platform_fee_on_profit;
+            let max_distribution = market.total_pool.to_f64() - platform_fee_on_profit;
             let mut bonus_pool = distributable_profit; // Initialize with original calculation
 
             // Safety check: Verify that total distribution won't exceed total market pool
@@ -436,7 +434,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
 
                 // Total reward = original bet + share of bonus pool
                 // Note: Transfer fee is already accounted for in the bonus pool calculation
-                let total_reward = bet_amount.to_u64() as f64 + bonus_share;
+                let total_reward = bet_amount.to_f64() + bonus_share;
                 let gross_winnings = TokenAmount::from(total_reward as u64);
 
                 // Update resolution details with bonus and final payout amounts
@@ -463,7 +461,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                 // Calculate user's platform fee (proportional to their reward)
                 let user_platform_fee = if total_reward > 0.0 && total_winning_pool.to_u64() > 0 {
                     // Calculate proportional fee based on this user's share of rewards
-                    let user_share = bet_amount.to_u64() as f64 / total_winning_pool.to_u64() as f64;
+                    let user_share = bet_amount.to_f64() / total_winning_pool.to_f64();
                     let user_fee = platform_fee_on_profit * user_share;
                     Some(TokenAmount::from(user_fee as u64))
                 } else {
@@ -561,12 +559,12 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             let total_bet_amount = winning_bets.iter().map(|bet| bet.amount.to_u64()).sum::<u64>();
 
             // Calculate total transfer fees taken
-            let total_fees = platform_fee_amount;
+            let total_fees = platform_fee.clone();
 
             // Adjust the remaining pool to account for transfer fees
             // This preemptively reserves all needed transfer fees from the winning pool,
             // ensuring that every winner can be paid even after accounting for fees.
-            let total_profit_after_fees = if total_fees > 0 {
+            let total_profit_after_fees = if total_fees > StorableNat::from_u64(0) {
                 if total_profit > total_fees {
                     total_profit.clone() - total_fees
                 } else {
@@ -580,14 +578,14 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                 total_profit.clone()
             };
 
-            resolution_details.distributable_profit = StorableNat::from_u64(total_profit_after_fees);
+            resolution_details.distributable_profit = total_profit_after_fees.clone();
 
             if total_bet_amount > 0 {
                 for bet in winning_bets {
                     // Calculate proportional winnings based on the user's bet amount
                     // Proportion = user_bet_amount / total_winning_bets_amount
                     // This proportion determines the user's share of the total prize pool
-                    let bet_proportion = bet.amount.to_u64() as f64 / total_bet_amount as f64;
+                    let bet_proportion = bet.amount.to_f64() / total_bet_amount as f64;
 
                     // Calculate user's share of the total winning pool using the adjusted pool
                     // that accounts for transfer fees. The formula is:
@@ -595,7 +593,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                     //
                     // This ensures fair distribution proportional to each user's contribution
                     // while accounting for necessary platform fees and transfer costs.
-                    let user_winnings = bet.amount.to_u64() + (total_profit_after_fees as f64 * bet_proportion) as u64;
+                    let user_winnings = bet.amount.to_u64() + (total_profit_after_fees.to_f64() * bet_proportion) as u64;
                     let gross_winnings = TokenAmount::from(user_winnings);
 
                     // Calculate net amount to transfer (after deducting transfer fee)
