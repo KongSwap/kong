@@ -47,7 +47,6 @@
   // Search
   let searchInput = "";
   let searchDebounceTimer: NodeJS.Timeout;
-  let urlDebounceTimer: NodeJS.Timeout;
 
   // User pools
   let hasCompletedInitialLoad = false;
@@ -139,7 +138,6 @@
 
   onDestroy(() => {
     clearTimeout(searchDebounceTimer);
-    clearTimeout(urlDebounceTimer);
   });
 
   // Effects
@@ -147,21 +145,18 @@
     if ($auth.isConnected && browser) fetchUserPools();
   });
 
+  // URL-driven data loading - always load when URL changes
   $effect(() => {
     if (!browser) return;
+    
+    const urlParams = new URLSearchParams($page.url.search);
+    const urlSearch = urlParams.get("search") || "";
+    const urlPage = parseInt(urlParams.get("page") || "1");
 
-    clearTimeout(urlDebounceTimer);
-    urlDebounceTimer = setTimeout(() => {
-      const urlParams = new URLSearchParams($page.url.search);
-      const urlSearch = urlParams.get("search") || "";
-      const urlPage = parseInt(urlParams.get("page") || "1");
-
-      if (urlSearch !== searchInput || urlPage !== $currentPage) {
-        searchInput = urlSearch;
-        currentPage.set(urlPage);
-        loadPools(urlPage, urlSearch);
-      }
-    }, 350);
+    // Sync local state with URL and always load (URL is source of truth)
+    searchInput = urlSearch;
+    currentPage.set(urlPage);
+    loadPools(urlPage, urlSearch);
   });
 
   // Functions
@@ -314,8 +309,7 @@
 
   const handleSearchInputChange = (value: string) => {
     searchInput = value;
-    
-    // If viewing user pools, update the store's search query
+        // If viewing user pools, update the store's search query
     if ($activePoolView === "user") {
       currentUserPoolsStore.setSearchQuery(value);
       currentUserPoolsStore.updateFilteredPools();
@@ -366,7 +360,19 @@
             : 'p-4'}"
                 onscroll={handleMobileScroll}
               >
-          {#if $sortedPools.length === 0}
+          {#if $isLoading}
+            <div class="flex flex-col items-center justify-center h-64 gap-4" in:fade={{ duration: 200 }}>
+              <div class="relative">
+                <Droplets size={40} class="animate-pulse text-kong-primary" />
+                <div class="absolute inset-0 animate-spin">
+                  <div class="w-12 h-12 border-2 border-kong-primary/20 border-t-kong-primary rounded-full"></div>
+                </div>
+              </div>
+              <p class="text-base font-medium text-kong-text-primary/70">
+                {searchInput ? `Searching for "${searchInput}"...` : "Loading pools..."}
+              </p>
+            </div>
+          {:else if $sortedPools.length === 0}
             <PoolsEmptyState 
               isUserPool={false} 
               searchInput={searchInput} 
@@ -377,6 +383,7 @@
               class={$isMobile
                 ? "space-y-3 pb-3"
                 : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"}
+              in:fade={{ duration: 300 }}
             >
               {#each $sortedPools as pool (pool.address_0 + pool.address_1)}
                 {@const userPoolData = getUserPoolData(pool)}
@@ -532,13 +539,4 @@
     </div>
 </section>
 
-{#if $isLoading}
-  <div
-    class="loading-state flex flex-col items-center justify-center h-64 gap-4"
-  >
-      <Droplets size={32} class="animate-pulse text-kong-primary" />
-    <p class="loading-text text-base font-medium text-kong-text-primary/70">
-      Loading pools...
-    </p>
-  </div>
-{/if}
+
