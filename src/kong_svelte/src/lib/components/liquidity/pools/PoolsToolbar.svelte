@@ -45,7 +45,7 @@
   <div class="flex flex-col gap-3 sm:gap-0">
     {#if isMobile}
       <!-- Mobile Header -->
-      <div class="sm:hidden space-y-2">
+      <div class="space-y-2">
         <div class="flex gap-2 w-full">
           <!-- View Toggle -->
           <div class="flex border border-white/[0.08] rounded-lg overflow-hidden shadow-inner bg-white/[0.02]">
@@ -69,12 +69,14 @@
           <div class="flex-1 relative">
             <input
               type="text"
-              placeholder="Search pools..."
-              class="w-full bg-white rounded-lg pl-8 pr-2 py-2 text-sm text-kong-text-primary placeholder-kong-text-secondary focus:outline-none focus:ring-1 focus:ring-kong-primary/20 transition-all duration-200"
+              placeholder={isMobile
+                ? "Search pools..."
+                : "Search pools by name, symbol, or canister ID"}
+              class="w-full bg-kong-bg-secondary p-2 text-kong-text-primary placeholder-kong-text-secondary/70 focus:outline-none focus:border-b focus:border-kong-primary/20 transition-all duration-200"
               value={searchInput}
               oninput={(e) => onSearchInput(e.currentTarget.value)}
             />
-            <svg
+            <!-- <svg
               class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-kong-text-secondary"
               fill="none"
               viewBox="0 0 24 24"
@@ -86,7 +88,7 @@
                 stroke-width="2"
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               />
-            </svg>
+            </svg> -->
           </div>
           
           <!-- Add Liquidity Button (Mobile) -->

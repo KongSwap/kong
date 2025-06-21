@@ -13,6 +13,7 @@
   import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
   import { fade } from "svelte/transition";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
+  import { app } from "$lib/state/app.state.svelte";
   
   // Import extracted components
   import PoolCard from "$lib/components/liquidity/pools/PoolCard.svelte";
@@ -25,7 +26,7 @@
 
   // State management
   const activePoolView = writable("all");
-  const isMobile = writable(false);
+  let isMobile = $state(app.isMobile);
   const sortColumn = writable("tvl");
   const sortDirection = writable<"asc" | "desc">("desc");
   const isLoading = writable(false);
@@ -130,10 +131,6 @@
     currentPage.set(parseInt(urlParams.get("page") || "1"));
 
     loadInitialData();
-    window.addEventListener("resize", checkMobile);
-    checkMobile();
-
-    return () => window.removeEventListener("resize", checkMobile);
   });
 
   onDestroy(() => {
@@ -143,6 +140,10 @@
   // Effects
   $effect(() => {
     if ($auth.isConnected && browser) fetchUserPools();
+  });
+
+  $effect(() => {
+    isMobile = app.isMobile;
   });
 
   // URL-driven data loading - always load when URL changes
@@ -242,7 +243,7 @@
 
   async function handleMobileScroll(event) {
     if (
-      !$isMobile ||
+      !isMobile ||
       $activePoolView !== "all" ||
       isMobileFetching ||
       mobilePage >= $totalPages
@@ -273,10 +274,6 @@
       replaceState: true,
     });
   }
-
-  const checkMobile = () => {
-    if (browser) $isMobile = window.innerWidth < 768;
-  };
 
   // Component helpers
   const getHighestAPY = () =>
@@ -346,7 +343,7 @@
         onSortDirectionToggle={handleSortDirectionToggle}
         userPoolsCount={$userPoolsWithDetails.length}
         isConnected={$auth.isConnected}
-        isMobile={$isMobile}
+        isMobile={isMobile}
         onUserPoolsClick={fetchUserPools}
       />
 
@@ -355,7 +352,7 @@
         {#if $activePoolView === "all"}
         <!-- All Pools -->
               <div
-          class="h-full overflow-auto {$isMobile
+          class="h-full overflow-auto {isMobile
             ? 'mobile-pools-container py-2'
             : 'p-4'}"
                 onscroll={handleMobileScroll}
@@ -380,7 +377,7 @@
             />
           {:else}
             <div
-              class={$isMobile
+              class={isMobile
                 ? "space-y-3 pb-3"
                 : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"}
               in:fade={{ duration: 300 }}
@@ -392,7 +389,7 @@
                   tokenMap={$tokenMap}
                   userPoolData={userPoolData}
                   isHighlighted={isKongPool(pool)}
-                  isMobile={$isMobile}
+                  isMobile={isMobile}
                   isConnected={$auth.isConnected}
                   onClick={() => {
                     if (userPoolData) {
@@ -408,7 +405,7 @@
             </div>
           {/if}
 
-          {#if $isMobile && isMobileFetching}
+          {#if isMobile && isMobileFetching}
             <div class="text-center text-kong-text-secondary py-4">
               <div
                 class="inline-block w-5 h-5 border-2 border-kong-primary/20 border-t-kong-primary rounded-full animate-spin mr-2"
@@ -417,7 +414,7 @@
             </div>
           {/if}
 
-          {#if !$isMobile}
+          {#if !isMobile}
             <PoolsPagination 
               currentPage={$currentPage} 
               totalPages={$totalPages} 
