@@ -16,11 +16,11 @@ KONG_BACKEND=$(dfx canister id ${NETWORK_FLAG} kong_backend)
 
 # Token configurations
 TOKEN_0="SOL"
-TOKEN_0_AMOUNT=5_000_000  # 0.005 SOL (9 decimals)
+TOKEN_0_AMOUNT=1_000_000  # 0.001 SOL (9 decimals)
 TOKEN_0_AMOUNT=${TOKEN_0_AMOUNT//_/}  # remove underscore
 
 TOKEN_1="ksUSDT"
-TOKEN_1_AMOUNT=2_500_000  # 2.5 ksUSDT (6 decimals) - roughly matching SOL value
+TOKEN_1_AMOUNT=250_000  # 0.25 ksUSDT (6 decimals) - roughly matching SOL value
 TOKEN_1_AMOUNT=${TOKEN_1_AMOUNT//_/}  # remove underscore
 TOKEN_1_LEDGER=$(dfx canister id ${NETWORK_FLAG} ksusdt_ledger)
 
@@ -114,14 +114,29 @@ fi
 print_success "SOL transferred!"
 print_info "Transaction signature: $SOL_TX_SIG"
 
-# Step 4: Transfer ksUSDT to Kong backend
-print_header "STEP 4: TRANSFER ksUSDT TO KONG"
-print_info "Transferring $(echo "scale=6; $TOKEN_1_AMOUNT / 1000000" | bc) ksUSDT to Kong backend..."
+# Step 4: Set ksUSDT allowance
+print_header "STEP 4: SET ksUSDT ALLOWANCE"
 
-# Approve Kong backend to spend ksUSDT
-print_info "Approving Kong backend to spend ksUSDT..."
+# Always reset and set fresh allowance to avoid issues
+print_info "Resetting allowance to 0..."
+RESET_RESULT=$(dfx canister call ${NETWORK_FLAG} ${IDENTITY} ${TOKEN_1_LEDGER} icrc2_approve "(record {
+    amount = 0;
+    spender = record {
+        owner = principal \"${KONG_BACKEND_PRINCIPAL}\";
+    };
+})" 2>&1)
+print_debug "Reset result: $RESET_RESULT"
+
+# Get the fee
+KSUSDT_FEE=$(dfx canister call ${NETWORK_FLAG} ${IDENTITY} ${TOKEN_1_LEDGER} icrc1_fee | grep -oE '[0-9_]+' | head -1)
+KSUSDT_FEE=${KSUSDT_FEE//_/}
+print_info "ksUSDT fee: $KSUSDT_FEE"
+
+# Now set the new allowance including fee
+APPROVE_AMOUNT=$((TOKEN_1_AMOUNT + KSUSDT_FEE))
+print_info "Approving Kong backend to spend $APPROVE_AMOUNT ksUSDT (amount: $TOKEN_1_AMOUNT + fee: $KSUSDT_FEE)..."
 APPROVE_RESULT=$(dfx canister call ${NETWORK_FLAG} ${IDENTITY} ${TOKEN_1_LEDGER} icrc2_approve "(record {
-    amount = ${TOKEN_1_AMOUNT};
+    amount = ${APPROVE_AMOUNT};
     spender = record {
         owner = principal \"${KONG_BACKEND_PRINCIPAL}\";
     };
@@ -187,15 +202,25 @@ print_debug "Add liquidity call:"
 echo "$ADD_LIQUIDITY_CALL"
 
 print_info "Submitting add liquidity request..."
-ADD_LIQUIDITY_RESULT=$(dfx canister call ${NETWORK_FLAG} ${IDENTITY} ${KONG_BACKEND} add_liquidity --output json "$ADD_LIQUIDITY_CALL" 2>&1)
+ADD_LIQUIDITY_RESULT=$(dfx canister call ${NETWORK_FLAG} ${IDENTITY} ${KONG_BACKEND} add_liquidity "$ADD_LIQUIDITY_CALL" 2>&1)
 
-# Check result
-if echo "${ADD_LIQUIDITY_RESULT}" | grep -q "\"Ok\""; then
+# Check result more carefully
+if echo "${ADD_LIQUIDITY_RESULT}" | grep -q "Ok ="; then
     print_success "Liquidity added successfully!"
-    echo "${ADD_LIQUIDITY_RESULT}" | jq
+    echo "${ADD_LIQUIDITY_RESULT}"
+    
+    # Extract LP token amount
+    LP_AMOUNT=$(echo "${ADD_LIQUIDITY_RESULT}" | grep -oE 'add_lp_token_amount = [0-9_]+' | awk '{print $3}')
+    print_success "Received LP tokens: $LP_AMOUNT"
 else
     print_error "Add liquidity failed:"
     echo "${ADD_LIQUIDITY_RESULT}"
+    
+    # Try to extract more specific error
+    if echo "${ADD_LIQUIDITY_RESULT}" | grep -q "Err ="; then
+        ERROR_MSG=$(echo "${ADD_LIQUIDITY_RESULT}" | grep -A5 "Err =" || true)
+        print_error "Error details: $ERROR_MSG"
+    fi
     exit 1
 fi
 

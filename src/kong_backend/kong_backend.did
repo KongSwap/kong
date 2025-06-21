@@ -450,6 +450,8 @@ type RemoveLiquidityArgs = record {
     token_0 : text;
     token_1 : text;
     remove_lp_token_amount : nat;
+    payout_address_0 : opt text;
+    payout_address_1 : opt text;
 };
 type RemoveLiquidityReply = record {
     tx_id : nat64;
