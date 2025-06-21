@@ -210,15 +210,13 @@
         <!-- Arrow Container -->
         <div class="arrow-wrapper animate-fade-in sm:block" transition:scale={{ delay: 150, duration: 300 }}>
           <div class="arrow-container">
-            <!-- Arrow Icon for mobile -->
-            <svg class="arrow-icon-mobile sm:hidden" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- <svg class="arrow-icon-mobile hidden" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="5" y1="12" x2="19" y2="12"></line>
               <polyline points="12 5 19 12 12 19"></polyline>
-            </svg>
-            <!-- Moving particles for desktop -->
-            <div class="moving-particle particle-1 hidden sm:block"></div>
+            </svg> -->
+            <!-- <div class="moving-particle particle-1 hidden sm:block"></div>
             <div class="moving-particle particle-2 hidden sm:block"></div>
-            <div class="moving-particle particle-3 hidden sm:block"></div>
+            <div class="moving-particle particle-3 hidden sm:block"></div> -->
           </div>
         </div>
 
