@@ -68,10 +68,9 @@ async fn check_arguments(args: &AddLiquidityArgs) -> Result<(u32, StablePool, Na
         Err("Invalid zero amounts".to_string())?
     }
 
-    // check to make sure tx_id_0 and tx_id_1 is not specified
-    if args.tx_id_0.is_some() || args.tx_id_1.is_some() {
-        Err("Tx_id_0 and Tx_id_1 not supported".to_string())?
-    }
+    // For IC tokens, tx_ids are not supported (use ICRC2 approve)
+    // For Solana tokens, tx_ids are required (TransactionId type)
+    // We'll validate this per-token later
 
     // add_amount_0 and add_amount_1 are the amounts to be added to the pool with the current state
     // these are the amounts that will be transferred to the pool
@@ -86,8 +85,17 @@ async fn check_arguments(args: &AddLiquidityArgs) -> Result<(u32, StablePool, Na
         if args.signature_0.is_none() {
             Err("Token_0: Solana tokens require signature for verification".to_string())?
         }
-    } else if !token_0.is_icrc2() {
-        Err("Token_0 must support ICRC2 or provide signature for Solana".to_string())?
+        if args.tx_id_0.is_none() {
+            Err("Token_0: Solana tokens require tx_id for verification".to_string())?
+        }
+    } else {
+        // IC tokens
+        if args.tx_id_0.is_some() {
+            Err("Token_0: IC tokens use ICRC2 approve, not tx_id".to_string())?
+        }
+        if !token_0.is_icrc2() {
+            Err("Token_0: IC token must support ICRC2".to_string())?
+        }
     }
 
     let token_1 = pool.token_1();
@@ -99,8 +107,17 @@ async fn check_arguments(args: &AddLiquidityArgs) -> Result<(u32, StablePool, Na
         if args.signature_1.is_none() {
             Err("Token_1: Solana tokens require signature for verification".to_string())?
         }
-    } else if !token_1.is_icrc2() {
-        Err("Token_1 must support ICRC2 or provide signature for Solana".to_string())?
+        if args.tx_id_1.is_none() {
+            Err("Token_1: Solana tokens require tx_id for verification".to_string())?
+        }
+    } else {
+        // IC tokens
+        if args.tx_id_1.is_some() {
+            Err("Token_1: IC tokens use ICRC2 approve, not tx_id".to_string())?
+        }
+        if !token_1.is_icrc2() {
+            Err("Token_1: IC token must support ICRC2".to_string())?
+        }
     }
 
     // make sure user is registered, if not create a new user

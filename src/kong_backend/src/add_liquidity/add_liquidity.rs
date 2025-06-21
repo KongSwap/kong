@@ -54,10 +54,17 @@ pub enum TokenIndex {
 /// 9. return_tokens() - otherwise if any errors occurred, return tokens
 #[update(guard = "not_in_maintenance_mode")]
 pub async fn add_liquidity(args: AddLiquidityArgs) -> Result<AddLiquidityReply, String> {
-    // determine if using icrc2_approve or irc1_transfer method
-    if args.tx_id_0.is_none() && args.tx_id_1.is_none() {
+    // Route based on presence of signatures (cross-chain) or tx_ids (IC-only)
+    // If signatures are present, use transfer_from flow for cross-chain support
+    // Otherwise, check tx_ids for IC-only transfer flow
+    if args.signature_0.is_some() || args.signature_1.is_some() {
+        // Cross-chain flow (Solana tokens with signatures)
+        add_liquidity_transfer_from(args).await
+    } else if args.tx_id_0.is_none() && args.tx_id_1.is_none() {
+        // ICRC2 approve flow
         add_liquidity_transfer_from(args).await
     } else {
+        // IC-only transfer flow (with BlockIndex tx_ids)
         add_liquidity_transfer(args).await
     }
 }
@@ -73,10 +80,17 @@ pub async fn add_liquidity(args: AddLiquidityArgs) -> Result<AddLiquidityReply, 
 /// Returns: u64 - request_id. poll requests(request_id) to return the current status of the request
 #[update(guard = "not_in_maintenance_mode")]
 pub async fn add_liquidity_async(args: AddLiquidityArgs) -> Result<u64, String> {
-    // determine if using icrc2_approve or irc1_transfer method
-    if args.tx_id_0.is_none() && args.tx_id_1.is_none() {
+    // Route based on presence of signatures (cross-chain) or tx_ids (IC-only)
+    // If signatures are present, use transfer_from flow for cross-chain support
+    // Otherwise, check tx_ids for IC-only transfer flow
+    if args.signature_0.is_some() || args.signature_1.is_some() {
+        // Cross-chain flow (Solana tokens with signatures)
+        add_liquidity_transfer_from_async(args).await
+    } else if args.tx_id_0.is_none() && args.tx_id_1.is_none() {
+        // ICRC2 approve flow
         add_liquidity_transfer_from_async(args).await
     } else {
+        // IC-only transfer flow (with BlockIndex tx_ids)
         add_liquidity_transfer_async(args).await
     }
 }

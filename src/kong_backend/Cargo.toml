@@ -1,6 +1,6 @@
 [package]
 name = "kong_backend"
-version = "0.0.40"
+version = "0.0.43"
 edition = "2021"
 description = "Kong Swap backend canister"
 
