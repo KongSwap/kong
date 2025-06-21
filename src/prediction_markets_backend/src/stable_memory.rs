@@ -27,10 +27,11 @@ use crate::{types::StorableNat, ClaimRecord};
 use super::delegation::*;
 
 use crate::failed_transaction::FailedTransaction;
+use crate::market::create_market::MARKET_ID;
 use crate::market::market::*;
 use crate::resolution::resolution::ResolutionProposal;
 use crate::storable_vec::StorableVec;
-use crate::storage::{MARKET_RESOLUTION_DETAILS, NEXT_MARKET_ID};
+use crate::storage::MARKET_RESOLUTION_DETAILS;
 use crate::token::registry::{TokenIdentifier, TokenInfo};
 use crate::types::{MarketId, MarketResolutionDetails};
 /// Type alias for the virtual memory used by stable collections
@@ -113,7 +114,7 @@ thread_local! {
     /// Stable storage for claims data (used for upgrade persistence)
     ///
     /// Storage for the in-memory claim state during upgrades
-    /// This is used to persist claims, user_claims, market_claims, and (next_claim_id, next_market_id)
+    /// This is used to persist claims, user_claims, market_claims, and (next_claim_id, market_id)
     pub static STABLE_CLAIMS_DATA: RefCell<(
         StableBTreeMap<StorableNat, ClaimRecord, Memory>,
         StableBTreeMap<Principal, StorableVec<StorableNat>, Memory>,
@@ -200,10 +201,7 @@ pub fn save() {
             .3
             .insert(StorableNat::from_u64(0), StorableNat::from_u64(claims_data.3));
 
-        NEXT_MARKET_ID.with(|id| {
-            let id = id.borrow();
-            let _ = stable_claims.3.insert(StorableNat::from_u64(1), StorableNat::from_u64(*id));
-        });
+        let _ = stable_claims.3.insert(StorableNat::from_u64(0), StorableNat::from_u64(MARKET_ID.load(std::sync::atomic::Ordering::SeqCst)));
     });
 
     // Save market resolution details to stable storage
@@ -277,9 +275,12 @@ pub fn restore() {
 
         crate::claims::claims_storage::import_claims(claims, user_claims, market_claims, next_id);
 
-        NEXT_MARKET_ID.with(|id| {
-            *id.borrow_mut() = all_claims.3.get(&StorableNat::from_u64(0)).map(|v| v.to_u64()).unwrap_or(1);
-        });
+        pub fn max_market_id() -> u64 {
+            STABLE_MARKETS.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.to_u64()))
+        }
+
+        let new_market_id = all_claims.3.get(&StorableNat::from_u64(0)).map(|v| v.to_u64()).unwrap_or(max_market_id());
+        MARKET_ID.store(new_market_id, std::sync::atomic::Ordering::SeqCst);
     });
 
     // Restore market resolution details if available

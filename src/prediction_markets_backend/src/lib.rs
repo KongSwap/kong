@@ -31,7 +31,6 @@ use crate::bet::bet::*;
 use crate::canister::*;
 use crate::category::market_category::*;
 use crate::delegation::*;
-use crate::market::create_market::*;
 use crate::market::get_market_by_status::GetMarketsByStatusArgs;
 use crate::market::get_market_by_status::GetMarketsByStatusResult;
 use crate::market::market::*;
@@ -98,12 +97,7 @@ const KONG_LEDGER_ID: &str = "umunu-kh777-77774-qaaca-cai";
 /// ID found in stable storage (or starts from 0 if none).
 #[init]
 fn init() {
-    prepare_market_id();
     crate::token::registry::init();
-}
-
-fn prepare_market_id() {
-    MARKET_ID.store(max_market_id(), std::sync::atomic::Ordering::SeqCst);
 }
 
 /// Called before canister upgrade to preserve state
@@ -133,7 +127,6 @@ fn post_upgrade() {
 
     // Other post-upgrade initializations as needed
     update_expired_markets();
-    prepare_market_id();
 }
 
 // Export Candid interface

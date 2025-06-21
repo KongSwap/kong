@@ -20,10 +20,6 @@ pub use crate::stable_memory::STABLE_ORACLE_WHITELIST as ORACLES;
 
 // Thread-local storage for the next market ID
 thread_local! {
-    /// Counter for the next market ID to be assigned
-    /// This ensures every market gets a unique sequential ID
-    pub static NEXT_MARKET_ID: RefCell<u64> = RefCell::new(1);
-    
     /// Storage for market resolution details with market ID as key
     /// This captures comprehensive information about how markets were resolved
     pub static MARKET_RESOLUTION_DETAILS: RefCell<HashMap<MarketId, MarketResolutionDetails>> = RefCell::new(HashMap::new());
@@ -55,18 +51,6 @@ pub fn get_bets_for_market(market_id: &MarketId) -> Vec<Bet> {
         
         market_bets
     })
-}
-
-/// Get current next market ID
-pub fn get_next_market_id() -> u64 {
-    NEXT_MARKET_ID.with(|counter| *counter.borrow())
-}
-
-/// Set next market ID (used during canister upgrade)
-pub fn set_next_market_id(id: u64) {
-    NEXT_MARKET_ID.with(|next_id| {
-        *next_id.borrow_mut() = id;
-    });
 }
 
 /// Store market resolution details

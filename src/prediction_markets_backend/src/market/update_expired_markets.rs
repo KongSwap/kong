@@ -52,12 +52,8 @@ pub fn update_expired_markets() -> u64 {
 }
 
 fn update_expired_markets_impl(now: u64) -> (u64, u64) {
-    let mut expired_markets: u64 = 0;
-    let mut dropped_markets: u64 = 0;
-
     MARKETS.with(|markets| {
         let mut markets_ref = markets.borrow_mut();
-        
         // First, collect the markets that need to be updated
         let mut markets_to_update = Vec::new();
         // Second, collect the markets that need to be dropped
@@ -76,18 +72,18 @@ fn update_expired_markets_impl(now: u64) -> (u64, u64) {
             }
         }
 
-        expired_markets = markets_to_update.len() as u64;
+        let expired_markets = markets_to_update.len() as u64;
         // Now update all the markets that need updating
         for (id, updated_market) in markets_to_update {
             markets_ref.insert(id, updated_market);
         }
 
-        dropped_markets = markets_to_be_dropped.len() as u64;
+        let dropped_markets = markets_to_be_dropped.len() as u64;
         // Now drop all the markets that need dropping
         for id in markets_to_be_dropped {
             markets_ref.remove(&id);
         }
-    });
 
-    (expired_markets, dropped_markets)
+        (expired_markets, dropped_markets)
+    })
 }

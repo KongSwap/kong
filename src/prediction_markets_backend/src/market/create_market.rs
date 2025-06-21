@@ -35,29 +35,6 @@ use crate::types::{MarketId, Timestamp, TokenAmount, NANOS_PER_SECOND};
 /// highest market ID found in stable storage plus one.
 pub static MARKET_ID: AtomicU64 = AtomicU64::new(0);
 
-/// Returns the maximum market ID as u64 (for internal use with AtomicU64)
-///
-/// This function examines the stable storage to find the highest existing market ID.
-/// It's used during canister upgrades to ensure that the MARKET_ID counter starts
-/// from a value higher than any existing market.
-///
-/// # Returns
-/// * `u64` - The maximum market ID in the system, or 0 if no markets exist
-pub fn max_market_id() -> u64 {
-    MARKETS.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.to_u64()))
-}
-
-/// Returns the maximum market ID as MarketId (for external interfaces)
-///
-/// Typed version of max_market_id that returns a MarketId struct instead of a raw u64.
-/// This is primarily used for external API interfaces that expect typed identifiers.
-///
-/// # Returns
-/// * `MarketId` - The maximum market ID wrapped in the typed MarketId struct
-pub fn max_market_id_typed() -> MarketId {
-    MarketId::from(max_market_id())
-}
-
 /// Creates a new prediction market with specified parameters
 ///
 /// This function allows users or admins to create new prediction markets. The markets

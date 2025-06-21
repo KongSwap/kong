@@ -62,11 +62,10 @@ pub struct TokenInfo {
     /// KONG tokens receive special treatment (e.g., fees are burned rather than collected)
     pub is_kong: bool,
 
-    /// Minimum transfer fee required by this token's ledger
+    /// Expected transfer fee
+    /// Claims with amount less than this value should not be created
     /// This is deducted from transfers and ensures the minimum viable transaction amount
     /// Example: 10_000 (0.0001 KONG) for KONG tokens, 1_000 (0.001 USDT) for ckUSDT
-    /// TODO: make deprecated
-    // #[deprecated(since = "1.1.0", note = "Should not be used")]
     pub transfer_fee: TokenAmount,
 
     /// Minimum amount required to activate a market with this token
