@@ -53,7 +53,7 @@ impl PaymentVerifier {
         if args.signature.is_some() {
             // Cross-chain payment - verify signature regardless of token type
             match pay_token {
-                StableToken::Solana(_) => verify_solana_payment(args, pay_amount).await,
+                StableToken::Solana(sol_token) => verify_solana_payment(args, pay_amount, sol_token).await,
                 StableToken::IC(_) => {
                     // IC token with signature - still needs signature verification for cross-chain
                     // This is a rare case but supported for completeness
@@ -99,7 +99,7 @@ impl PaymentVerifier {
 }
 
 /// Verify Solana payment by checking signature and transaction data
-async fn verify_solana_payment(args: &SwapArgs, pay_amount: u64) -> Result<PaymentVerification, String> {
+async fn verify_solana_payment(args: &SwapArgs, pay_amount: u64, sol_token: &crate::stable_token::solana_token::SolanaToken) -> Result<PaymentVerification, String> {
     // For cross-chain, signature is required
     let signature = args.signature.as_ref()
         .ok_or_else(|| "Signature is required for Solana/SPL swap methods".to_string())?;
@@ -115,9 +115,12 @@ async fn verify_solana_payment(args: &SwapArgs, pay_amount: u64) -> Result<Payme
         TxId::BlockIndex(_) => return Err("BlockIndex not supported for Solana transactions".to_string()),
     };
 
+    // Check if this is an SPL token (not native SOL)
+    let is_spl_token = sol_token.is_spl_token;
+    
     // First, extract the sender from the transaction
-    ICNetwork::info_log(&format!("Extracting sender from transaction: {}", tx_signature_str));
-    let sender_pubkey = extract_sender_from_transaction(&tx_signature_str).await?;
+    ICNetwork::info_log(&format!("Extracting sender from transaction: {} (is_spl_token: {})", tx_signature_str, is_spl_token));
+    let sender_pubkey = extract_sender_from_transaction(&tx_signature_str, is_spl_token).await?;
     ICNetwork::info_log(&format!("Extracted sender: {}", sender_pubkey));
     
     // Create canonical message with extracted sender and verify signature
@@ -152,7 +155,7 @@ async fn verify_solana_payment(args: &SwapArgs, pay_amount: u64) -> Result<Payme
     }
 
     // Verify the actual Solana transaction from storage
-    verify_solana_transaction(&tx_signature_str, &sender_pubkey, pay_amount).await?;
+    verify_solana_transaction(&tx_signature_str, &sender_pubkey, pay_amount, is_spl_token).await?;
     
     Ok(PaymentVerification::SolanaPayment {
         tx_signature: tx_signature_str,
@@ -162,7 +165,7 @@ async fn verify_solana_payment(args: &SwapArgs, pay_amount: u64) -> Result<Payme
 }
 
 /// Extract sender public key from a Solana transaction
-async fn extract_sender_from_transaction(tx_signature: &str) -> Result<String, String> {
+async fn extract_sender_from_transaction(tx_signature: &str, is_spl_token: bool) -> Result<String, String> {
     let transaction = get_solana_transaction(tx_signature.to_string())
         .ok_or_else(|| format!("Solana transaction {} not found. Make sure kong_rpc has processed this transaction.", tx_signature))?;
     
@@ -171,15 +174,21 @@ async fn extract_sender_from_transaction(tx_signature: &str) -> Result<String, S
         let metadata: serde_json::Value = serde_json::from_str(metadata_json)
             .map_err(|e| format!("Failed to parse transaction metadata: {}", e))?;
         
-        // Try different fields where sender might be stored
-        // For SOL transfers: "sender"
-        // For SPL transfers: "authority" or "sender_wallet"
-        let sender = metadata.get("sender")
-            .or_else(|| metadata.get("authority"))
-            .or_else(|| metadata.get("sender_wallet"))
-            .and_then(|v| v.as_str())
-            .ok_or("Transaction metadata missing sender information")?;
-            
+        // Extract sender based on token type
+        let sender = if is_spl_token {
+            // For SPL tokens: use "authority" or "sender_wallet" (the actual wallet that signed)
+            metadata.get("authority")
+                .or_else(|| metadata.get("sender_wallet"))
+                .and_then(|v| v.as_str())
+                .ok_or("SPL transaction metadata missing authority/sender_wallet information")?
+        } else {
+            // For native SOL: use "sender" (the wallet address)
+            metadata.get("sender")
+                .and_then(|v| v.as_str())
+                .ok_or("SOL transaction metadata missing sender information")?
+        };
+        
+        ICNetwork::info_log(&format!("DEBUG: Extracted sender: {} (is_spl_token: {})", sender, is_spl_token));
         Ok(sender.to_string())
     } else {
         Err("Transaction metadata is missing".to_string())
@@ -191,6 +200,7 @@ async fn verify_solana_transaction(
     tx_signature: &str,
     expected_sender: &str,
     expected_amount: u64,
+    is_spl_token: bool,
 ) -> Result<(), String> {
     let transaction = get_solana_transaction(tx_signature.to_string())
         .ok_or_else(|| format!("Solana transaction {} not found. Make sure kong_rpc has processed this transaction.", tx_signature))?;
@@ -207,12 +217,19 @@ async fn verify_solana_transaction(
         let metadata: serde_json::Value = serde_json::from_str(metadata_json)
             .map_err(|e| format!("Failed to parse transaction metadata: {}", e))?;
         
-        // Check sender matches
-        let actual_sender = metadata.get("sender")
-            .or_else(|| metadata.get("authority")) // For SPL tokens
-            .or_else(|| metadata.get("sender_wallet")) // Alternative field name
-            .and_then(|v| v.as_str())
-            .ok_or("Transaction metadata missing sender information")?;
+        // Check sender matches based on token type
+        let actual_sender = if is_spl_token {
+            // For SPL tokens: use "authority" or "sender_wallet"
+            metadata.get("authority")
+                .or_else(|| metadata.get("sender_wallet"))
+                .and_then(|v| v.as_str())
+                .ok_or("SPL transaction metadata missing authority/sender_wallet information")?
+        } else {
+            // For native SOL: use "sender"
+            metadata.get("sender")
+                .and_then(|v| v.as_str())
+                .ok_or("SOL transaction metadata missing sender information")?
+        };
             
         if actual_sender != expected_sender {
             return Err(format!(

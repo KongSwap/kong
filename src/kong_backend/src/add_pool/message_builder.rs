@@ -19,7 +19,7 @@ pub struct CanonicalAddPoolMessage {
 impl CanonicalAddPoolMessage {
     /// Create a canonical message from AddPoolArgs
     pub fn from_add_pool_args(args: &AddPoolArgs) -> Self {
-        Self {
+        let result = Self {
             token_0: args.token_0.clone(),
             amount_0: args.amount_0.0.to_u64().expect("Amount too large"),
             token_1: args.token_1.clone(),
@@ -28,7 +28,9 @@ impl CanonicalAddPoolMessage {
             timestamp: args
                 .timestamp
                 .unwrap_or_else(|| ICNetwork::get_time() / 1_000_000), // Use current IC time in milliseconds if not provided
-        }
+        };
+        ic_cdk::println!("DEBUG CanonicalAddPoolMessage::from_add_pool_args: created message = {:?}", result);
+        result
     }
 
     /// Serialize to JSON string for signing

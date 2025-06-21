@@ -92,8 +92,11 @@ pub async fn add_solana_token(args: &AddTokenArgs) -> Result<StableToken, String
         .ok_or_else(|| format!("Invalid address {}", args.token))?;
     
     // Only allow hardcoded SOL and USDC tokens
+    // Note: USDC mint address changes based on environment:
+    // - Production: Uses mainnet USDC (EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v)
+    // - Local/Staging: Uses devnet kUSDC (nnKagNSBhpEe5DAYGzvFhRCoETSTec6FJVCj5wPK155)
     let (name, symbol, decimals, fee, program_id) = match mint_address.as_str() {
-        // Native SOL
+        // Native SOL - same across all environments
         "11111111111111111111111111111111" => (
             "Solana".to_string(),
             "SOL".to_string(),
@@ -101,7 +104,8 @@ pub async fn add_solana_token(args: &AddTokenArgs) -> Result<StableToken, String
             Nat::from(5000u64), // 0.005 SOL
             "11111111111111111111111111111111".to_string(), // System program
         ),
-        // USDC on Solana
+        // USDC on Solana mainnet (production only)
+        #[cfg(feature = "prod")]
         "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" => (
             "USD Coin".to_string(),
             "USDC".to_string(),
@@ -109,7 +113,23 @@ pub async fn add_solana_token(args: &AddTokenArgs) -> Result<StableToken, String
             Nat::from(5000u64), // 0.005 SOL for transfer fee
             "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA".to_string(), // SPL Token program
         ),
-        _ => return Err("Only SOL and USDC Solana tokens are supported".to_string()),
+        // USDC on Solana devnet (local/staging only)
+        #[cfg(any(feature = "local", feature = "staging"))]
+        "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU" => (
+            "USD Coin".to_string(),
+            "USDC".to_string(),
+            6u8,
+            Nat::from(5000u64), // 0.005 SOL for transfer fee
+            "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA".to_string(), // SPL Token program
+        ),
+        _ => {
+            #[cfg(feature = "prod")]
+            return Err("Only SOL and mainnet USDC Solana tokens are supported".to_string());
+            #[cfg(any(feature = "local", feature = "staging"))]
+            return Err("Only SOL and devnet USDC Solana tokens are supported".to_string());
+            #[cfg(not(any(feature = "prod", feature = "local", feature = "staging")))]
+            return Err("Only SOL and USDC Solana tokens are supported".to_string());
+        }
     };
     
     let solana_token = StableToken::Solana(SolanaToken {
@@ -121,6 +141,7 @@ pub async fn add_solana_token(args: &AddTokenArgs) -> Result<StableToken, String
         mint_address: mint_address.to_string(),
         program_id,
         total_supply: None, // We don't track total supply for now
+        is_spl_token: mint_address != "11111111111111111111111111111111", // False for native SOL
     });
     
     let token_id = token_map::insert(&solana_token)?;

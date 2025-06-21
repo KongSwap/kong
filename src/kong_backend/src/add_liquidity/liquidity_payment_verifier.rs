@@ -6,7 +6,6 @@ use candid::{Nat, Principal};
 use num_traits::ToPrimitive;
 
 use crate::stable_token::stable_token::StableToken;
-use crate::stable_token::token::Token;
 use crate::stable_transfer::tx_id::TxId;
 use crate::swap::verify_canonical_message::verify_canonical_message;
 use crate::ic::network::ICNetwork;
@@ -46,10 +45,13 @@ impl LiquidityPaymentVerifier {
         signature: &str,
     ) -> Result<LiquidityPaymentVerification, String> {
         // Only Solana tokens are supported for cross-chain liquidity provision
-        if token.chain() == crate::chains::chains::SOL_CHAIN {
-            verify_solana_liquidity_payment(args, amount, tx_id, signature).await
-        } else {
-            Err("Only Solana tokens require signature verification for liquidity provision".to_string())
+        match token {
+            StableToken::Solana(sol_token) => {
+                verify_solana_liquidity_payment(args, amount, tx_id, signature, sol_token).await
+            }
+            _ => {
+                Err("Only Solana tokens require signature verification for liquidity provision".to_string())
+            }
         }
     }
 }
@@ -60,6 +62,7 @@ async fn verify_solana_liquidity_payment(
     amount: &Nat,
     tx_id: &TxId,
     signature: &str,
+    sol_token: &crate::stable_token::solana_token::SolanaToken,
 ) -> Result<LiquidityPaymentVerification, String> {
     // Extract transaction signature
     let tx_signature_str = match tx_id {
@@ -67,8 +70,11 @@ async fn verify_solana_liquidity_payment(
         TxId::BlockIndex(_) => return Err("BlockIndex not supported for Solana transactions".to_string()),
     };
 
+    // Check if this is an SPL token (not native SOL)
+    let is_spl_token = sol_token.is_spl_token;
+    
     // Extract sender from the transaction
-    let sender_pubkey = extract_sender_from_transaction(&tx_signature_str).await?;
+    let sender_pubkey = extract_sender_from_transaction(&tx_signature_str, is_spl_token).await?;
     
     // Create canonical liquidity message and verify signature
     let canonical_message = CanonicalAddLiquidityMessage::from_add_liquidity_args(args);
@@ -87,7 +93,7 @@ async fn verify_solana_liquidity_payment(
 
     // Verify the actual Solana transaction
     let amount_u64 = amount.0.to_u64().ok_or("Amount too large")?;
-    verify_solana_transaction(&tx_signature_str, &sender_pubkey, amount_u64).await?;
+    verify_solana_transaction(&tx_signature_str, &sender_pubkey, amount_u64, is_spl_token).await?;
     
     Ok(LiquidityPaymentVerification::SolanaPayment {
         tx_signature: tx_signature_str,
@@ -97,7 +103,7 @@ async fn verify_solana_liquidity_payment(
 }
 
 /// Extract sender public key from a Solana transaction
-async fn extract_sender_from_transaction(tx_signature: &str) -> Result<String, String> {
+async fn extract_sender_from_transaction(tx_signature: &str, is_spl_token: bool) -> Result<String, String> {
     let transaction = get_solana_transaction(tx_signature.to_string())
         .ok_or_else(|| format!("Solana transaction {} not found. Make sure kong_rpc has processed this transaction.", tx_signature))?;
     
@@ -106,13 +112,19 @@ async fn extract_sender_from_transaction(tx_signature: &str) -> Result<String, S
         let metadata: serde_json::Value = serde_json::from_str(metadata_json)
             .map_err(|e| format!("Failed to parse transaction metadata: {}", e))?;
         
-        // For SOL transfers: "sender"
-        // For SPL transfers: "authority" or "sender_wallet"
-        let sender = metadata.get("sender")
-            .or_else(|| metadata.get("authority"))
-            .or_else(|| metadata.get("sender_wallet"))
-            .and_then(|v| v.as_str())
-            .ok_or("Transaction metadata missing sender information")?;
+        // Extract sender based on token type
+        let sender = if is_spl_token {
+            // For SPL tokens: use "authority" or "sender_wallet" (the actual wallet that signed)
+            metadata.get("authority")
+                .or_else(|| metadata.get("sender_wallet"))
+                .and_then(|v| v.as_str())
+                .ok_or("SPL transaction metadata missing authority/sender_wallet information")?
+        } else {
+            // For native SOL: use "sender" (the wallet address)
+            metadata.get("sender")
+                .and_then(|v| v.as_str())
+                .ok_or("SOL transaction metadata missing sender information")?
+        };
             
         Ok(sender.to_string())
     } else {
@@ -125,6 +137,7 @@ async fn verify_solana_transaction(
     tx_signature: &str,
     expected_sender: &str,
     expected_amount: u64,
+    is_spl_token: bool,
 ) -> Result<(), String> {
     let transaction = get_solana_transaction(tx_signature.to_string())
         .ok_or_else(|| format!("Solana transaction {} not found", tx_signature))?;
@@ -141,12 +154,19 @@ async fn verify_solana_transaction(
         let metadata: serde_json::Value = serde_json::from_str(metadata_json)
             .map_err(|e| format!("Failed to parse transaction metadata: {}", e))?;
         
-        // Check sender matches
-        let actual_sender = metadata.get("sender")
-            .or_else(|| metadata.get("authority"))
-            .or_else(|| metadata.get("sender_wallet"))
-            .and_then(|v| v.as_str())
-            .ok_or("Transaction metadata missing sender information")?;
+        // Check sender matches based on token type
+        let actual_sender = if is_spl_token {
+            // For SPL tokens: use "authority" or "sender_wallet"
+            metadata.get("authority")
+                .or_else(|| metadata.get("sender_wallet"))
+                .and_then(|v| v.as_str())
+                .ok_or("SPL transaction metadata missing authority/sender_wallet information")?
+        } else {
+            // For native SOL: use "sender"
+            metadata.get("sender")
+                .and_then(|v| v.as_str())
+                .ok_or("SOL transaction metadata missing sender information")?
+        };
             
         if actual_sender != expected_sender {
             return Err(format!(
