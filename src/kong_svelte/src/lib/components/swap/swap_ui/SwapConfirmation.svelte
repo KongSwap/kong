@@ -41,6 +41,15 @@
   
   onMount(() => {
     mounted = true;
+    
+    // Prevent body scrolling when modal is open
+    const body = document.body;
+    const scrollY = window.scrollY;
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.width = '100%';
+    body.style.overflow = 'hidden';
+    
     // Create fewer floating particles for better performance
     particles = Array.from({ length: 6 }, (_, i) => ({
       id: i,
@@ -52,7 +61,18 @@
   });
   
   onDestroy(() => {
-    // Cleanup any animations
+    // Restore body scrolling when modal is closed
+    const body = document.body;
+    const scrollY = body.style.top;
+    body.style.position = '';
+    body.style.top = '';
+    body.style.width = '';
+    body.style.overflow = '';
+    
+    // Restore scroll position
+    if (scrollY) {
+      window.scrollTo(0, parseInt(scrollY || '0') * -1);
+    }
   });
 
   async function handleConfirm() {
@@ -288,7 +308,7 @@
 
   /* Swap Preview Container */
   .swap-preview-container {
-    @apply flex flex-col sm:grid sm:grid-cols-[1fr_auto_1fr] items-center gap-6 sm:gap-8 md:gap-12;
+    @apply grid grid-cols-[1fr_auto_1fr] items-center gap-6 sm:gap-8 md:gap-12;
   }
 
   /* Token Container */
@@ -299,7 +319,7 @@
   }
 
   .token-label {
-    @apply text-sm sm:text-base font-medium text-kong-text-secondary uppercase tracking-wider pb-4;
+    @apply text-sm font-medium text-kong-text-secondary uppercase tracking-wider pb-4;
     animation: fade-in-down 0.6s ease-out;
   }
 
