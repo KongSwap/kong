@@ -58,8 +58,8 @@ pub struct TokenBalanceBreakdown {
     pub pending_claims: TokenAmount,
     /// Platform fees collected but not yet transferred out
     pub platform_fees: TokenAmount,
-    /// Platform fees collected from void penalties
-    pub void_penalty_fees: TokenAmount,
+    /// Platform fees collected from disputed penalties
+    pub disputed_penalty_fees: TokenAmount,
 }
 
 /// Summary of all token balances
@@ -137,7 +137,7 @@ async fn calculate_single_token_balance(token_id: &TokenIdentifier) -> TokenBala
     let mut active_markets = TokenAmount::from(0u64);
     let mut expired_markets = TokenAmount::from_u64(0u64);
     let mut platform_fees = TokenAmount::from(0u64);
-    let mut void_penalty_fees = TokenAmount::from(0u64);
+    let mut disputed_penalty_fees = TokenAmount::from(0u64);
     let pending_claims = calculate_pending_claims_total(token_id);
 
     // Calculate totals from markets
@@ -165,9 +165,17 @@ async fn calculate_single_token_balance(token_id: &TokenIdentifier) -> TokenBala
                     // Add platform fees (approximate based on bet volume and fee percentage)
                     platform_fees += calculate_platform_fees_for_market(&market, &outcomes, &token_info);
                 }
-                MarketStatus::Voided | MarketStatus::Disputed => {
-                    // Count penalty fee
-                    void_penalty_fees += calculate_penalty_fee(&token_info) - token_info.transfer_fee.clone();
+                MarketStatus::Disputed => {
+                    ic_cdk::println!("Market {} has unknown status: Disputed ", market.id);
+                }
+                MarketStatus::Voided => {
+                    // There are 2 types of voided markets:
+                    // 1. Voided during active/expired
+                    // 2. Disputed markets
+                    // Penalty fees are taken only for disputed markets
+                    if market.resolution_data.is_some() {
+                        disputed_penalty_fees += calculate_penalty_fee(&token_info) - token_info.transfer_fee.clone();
+                    }
                 }
             }
         }
@@ -210,7 +218,7 @@ async fn calculate_single_token_balance(token_id: &TokenIdentifier) -> TokenBala
             voided_markets_unclaimed,
             pending_claims,
             platform_fees,
-            void_penalty_fees
+            disputed_penalty_fees,
         },
         timestamp: get_current_time(),
     }
@@ -324,19 +332,12 @@ fn calculate_market_bet_total(market_id: &MarketId, token_id: &TokenIdentifier) 
 }
 
 /// Calculate platform fees for a market
-pub fn calculate_platform_fees_for_market(
-    market: &Market,
-    winning_outcomes: &Vec<Nat>,
-    token_info: &TokenInfo,
-) -> TokenAmount {
-    let to_u64 = |v: &Nat| -> u64 {v.0.to_u64_digits().first().cloned().unwrap_or(0)};
+pub fn calculate_platform_fees_for_market(market: &Market, winning_outcomes: &Vec<Nat>, token_info: &TokenInfo) -> TokenAmount {
+    let to_u64 = |v: &Nat| -> u64 { v.0.to_u64_digits().first().cloned().unwrap_or(0) };
     let outcome_pools = market.outcome_pools.clone();
 
     let market_total: StorableNat = calculate_market_bet_total(&market.id, &market.token_id);
-    let winning_pool_total: StorableNat = winning_outcomes
-    .iter()
-    .map(|i| outcome_pools[to_u64(i) as usize].clone())
-    .sum();
+    let winning_pool_total: StorableNat = winning_outcomes.iter().map(|i| outcome_pools[to_u64(i) as usize].clone()).sum();
     let lost_total: StorableNat = market_total - winning_pool_total;
 
     let fee_amount = (lost_total * token_info.fee_percentage) / 10000;

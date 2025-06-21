@@ -59,7 +59,7 @@ pub async fn void_market(market_id: MarketId) -> Result<(), ResolutionError> {
     })?;
 
     // Verify market is not already resolved
-    if !matches!(market.status, MarketStatus::Active | MarketStatus::Disputed) {
+    if !matches!(market.status, MarketStatus::Active | MarketStatus::ExpiredUnresolved | MarketStatus::PendingActivation) {
         return Err(ResolutionError::AlreadyResolved);
     }
 

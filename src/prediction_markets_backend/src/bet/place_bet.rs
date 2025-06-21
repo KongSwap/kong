@@ -215,7 +215,7 @@ async fn place_bet(
         }
     }) {
         Some(market) => {
-            if matches!(market.status, MarketStatus::Active | MarketStatus::PendingActivation) {
+            if !matches!(market.status, MarketStatus::Active | MarketStatus::PendingActivation) {
                 ic_cdk::println!(
                     "Market {} in state {:?} after token transfer, refunding user {}",
                     market_id.to_u64(),
