@@ -38,7 +38,7 @@
     <BaseNavItem
       label={option.label}
       icon={option.icon}
-      isActive={$page.url.pathname === option.path}
+      isActive={activeTab === title.toLowerCase() && $page.url.pathname === option.path}
       comingSoon={option.comingSoon}
       onClick={() => handleOptionClick(option)}
     />

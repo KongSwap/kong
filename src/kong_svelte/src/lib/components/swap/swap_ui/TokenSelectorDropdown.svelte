@@ -516,7 +516,7 @@
 </script>
 
 {#if show}
-  <div class="fixed inset-0 bg-kong-bg-primary/30 backdrop-blur-md z-[9999] grid place-items-center overflow-y-auto md:p-6 sm:p-0" on:click|self={closeWithCleanup} role="dialog">
+  <div class="fixed inset-0 bg-kong-bg-primary/30 backdrop-blur-md z-[9999] grid place-items-center p-6 overflow-y-auto md:p-6 sm:p-0" on:click|self={closeWithCleanup} role="dialog">
     <div
       class="relative border bg-kong-bg-primary transition-all duration-200 overflow-hidden w-[420px] bg-kong-bg-secondary {expandDirection} {$panelRoundness} {selectorState.isMobile ? 'fixed inset-0 w-full h-screen rounded-none border-0' : 'border-kong-border border-1'}"
       bind:this={selectorState.dropdownElement}
