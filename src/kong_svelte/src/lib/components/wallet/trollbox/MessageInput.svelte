@@ -51,13 +51,13 @@
   }
 </script>
 
-<div class="p-2.5 bg-kong-bg-dark relative">
+<div class="p-2.5 bg-kong-bg-primary relative">
   {#if isConnected}
     <div class="flex gap-2 relative">
       <!-- Emoji button -->
       <button
         bind:this={emojiButton}
-        on:click={toggleEmojiPicker}
+        onclick={toggleEmojiPicker}
         class="shrink-0 p-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors rounded-full"
       >
         <Smile class="w-5 h-5" />
@@ -67,15 +67,15 @@
       <input
         type="text"
         bind:value={messageInput}
-        on:keypress={handleKeyPress}
+        onkeypress={handleKeyPress}
         placeholder="Message..."
-        class="flex-1 min-w-0 bg-kong-bg-light text-kong-text-primary text-sm rounded-full px-3.5 py-2 border border-kong-border focus:outline-none focus:border-kong-accent-blue transition-colors"
+        class="flex-1 min-w-0 bg-kong-bg-secondary text-kong-text-primary text-sm rounded-full px-3.5 py-2 border border-kong-border focus:outline-none focus:border-kong-accent-blue transition-colors"
       />
       
       <!-- Send button - only show when there's text -->
       {#if messageInput.trim()}
         <button
-          on:click={handleSubmit}
+          onclick={handleSubmit}
           class="shrink-0 p-2 rounded-full bg-kong-primary text-white transition-opacity hover:opacity-90 flex items-center justify-center"
           transition:fade={{ duration: 100 }}
         >
@@ -93,7 +93,7 @@
           transition:fade={{ duration: 150 }}
         >
           <emoji-picker
-            on:emoji-click={handleEmojiSelect}
+            onemoji-click={handleEmojiSelect}
             class="light"
           ></emoji-picker>
         </div>

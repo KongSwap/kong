@@ -3,6 +3,7 @@
   import { ChevronDown } from "lucide-svelte";
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
+  import { panelRoundness } from "$lib/stores/derivedThemeStore";
 
   // Define props using runes
   let { 
@@ -43,28 +44,28 @@
 
 <div 
   class="nav-dropdown"
-  on:mouseenter={() => onShowDropdown(label.toLowerCase())}
-  on:mouseleave={onHideDropdown}
+  onmouseenter={() => onShowDropdown(label.toLowerCase())}
+  onmouseleave={onHideDropdown}
 >
   <button
     class="nav-link {isActive ? 'active' : ''}"
-    on:click={() => goto(defaultPath)}
+    onclick={() => goto(defaultPath)}
   >
     {label}
     <ChevronDown size={16} />
   </button>
   
   {#if activeDropdown === label.toLowerCase()}
-    <div class="absolute top-full left-[-20px] min-w-[500px] p-3 bg-kong-bg-dark border border-kong-border rounded-md shadow-lg z-[61]" transition:fade={{ duration: 150 }}>
+    <div class="absolute top-full left-[-20px] min-w-[500px] p-3 bg-kong-bg-primary border border-kong-border {$panelRoundness} shadow-lg z-[61]" transition:fade={{ duration: 150 }}>
       <div class="px-5 pb-3 text-xs font-semibold tracking-wider text-kong-text-secondary border-b border-kong-border mb-2">{label} OPTIONS</div>
       {#each options as option}
         <button
-          class="w-full grid grid-cols-[80px_1fr] items-center text-left relative rounded-md overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
+          class="w-full grid grid-cols-[80px_1fr] items-center text-left relative {$panelRoundness} overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
           class:active={$page.url.pathname === option.path}
-          on:click={() => handleOptionClick(option)}
+          onclick={() => handleOptionClick(option)}
           class:disabled={option.comingSoon}
         >
-          <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-md bg-kong-text-primary/5 text-kong-text-primary transition-all duration-300 ease-out transform group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
+          <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center {$panelRoundness} bg-kong-text-primary/5 text-kong-text-primary transition-all duration-300 ease-out transform group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
             <svelte:component this={option.icon} size={20} />
           </div>
           <div class="flex flex-col gap-1 pt-0.5">
@@ -107,6 +108,5 @@
 
 .nav-link.active {
   @apply text-kong-primary;
-  text-shadow: 0 0px 30px theme(colors.kong.primary);
 }
 </style> 

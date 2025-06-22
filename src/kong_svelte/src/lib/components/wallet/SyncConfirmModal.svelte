@@ -50,10 +50,10 @@
 			{#if candidates.tokensToAdd.length > 0}
 				<div class="mb-4">
 					<h4 class="text-sm font-medium mb-2 flex items-center gap-2">
-						<Plus size={16} class="text-kong-accent-green" />
+						<Plus size={16} class="text-kong-success" />
 						<span>{candidates.tokensToAdd.length} token{candidates.tokensToAdd.length !== 1 ? 's' : ''} to add:</span>
 					</h4>
-					<div class="bg-kong-bg-light/10 p-3 rounded-md text-sm max-h-40 overflow-y-auto scrollbar-custom">
+					<div class="bg-kong-bg-secondary/10 p-3 rounded-md text-sm max-h-40 overflow-y-auto scrollbar-custom">
 						<ul class="space-y-2">
 							{#each candidates.tokensToAdd as token (token.address)}
 								<li class="flex items-center gap-2">
@@ -73,10 +73,10 @@
 			{#if candidates.tokensToRemove.length > 0}
 				<div>
 					<h4 class="text-sm font-medium mb-2 flex items-center gap-2">
-						<Minus size={16} class="text-kong-accent-red" />
+						<Minus size={16} class="text-kong-error" />
 						<span>{candidates.tokensToRemove.length} token{candidates.tokensToRemove.length !== 1 ? 's' : ''} to remove:</span>
 					</h4>
-					<div class="bg-kong-bg-light/10 p-3 rounded-md text-sm max-h-40 overflow-y-auto scrollbar-custom">
+					<div class="bg-kong-bg-secondary/10 p-3 rounded-md text-sm max-h-40 overflow-y-auto scrollbar-custom">
 						<ul class="space-y-2">
 							{#each candidates.tokensToRemove as token (token.address)}
 								<li class="flex items-center gap-2">
@@ -96,14 +96,14 @@
 		
 		<div class="flex justify-end gap-3">
 			<button
-				class="px-4 py-2 bg-kong-bg-light/20 text-kong-text-primary rounded-md hover:bg-kong-bg-light/30 transition-colors"
-				on:click={handleCancel}
+				class="px-4 py-2 bg-kong-bg-secondary/20 text-kong-text-primary rounded-md hover:bg-kong-bg-secondary/30 transition-colors"
+				onclick={handleCancel}
 			>
 				Cancel
 			</button>
 			<button
 				class="px-4 py-2 bg-kong-primary text-white rounded-md hover:bg-kong-primary/90 transition-colors"
-				on:click={handleConfirm}
+				onclick={handleConfirm}
 			>
 				Apply Changes
 			</button>

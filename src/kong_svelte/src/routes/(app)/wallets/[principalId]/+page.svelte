@@ -61,10 +61,6 @@
   // Reset data when principal ID changes
   $effect(() => {
     if (page.params.principalId !== currentPrincipalId) {
-      console.log(
-        `Principal ID changed from ${currentPrincipalId} to ${page.params.principalId}`,
-      );
-
       // Force a complete reset of the wallet data
       WalletDataService.reset();
 
@@ -123,7 +119,6 @@
 
   // Clean up when component is destroyed
   onDestroy(() => {
-    console.log("Wallet page destroyed, cleaning up state");
     // Reset any component-specific state here if needed
     totalValue = 0;
   });
@@ -205,10 +200,10 @@
       </div>
     {:else if loadingError}
       <div class="flex flex-col gap-4">
-        <div class="text-kong-accent-red mb-2">{loadingError}</div>
+        <div class="text-kong-error mb-2">{loadingError}</div>
         <button
           class="text-sm text-kong-primary hover:text-opacity-80 transition-colors"
-          on:click={() =>
+          onclick={() =>
             WalletDataService.initializeWallet(page.params.principalId)}
         >
           Try Again
@@ -220,7 +215,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <!-- Total Value Card -->
           <div
-            class=" rounded-lg p-4 hover:bg-kong-bg-dark/40 transition-colors cursor-pointer"
+            class=" rounded-lg p-4 hover:bg-kong-bg-primary/40 transition-colors cursor-pointer"
           >
             <div
               class="flex items-center gap-2 text-kong-text-secondary text-sm mb-1"
@@ -235,8 +230,8 @@
 
           <!-- Active Tokens Card -->
           <div
-            class=" rounded-lg p-4 hover:bg-kong-bg-dark/40 transition-colors cursor-pointer"
-            on:click={() => goto(`/wallets/${page.params.principalId}/tokens`)}
+            class=" rounded-lg p-4 hover:bg-kong-bg-primary/40 transition-colors cursor-pointer"
+            onclick={() => goto(`/wallets/${page.params.principalId}/tokens`)}
           >
             <div
               class="flex items-center gap-2 text-kong-text-secondary text-sm mb-1"
@@ -252,7 +247,7 @@
 
           <!-- Most Valuable Token Card -->
           <div
-            class=" rounded-lg p-4 hover:bg-kong-bg-dark/40 transition-colors cursor-pointer"
+            class=" rounded-lg p-4 hover:bg-kong-bg-primary/40 transition-colors cursor-pointer"
           >
             <div
               class="flex items-center gap-2 text-kong-text-secondary text-sm mb-1"
@@ -300,7 +295,7 @@
 
           <!-- Portfolio Status Card -->
           <div
-            class=" rounded-lg p-4 hover:bg-kong-bg-dark/40 transition-colors cursor-pointer"
+            class=" rounded-lg p-4 hover:bg-kong-bg-primary/40 transition-colors cursor-pointer"
           >
             <div
               class="flex items-center gap-2 text-kong-text-secondary text-sm mb-1"
@@ -331,9 +326,9 @@
     </div>
 
     {#if isLoading}
-      <LoadingIndicator text="Loading portfolio data..." size={24} />
+      <LoadingIndicator message="Loading portfolio data..." size={24} />
     {:else if loadingError}
-      <div class="text-kong-accent-red mb-4">{loadingError}</div>
+      <div class="text-kong-error mb-4">{loadingError}</div>
     {:else if Object.keys($walletDataStore.balances).length === 0 || $walletDataStore.currentWallet !== page.params.principalId}
       <div
         class="flex items-center justify-center min-h-[300px] text-kong-text-secondary"
@@ -352,7 +347,7 @@
               )}
               {#if token}
                 <div
-                  class="flex items-center gap-2 hover:bg-kong-bg-dark/40 p-2 rounded-md transition-colors"
+                  class="flex items-center gap-2 hover:bg-kong-bg-primary/40 p-2 rounded-md transition-colors"
                 >
                   <div
                     class="w-3 h-3 rounded-full"
@@ -395,7 +390,7 @@
               )}
             {@const othersPercentage = (othersValue / totalValue) * 100}
             <div
-              class="flex items-center gap-2 hover:bg-kong-bg-dark/40 p-2 rounded-md transition-colors"
+              class="flex items-center gap-2 hover:bg-kong-bg-primary/40 p-2 rounded-md transition-colors"
             >
               <div class="w-3 h-3 rounded-full bg-kong-text-secondary"></div>
               <div class="flex-1">Others</div>
@@ -545,7 +540,7 @@
       </h3>
       <div class="flex items-center gap-2">
         <button
-          on:click={() => goto(`/wallets/${page.params.principalId}/tokens`)}
+          onclick={() => goto(`/wallets/${page.params.principalId}/tokens`)}
           class="flex items-center gap-1 text-sm text-kong-primary hover:text-opacity-80 transition-colors"
         >
           View All
@@ -555,9 +550,9 @@
     </div>
 
     {#if isLoading}
-      <LoadingIndicator text="Loading assets..." size={24} />
+      <LoadingIndicator message="Loading assets..." size={24} />
     {:else if loadingError}
-      <div class="text-kong-accent-red mb-4">{loadingError}</div>
+      <div class="text-kong-error mb-4">{loadingError}</div>
     {:else}
       <div class="overflow-x-auto rounded-lg">
         <table class="w-full">
@@ -589,7 +584,7 @@
                 )}
                 {#if token}
                   <tr
-                    class="border-b border-kong-border/50 hover:bg-kong-bg-dark/60 transition-colors cursor-pointer"
+                    class="border-b border-kong-border/50 hover:bg-kong-bg-primary/60 transition-colors cursor-pointer"
                   >
                     <td class="py-4 px-4">
                       <div class="flex items-center gap-3">

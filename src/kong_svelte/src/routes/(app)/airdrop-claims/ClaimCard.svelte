@@ -32,7 +32,7 @@
   <!-- Token info header with status -->
   <div class="flex justify-between items-start mb-4">
     <div class="flex items-start">
-      <div class="w-10 h-10 sm:w-12 sm:h-12 mr-3 rounded-full overflow-hidden flex-shrink-0 border border-gray-200 dark:border-gray-700 bg-kong-bg-light shadow-sm">
+      <div class="w-10 h-10 sm:w-12 sm:h-12 mr-3 rounded-full overflow-hidden flex-shrink-0 border border-gray-200 dark:border-gray-700 bg-kong-bg-secondary shadow-sm">
         <img 
           src={claim.logo_url} 
           alt={claim.symbol} 
@@ -43,7 +43,7 @@
       <div>
         <div class="flex items-center flex-wrap gap-2">
           <h3 class="text-base sm:text-lg font-bold">{claim.symbol}</h3>
-          <span class="text-xs px-2 py-0.5 rounded-full bg-kong-text-accent-green/20 text-kong-text-accent-green">
+          <span class="text-xs px-2 py-0.5 rounded-full bg-kong-success/20 text-kong-success">
             {claim.chain}
           </span>
         </div>
@@ -63,7 +63,7 @@
   
   <div class="flex-grow space-y-3 mb-5">
     {#if claim.desc}
-      <div class="rounded-md bg-kong-bg-light/50 p-3">
+      <div class="rounded-md bg-kong-bg-secondary/50 p-3">
         <div class="text-xs font-medium text-kong-text-secondary mb-1">Description</div>
         <p class="text-sm text-kong-text-secondary break-words">{claim.desc}</p>
       </div>
@@ -95,7 +95,7 @@
       fullWidth={true}
       isDisabled={isProcessing || isProcessingAll}
       animationIterations={1}
-      on:click={() => onProcess(claim.claim_id)}
+      onclick={() => onProcess(claim.claim_id)}
       className="min-h-[40px]"
     >
       {#if isProcessing && processingClaimId === claim.claim_id}

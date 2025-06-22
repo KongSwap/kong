@@ -21,7 +21,6 @@ const config = {
       "$lib/*": "src/lib/*",
     },
     prerender: {
-      origin: 'https://kongswap.io',
       handleHttpError: ({ path, referrer, message }) => {
         // Ignore specific paths that require client-side rendering
         if (

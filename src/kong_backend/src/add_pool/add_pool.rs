@@ -7,7 +7,7 @@ use super::add_pool_reply::AddPoolReply;
 use super::add_pool_reply_helpers::{to_add_pool_reply, to_add_pool_reply_failed};
 
 use crate::add_token::add_token::{add_ic_token, add_lp_token};
-use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
+use crate::chains::chains::IC_CHAIN;
 use crate::helpers::nat_helpers::{nat_add, nat_is_zero, nat_multiply, nat_sqrt, nat_subtract, nat_to_decimal_precision, nat_zero};
 use crate::ic::{
     address::Address,
@@ -162,8 +162,7 @@ async fn check_arguments(
             // token_0 needs to be added. Only IC tokens of format IC.CanisterId supported
             match token_map::get_chain(&args.token_0) {
                 Some(chain) if chain == IC_CHAIN => add_ic_token(&args.token_0).await?,
-                Some(chain) if chain == LP_CHAIN => Err("Token_0 LP tokens not supported".to_string())?,
-                Some(_) | None => Err("Token_0 chain not specified or supported".to_string())?,
+                Some(_) | None => Err("Token_0 chain not supported")?,
             }
         }
     };

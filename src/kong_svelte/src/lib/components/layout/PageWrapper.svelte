@@ -4,15 +4,27 @@
   import { themeStore } from '$lib/stores/themeStore';
   import { getThemeById } from '$lib/themes/themeRegistry';
   import type { ThemeDefinition } from '$lib/themes/baseTheme';
-  import { onMount } from 'svelte';
+  import { app } from '$lib/state/app.state.svelte';
   
-  export let page: string;
-  let currentTheme: ThemeDefinition;
-  let starsContainer: HTMLDivElement;
-  let backgroundLoaded = false;
+  interface Props {
+    page: string;
+    enableBackground?: boolean;
+    children?: any;
+  }
   
-  // Generate random positions for nebula gradients
-  const nebulaPositions = {
+  let { page, enableBackground = true, children }: Props = $props();
+  
+  let currentTheme = $state<ThemeDefinition | undefined>();
+  let starsContainer = $state<HTMLDivElement>();
+  let backgroundLoaded = $state(false);
+  let isGeneratingStars = $state(false);
+  let currentImageUrl = $state<string | undefined>();
+  
+  // Determine if we should show themed background
+  let showThemedBackground = $derived(enableBackground);
+  
+  // Generate random positions for nebula gradients - initialize immediately
+  let nebulaPositions = $state({
     blue: {
       x: 20 + Math.random() * 40, // 20-60%
       y: 10 + Math.random() * 30  // 10-40%
@@ -29,37 +41,49 @@
       x: 60 + Math.random() * 30, // 60-90%
       y: 10 + Math.random() * 40  // 10-50%
     }
-  };
+  });
 
   // Add reactive declaration for competition page background
-  $: isCompetition = page && page.includes('/competition/kong-madness');
+  let isCompetition = $derived(page && page.includes('/competition/kong-madness'));
   
   // Determine if theme has pattern background that should fill the screen
-  $: hasPatternBg = currentTheme?.colors.backgroundType === 'pattern';
+  let hasPatternBg = $derived(showThemedBackground && currentTheme?.colors.backgroundType === 'pattern');
   
   // Subscribe to theme changes
-  $: if (browser && $themeStore) {
-    currentTheme = getThemeById($themeStore);
-    // Preload background image if it exists
-    if (currentTheme?.colors.backgroundType === 'pattern' && currentTheme?.colors.backgroundImage) {
-      preloadBackgroundImage(currentTheme.colors.backgroundImage);
+  $effect(() => {
+    if (browser && $themeStore) {
+      const newTheme = getThemeById($themeStore);
+      currentTheme = newTheme;
+      
+      // Handle background image changes
+      const newImageUrl = newTheme?.colors.backgroundType === 'pattern' ? newTheme?.colors.backgroundImage : undefined;
+      
+      if (newImageUrl !== currentImageUrl) {
+        currentImageUrl = newImageUrl;
+        if (newImageUrl) {
+          preloadBackgroundImage(newImageUrl);
+        } else {
+          backgroundLoaded = false;
+        }
+      }
     }
-  }
+  });
 
   // Function to preload background image
   function preloadBackgroundImage(imageUrl: string) {
     backgroundLoaded = false;
     const img = new Image();
     img.onload = () => {
-      backgroundLoaded = true;
+      requestAnimationFrame(() => {
+        backgroundLoaded = true;
+      });
+    };
+    img.onerror = () => {
+      backgroundLoaded = false;
     };
     img.src = imageUrl;
   }
   
-  // Helper function to determine if a theme feature is enabled
-  function isEnabled(feature: 'enableNebula' | 'enableStars'): boolean {
-    return currentTheme?.colors[feature] === true;
-  }
   
   // Helper to get the background based on theme type
   function getBackgroundStyle(): string {
@@ -67,22 +91,24 @@
     
     const colors = currentTheme.colors;
     
-    switch (colors.backgroundType) {
-      case 'gradient':
-        return colors.backgroundGradient || '';
-      case 'solid':
-        return colors.backgroundSolid || '';
-      case 'pattern':
-        // Pattern type is now handled with pattern-background div
-        return ''; 
-      default:
-        return '';
+    // For pattern backgrounds, use fallback gradient on non-swap pages
+    if (colors.backgroundType === 'pattern' && !showThemedBackground && colors.backgroundFallbackGradient) {
+      return colors.backgroundFallbackGradient;
     }
+    
+    if (colors.backgroundType === 'gradient') return colors.backgroundGradient || '';
+    if (colors.backgroundType === 'solid') return colors.backgroundSolid || '';
+    return '';
   }
 
-  // Generate stars dynamically - Now using more efficient approach
+  // Generate stars dynamically with optimizations
   function generateStars() {
-    if (!browser || !starsContainer || !currentTheme) return;
+    if (!browser || !starsContainer || !currentTheme || isGeneratingStars) return;
+    
+    const currentWidth = window.innerWidth;
+    const currentHeight = window.innerHeight;
+    
+    isGeneratingStars = true;
     
     // Clear existing stars
     starsContainer.innerHTML = '';
@@ -91,148 +117,186 @@
     const fragment = document.createDocumentFragment();
     
     // Determine how many stars to generate based on screen size
-    // Reduced density by quarter from original (from 2000 to 8000 pixels per star)
-    const starCount = Math.floor((window.innerWidth * window.innerHeight) / 8000);
+    // Cap at reasonable maximum for performance
+    const starCount = Math.min(
+      Math.floor((currentWidth * currentHeight) / 24000),
+      150 // Maximum stars
+    );
     
+    
+    // Pre-calculate CSS text to reduce string operations
+    const stars = [];
     for (let i = 0; i < starCount; i++) {
-      const star = document.createElement('div');
-      star.className = 'star';
-      
-      // Random positioning
-      star.style.left = `${Math.random() * 100}%`;
-      star.style.top = `${Math.random() * 100}%`;
-      
-      // Randomize star size (0.5px - 2px)
       const size = 0.5 + Math.random() * 1.5;
-      star.style.width = `${size}px`;
-      star.style.height = `${size}px`;
+      const opacity = 0.5 + Math.random() * 0.5;
+      const fadeInDelay = Math.random() * 0.5;
+      const twinkleDuration = 3 + Math.random() * 4;
+      const twinkleDelay = fadeInDelay + 0.6 + Math.random() * 5;
       
-      // Randomize opacity (50% - 100%)
-      star.style.opacity = (0.5 + Math.random() * 0.5).toString();
-      
-      // Add slight animation with random delay for twinkling effect
-      star.style.animation = `twinkle ${3 + Math.random() * 4}s linear infinite`;
-      star.style.animationDelay = `${Math.random() * 5}s`;
-      
-      fragment.appendChild(star);
+      stars.push({
+        left: Math.random() * 100,
+        top: Math.random() * 100,
+        size,
+        opacity,
+        animation: `starFadeIn 0.6s ${fadeInDelay}s cubic-bezier(0.4, 0, 0.2, 1) forwards, twinkle ${twinkleDuration}s ${twinkleDelay}s linear infinite`
+      });
     }
     
-    // Add all stars at once for better performance
+    // Create stars in batch
+    stars.forEach(starData => {
+      const star = document.createElement('div');
+      star.className = 'star';
+      star.style.cssText = `
+        left: ${starData.left}%;
+        top: ${starData.top}%;
+        width: ${starData.size}px;
+        height: ${starData.size}px;
+        opacity: ${starData.opacity};
+        --star-opacity: ${starData.opacity};
+        animation: ${starData.animation};
+      `;
+      fragment.appendChild(star);
+    });
+    
+    // Add all stars at once
     starsContainer.appendChild(fragment);
+    
+    // Reset flag after a microtask to ensure DOM updates are complete
+    queueMicrotask(() => {
+      isGeneratingStars = false;
+    });
   }
   
   // Generate stars when theme changes or on mount
-  $: if (browser && currentTheme && isEnabled('enableStars')) {
-    // Wait for the next tick to ensure the DOM is updated
-    setTimeout(generateStars, 0);
-  }
+  let starsGenerationTimer: number | null = null;
   
-  onMount(() => {
-    if (browser && currentTheme && isEnabled('enableStars')) {
-      generateStars();
+  $effect(() => {
+    // Clear any pending star generation
+    if (starsGenerationTimer) {
+      clearTimeout(starsGenerationTimer);
+      starsGenerationTimer = null;
     }
     
-    // Regenerate stars on window resize with debounce
-    let resizeTimer: number;
-    const handleResize = () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = window.setTimeout(() => {
-        if (isEnabled('enableStars')) {
-          generateStars();
-        }
-      }, 150); // Debounce the resize event to avoid multiple regenerations
-    };
-    
-    window.addEventListener('resize', handleResize);
+    if (browser && currentTheme && showThemedBackground && currentTheme?.colors.enableStars && starsContainer) {
+      // Debounce star generation to avoid rapid regeneration
+      starsGenerationTimer = window.setTimeout(() => {
+        generateStars();
+        starsGenerationTimer = null;
+      }, 100);
+    }
     
     return () => {
-      window.removeEventListener('resize', handleResize);
-      clearTimeout(resizeTimer);
+      if (starsGenerationTimer) {
+        clearTimeout(starsGenerationTimer);
+        starsGenerationTimer = null;
+      }
     };
   });
+  
 </script>
 
-<div class="page-wrapper">
-  <!-- Updated background based on page type -->
-  {#if isCompetition}
-    <div class="background-container custom"></div>
-  {:else}
-    <div class="background-container">
-      <!-- Solid/gradient background -->
-      <div 
-        class="theme-background" 
-        style={`background: ${getBackgroundStyle()}`}
-      ></div>
-      
-      <!-- Pattern background image - now with fade-in animation -->
-      {#if hasPatternBg && currentTheme?.colors.backgroundImage}
+<div class="page-wrapper" style="--navbar-height: {app.navbarHeight}px;" class:has-background={showThemedBackground || getBackgroundStyle()}>
+  <!-- Background effects for non-swap pages with fallback gradient -->
+  {#if !showThemedBackground && getBackgroundStyle()}
+    <div class="background-fade-wrapper visible">
+      <div class="background-container">
         <div 
-          class="pattern-background"
-          class:loaded={backgroundLoaded}
-          style={`
-            background-image: url(${currentTheme.colors.backgroundImage}); 
-            opacity: ${currentTheme.colors.backgroundOpacity ?? 1};
-            background-size: ${currentTheme.colors.backgroundSize || 'cover'};
-            background-position: ${currentTheme.colors.backgroundPosition || 'center center'};
-            background-repeat: ${currentTheme.colors.backgroundRepeat || 'no-repeat'};
-            width: ${currentTheme.colors.backgroundWidth || '100%'};
-            height: ${currentTheme.colors.backgroundHeight || '100%'};
-            top: ${currentTheme.colors.backgroundTop || '0'};
-            left: ${currentTheme.colors.backgroundLeft || '0'};
-            right: ${currentTheme.colors.backgroundRight || 'auto'};
-            bottom: ${currentTheme.colors.backgroundBottom || 'auto'};
-          `}
+          class="theme-background" 
+          style={`background: ${getBackgroundStyle()}`}
         ></div>
-      {/if}
-      
-      <!-- Nebula effect -->
-      {#if currentTheme && isEnabled('enableNebula')}
-        <div 
-          class="nebula" 
-          style="
-            opacity: {currentTheme.colors.nebulaOpacity || 0.3};
-            --blue-x: {nebulaPositions.blue.x}%;
-            --blue-y: {nebulaPositions.blue.y}%;
-            --purple1-x: {nebulaPositions.purple1.x}%;
-            --purple1-y: {nebulaPositions.purple1.y}%;
-            --purple2-x: {nebulaPositions.purple2.x}%;
-            --purple2-y: {nebulaPositions.purple2.y}%;
-            --purple3-x: {nebulaPositions.purple3.x}%;
-            --purple3-y: {nebulaPositions.purple3.y}%;
-          "
-        ></div>
-      {/if}
-      
-      <!-- Stars - using dynamic generation -->
-      {#if currentTheme && isEnabled('enableStars')}
-        <div 
-          bind:this={starsContainer}
-          class="stars"
-          style="
-            opacity: {currentTheme.colors.starsOpacity || 0.8};
-          "
-        ></div>
-      {/if}
+      </div>
     </div>
   {/if}
   
-  <slot />
+  <!-- Background effects for swap pages -->
+  <div class="background-fade-wrapper" class:visible={showThemedBackground}>
+    {#if isCompetition}
+      <div class="background-container custom"></div>
+    {:else if showThemedBackground}
+      <div class="background-container">
+        <!-- Solid/gradient background -->
+        <div 
+          class="theme-background" 
+          style={`background: ${getBackgroundStyle()}`}
+        ></div>
+        
+        <!-- Pattern background image - now with fade-in animation -->
+        {#if hasPatternBg && currentTheme?.colors.backgroundImage}
+          <div 
+            class="pattern-background"
+            class:loaded={backgroundLoaded}
+            style={`
+              background-image: url(${currentTheme.colors.backgroundImage}); 
+              opacity: ${currentTheme.colors.backgroundOpacity ?? 1};
+              background-size: ${currentTheme.colors.backgroundSize || 'cover'};
+              background-position: ${currentTheme.colors.backgroundPosition || 'center center'};
+              background-repeat: ${currentTheme.colors.backgroundRepeat || 'no-repeat'};
+              width: ${currentTheme.colors.backgroundWidth || '100%'};
+              height: ${currentTheme.colors.backgroundHeight || '100%'};
+              top: ${currentTheme.colors.backgroundTop || '0'};
+              left: ${currentTheme.colors.backgroundLeft || '0'};
+              right: ${currentTheme.colors.backgroundRight || 'auto'};
+              bottom: ${currentTheme.colors.backgroundBottom || 'auto'};
+            `}
+          ></div>
+        {/if}
+        
+        <!-- Nebula effect -->
+        {#if currentTheme?.colors.enableNebula}
+          <div 
+            class="nebula" 
+            style="
+              opacity: {currentTheme.colors.nebulaOpacity || 0.3};
+              --blue-x: {nebulaPositions.blue.x}%;
+              --blue-y: {nebulaPositions.blue.y}%;
+              --purple1-x: {nebulaPositions.purple1.x}%;
+              --purple1-y: {nebulaPositions.purple1.y}%;
+              --purple2-x: {nebulaPositions.purple2.x}%;
+              --purple2-y: {nebulaPositions.purple2.y}%;
+              --purple3-x: {nebulaPositions.purple3.x}%;
+              --purple3-y: {nebulaPositions.purple3.y}%;
+            "
+          ></div>
+        {/if}
+        
+        <!-- Stars - using dynamic generation -->
+        {#if currentTheme?.colors.enableStars}
+          <div 
+            bind:this={starsContainer}
+            class="stars"
+            style="
+              opacity: {currentTheme.colors.starsOpacity || 0.8};
+            "
+          ></div>
+        {/if}
+      </div>
+    {/if}
+  </div>
+  
+  {@render children?.()}
 </div>
 
 <style lang="postcss">
   .page-wrapper {
     @apply flex flex-col w-full;
-    min-height: 100vh;
+    min-height: calc(100vh - var(--navbar-height));
     position: relative;
     z-index: 0;
+    background-color: transparent;
   }
-
-  /* Custom background for competition page */
-  .background-container.custom {
+  
+  /* Background fade wrapper for smooth transitions */
+  .background-fade-wrapper {
     position: fixed;
     inset: 0;
-    background: linear-gradient(90deg, #2a1b54 0%, #1a3a8f 100%);
     z-index: -1;
+    opacity: 0;
+    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+  }
+  
+  .background-fade-wrapper.visible {
+    opacity: 1;
   }
 
   /* Background container for default pages */
@@ -248,11 +312,13 @@
     position: absolute;
     inset: 0;
     opacity: var(--background-opacity, 1);
-    transition: opacity 0.3s ease, background 0.3s ease;
+    transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
+                background 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     background-size: 100% 100% !important;
     background-position: center center !important;
     background-repeat: no-repeat !important;
     z-index: -10;
+    will-change: opacity, background;
   }
 
   /* Pattern background styling with fade in */
@@ -260,8 +326,9 @@
     position: fixed;
     pointer-events: none;
     z-index: -2;
-    transition: opacity 0.4s ease-in;
+    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
     opacity: 0;
+    will-change: opacity;
   }
   
   .pattern-background.loaded {
@@ -300,11 +367,21 @@
         transparent 55%
       );
     opacity: 0;
-    animation: fadeIn 0.5s ease-in forwards;
+    animation: fadeIn 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    will-change: opacity, transform;
+    transform: translateZ(0); /* Force GPU acceleration */
+    backface-visibility: hidden;
   }
 
   @keyframes fadeIn {
-    to { opacity: var(--nebula-opacity, 0.3); }
+    0% { 
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    100% { 
+      opacity: var(--nebula-opacity, 0.3);
+      transform: scale(1);
+    }
   }
 
   /* Stars container */
@@ -324,6 +401,16 @@
     background-color: #ffffff;
     border-radius: 50%;
     box-shadow: 0 0 2px 1px rgba(255, 255, 255, 0.4);
+    opacity: 0;
+    animation: starFadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    will-change: opacity;
+    contain: layout style paint;
+    backface-visibility: hidden;
+    transform: translateZ(0); /* Force GPU acceleration */
+  }
+  
+  @keyframes starFadeIn {
+    to { opacity: var(--star-opacity, 1); }
   }
 
   /* Twinkle animation for stars */

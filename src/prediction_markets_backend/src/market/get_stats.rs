@@ -3,8 +3,7 @@ use candid::CandidType;
 use serde::Deserialize;
 
 use crate::types::StorableNat;
-use crate::storage::MARKETS;
-use crate::bet::bet::BETS;
+use crate::storage::{MARKETS, BETS};
 use super::market::MarketStatus; // Import MarketStatus
 
 #[derive(CandidType, Deserialize)]

@@ -113,8 +113,8 @@
 >
   <div class="flex flex-col gap-4 sm:gap-6 w-full mx-auto" in:fade={{ duration: 200 }}>
     <!-- Transfer Header -->
-    <div class="flex flex-col gap-3 sm:gap-4 items-center justify-center sm:p-4 bg-kong-surface-dark rounded-xl border border-kong-border/30 shadow-sm">
-      <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-kong-bg-light p-1.5 border border-kong-border/20 flex items-center justify-center shadow-inner-white">
+    <div class="flex flex-col gap-3 sm:gap-4 items-center justify-center sm:p-4 bg-kong-bg-tertiary rounded-xl border border-kong-border/30 shadow-sm">
+      <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-kong-bg-secondary p-1.5 border border-kong-border/20 flex items-center justify-center shadow-inner-white">
         <TokenImages tokens={[token]} size={isMobile ? 44 : 56} showSymbolFallback={true} />
       </div>
       
@@ -137,7 +137,7 @@
     
     <!-- Transfer Details -->
     <div class="flex flex-col gap-3 sm:gap-4">
-      <div class="bg-kong-surface-dark/70 rounded-xl p-3 sm:p-4 border border-kong-border/20">
+      <div class="bg-kong-bg-tertiary/70 rounded-xl p-3 sm:p-4 border border-kong-border/20">
         <div class="text-xs sm:text-sm font-medium text-kong-text-primary/90 mb-2 sm:mb-3">
           <span>Transaction Details</span>
         </div>
@@ -160,13 +160,13 @@
         </div>
       </div>
       
-      <div class="bg-kong-surface-dark/70 rounded-xl p-3 sm:p-4 border border-kong-border/20">
+      <div class="bg-kong-bg-tertiary/70 rounded-xl p-3 sm:p-4 border border-kong-border/20">
         <div class="text-xs sm:text-sm font-medium text-kong-text-primary/90 mb-2 sm:mb-3">
           <span>Recipient</span>
         </div>
         
         <div class="flex flex-col">
-          <div class="bg-kong-bg-light/50 rounded-lg p-2 sm:p-3 border border-kong-border/30">
+          <div class="bg-kong-bg-secondary/50 rounded-lg p-2 sm:p-3 border border-kong-border/30">
             <span class="text-xs sm:text-sm font-mono text-kong-text-primary break-all" title={toPrincipal}>{truncatedAddress}</span>
           </div>
         </div>
@@ -181,7 +181,7 @@
         size={isMobile ? "md" : "lg"}
         fullWidth={true}
         isDisabled={isValidating}
-        on:click={onClose}
+        onclick={onClose}
       >
         Cancel
       </ButtonV2>
@@ -192,7 +192,7 @@
         size={isMobile ? "md" : "lg"}
         fullWidth={true}
         isDisabled={isValidating}
-        on:click={handleConfirm}
+        onclick={handleConfirm}
       >
         <div class="flex items-center justify-center gap-2">
           {#if isValidating}

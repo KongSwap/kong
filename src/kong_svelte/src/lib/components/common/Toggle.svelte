@@ -14,19 +14,19 @@
     sm: {
       toggle: "w-12 h-6",
       slider: "w-5 h-5",
-      translate: "translate-x-6",
+      translate: "translate-x-[26px]",
       icon: "w-3 h-3",
     },
     md: {
       toggle: "w-16 h-8",
       slider: "w-7 h-7",
-      translate: "translate-x-8",
+      translate: "translate-x-[36px]",
       icon: "w-4 h-4",
     },
     lg: {
       toggle: "w-20 h-10",
       slider: "w-9 h-9",
-      translate: "translate-x-10",
+      translate: "translate-x-[44px]",
       icon: "w-5 h-5",
     },
   };
@@ -47,7 +47,7 @@
   class:active={checked}
   class:disabled
   {disabled}
-  on:click={handleClick}
+  onclick={handleClick}
   aria-checked={checked}
   role="switch"
   aria-label={label}
@@ -83,14 +83,14 @@
 
   <div 
     class="toggle-slider {sizeClass.slider}"
-    class:translate-x-full={checked}
+    style="transform: translateX({checked ? (size === 'sm' ? '26px' : size === 'md' ? '36px' : '44px') : '0'})"
   />
 </button>
 
 <style lang="postcss">
   .toggle-base {
     @apply relative rounded-full transition-all duration-300 ease-in-out cursor-pointer;
-    @apply bg-kong-bg-dark border border-kong-border;
+    @apply bg-kong-bg-primary border border-kong-border;
   }
 
   .toggle-background {
@@ -136,25 +136,16 @@
 
   .toggle-base:hover:not(.disabled) .toggle-slider {
     @apply shadow-[0_3px_6px_rgba(0,0,0,0.25),0_2px_4px_rgba(0,0,0,0.2),inset_0_1px_1px_rgba(255,255,255,1)];
-    transform: scale(1.05) translateX(0);
-  }
-
-  .toggle-base:hover:not(.disabled) .toggle-slider.translate-x-full {
-    transform: scale(1.05) translateX(100%);
   }
 
   /* Active/pressed state */
   .toggle-base:active:not(.disabled) .toggle-slider {
-    transform: scale(0.95) translateX(0);
-  }
-
-  .toggle-base:active:not(.disabled) .toggle-slider.translate-x-full {
-    transform: scale(0.95) translateX(100%);
+    @apply scale-95;
   }
 
   /* Focus state */
   .toggle-base:focus {
-    @apply outline-none ring-2 ring-kong-primary/50 ring-offset-1 ring-offset-kong-bg-dark;
+    @apply outline-none ring-2 ring-kong-primary/50 ring-offset-1 ring-offset-kong-bg-primary;
   }
 
   /* Disabled state */
@@ -168,7 +159,7 @@
 
   /* Checked state enhancements */
   .toggle-base.active {
-    @apply border-kong-primary/30 bg-kong-bg-dark/80;
+    @apply border-kong-primary/30 bg-kong-bg-primary/80;
   }
 
   .toggle-base.active .toggle-background {

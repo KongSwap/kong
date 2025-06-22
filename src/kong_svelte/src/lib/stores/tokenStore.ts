@@ -100,11 +100,6 @@ export const portfolioValue = derived(
   },
 );
 
-export const getTokenDecimals = async (address: string) => {
-  const token = get(safeUserTokensStore).tokens.find(t => t.address === address) || await fetchTokensByCanisterId([address])[0];
-  return token?.decimals || 0;
-};
-
 export const fromTokenDecimals = (
   amount: BigNumber | string,
   decimals: number,

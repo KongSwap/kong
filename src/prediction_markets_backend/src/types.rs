@@ -22,6 +22,22 @@ pub type AccountIdentifier = candid::Principal;
 // Token identifier is defined in registry, but we re-export it here
 pub type TokenIdentifier = String;
 
+// Define types for consent message arguments
+#[derive(CandidType, Clone, Debug, Deserialize)]
+pub struct PlaceBetArgs {
+    pub market_id: MarketId,
+    pub outcome_index: OutcomeIndex,
+    pub amount: TokenAmount,
+    pub token_id: Option<String>
+}
+
+// Define shared type for resolve_via_admin arguments
+#[derive(CandidType, Clone, Debug, Deserialize)]
+pub struct ResolutionArgs {
+    pub market_id: MarketId,
+    pub winning_outcomes: Vec<OutcomeIndex>
+}
+
 // Constants for conversions
 pub const NANOS_PER_SECOND: u64 = 1_000_000_000;
 

@@ -2,7 +2,6 @@ import { browser } from '$app/environment';
 import { fetchTokensByCanisterId } from '$lib/api/tokens';
 import { DEFAULT_TOKENS } from '$lib/constants/canisterConstants';
 import { writable, get, derived } from 'svelte/store';
-import { STORAGE_KEYS, createNamespacedStore } from '$lib/config/localForage.config';
 import { syncTokens as analyzeTokens, applyTokenChanges } from '$lib/utils/tokenSyncUtils';
 import { debounce } from '$lib/utils/debounce';
 
@@ -23,12 +22,8 @@ interface UserTokensState {
 }
 
 // Keys for storage
-const STORAGE_KEY_PREFIX = STORAGE_KEYS.USER_TOKENS;
-const CURRENT_PRINCIPAL_KEY = 'current_principal';
-
-// Create namespaced localForage instances
-const userTokensStorage = createNamespacedStore(STORAGE_KEY_PREFIX);
-const principalStorage = createNamespacedStore('principals');
+const STORAGE_KEY_PREFIX = 'userTokens';
+const CURRENT_PRINCIPAL_KEY = 'principals:current_principal';
 
 // Cache for token details to avoid redundant fetches
 const tokenDetailsCache = new Map<string, Kong.Token>();
@@ -139,7 +134,7 @@ function createUserTokensStore() {
     try {
       const key = getStorageKey(principal);
       const serialized = safeStringify(serializeState(newState));
-      await userTokensStorage.setItem(key, serialized);
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}:${key}`, JSON.stringify(serialized));
     } catch (error) {
       console.error('[UserTokens] Error updating storage:', error);
     }
@@ -151,7 +146,8 @@ function createUserTokensStore() {
     
     try {
       const key = getStorageKey(principal);
-      const storedData = await userTokensStorage.getItem<any>(key);
+      const stored = localStorage.getItem(`${STORAGE_KEY_PREFIX}:${key}`);
+      const storedData = stored ? JSON.parse(stored) : null;
       
       // Otherwise deserialize using the new format
       return deserializeState(storedData);
@@ -182,7 +178,6 @@ function createUserTokensStore() {
       
       // If no saved tokens, load defaults
       if (!hasSaved) {
-        console.log('[UserTokens] No saved tokens found, loading defaults');
         const defaultTokensList = await fetchTokensByCanisterId(Object.values(DEFAULT_TOKENS));
         
         // Create new state with defaults
@@ -240,7 +235,8 @@ function createUserTokensStore() {
     if (!browser) return;
     
     try {
-      currentPrincipal = await principalStorage.getItem<string>(CURRENT_PRINCIPAL_KEY);
+      const stored = localStorage.getItem(CURRENT_PRINCIPAL_KEY);
+      currentPrincipal = stored ? JSON.parse(stored) : null;
       
       // Load state for current principal, including default tokens if needed
       if (currentPrincipal) {
@@ -425,7 +421,7 @@ function createUserTokensStore() {
       return new Promise<void>((resolve, reject) => {
         try {
           if (browser && principalId) {
-            principalStorage.setItem(CURRENT_PRINCIPAL_KEY, principalId)
+            Promise.resolve(localStorage.setItem(CURRENT_PRINCIPAL_KEY, JSON.stringify(principalId)))
               .then(() => {
                 currentPrincipal = principalId;
                 return loadDefaultTokensIfNeeded(principalId);
@@ -436,7 +432,7 @@ function createUserTokensStore() {
               })
               .catch(reject);
           } else if (browser && principalId === null) {
-            principalStorage.removeItem(CURRENT_PRINCIPAL_KEY)
+            Promise.resolve(localStorage.removeItem(CURRENT_PRINCIPAL_KEY))
               .then(() => {
                 currentPrincipal = null;
                 return loadDefaultTokensIfNeeded();
@@ -460,9 +456,6 @@ function createUserTokensStore() {
       if (!token || !token.address) return;
       
       state.update(state => {
-        console.log(`[UserTokens] enableToken called for ${token.symbol} (${token.address})`);
-        console.log('[UserTokens] State BEFORE enable:', Array.from(state.enabledTokens));
-
         // Create copies of current state
         const newEnabledTokens = new Set(state.enabledTokens);
         const newTokenData = new Map(state.tokenData);
@@ -481,7 +474,6 @@ function createUserTokensStore() {
           lastUpdated: Date.now(),
         };
 
-        console.log('[UserTokens] State AFTER enable:', Array.from(newState.enabledTokens));
         debouncedUpdateStorage(newState);
         return newState;
       });
@@ -518,9 +510,6 @@ function createUserTokensStore() {
     
     disableToken: (canisterId: string) => {
       state.update(state => {
-        console.log(`[UserTokens] disableToken called for ${canisterId}`);
-        console.log('[UserTokens] State BEFORE disable:', Array.from(state.enabledTokens));
-
         // Create copies of current state
         const newEnabledTokens = new Set(state.enabledTokens);
         const newTokenData = new Map(state.tokenData);
@@ -536,7 +525,6 @@ function createUserTokensStore() {
           lastUpdated: Date.now(),
         };
 
-        console.log('[UserTokens] State AFTER disable:', Array.from(newState.enabledTokens));
         debouncedUpdateStorage(newState);
         return newState;
       });

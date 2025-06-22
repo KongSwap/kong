@@ -168,7 +168,7 @@
   >
     <svelte:fragment slot="actions">
       {#if hasWalletConnection}
-        <span class="text-[10px] bg-kong-bg-light/30 px-2 rounded-full">
+        <span class="text-[10px] bg-kong-bg-secondary/30 px-2 rounded-full">
           {Object.values(groupedAddresses).flat().length} Addresses
         </span>
       {/if}
@@ -197,12 +197,12 @@
       {#each Object.entries(groupedAddresses) as [chain, addresses]}
         <div class="overflow-hidden border border-kong-border/50">
           <div 
-            class="px-4 py-2.5 flex items-center justify-between cursor-pointer bg-kong-bg-light hover:bg-kong-bg-light/50 transition-colors border-b border-kong-border/20"
-            on:click={() => toggleChainExpansion(chain)}
+            class="px-4 py-2.5 flex items-center justify-between cursor-pointer bg-kong-bg-secondary hover:bg-kong-bg-secondary/50 transition-colors border-b border-kong-border/20"
+            onclick={() => toggleChainExpansion(chain)}
             role="button"
             tabindex="0"
             aria-expanded={expandedChains[chain]}
-            on:keypress={(e) => e.key === 'Enter' && toggleChainExpansion(chain)}
+            onkeypress={(e) => e.key === 'Enter' && toggleChainExpansion(chain)}
           >
             <div class="font-medium text-kong-text-primary flex items-center gap-2">
                 {chain}
@@ -222,7 +222,7 @@
           </div>
 
           {#if expandedChains[chain]}
-            <div class="animate-fade-in bg-kong-bg-dark border-t border-kong-border/50">
+            <div class="animate-fade-in bg-kong-bg-primary border-t border-kong-border/50">
               {#each addresses as address (address.id)}
                 <AddressListItem 
                   {address}

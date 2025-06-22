@@ -5,7 +5,7 @@ use super::lp_token::LPToken;
 use super::token::Token;
 use super::token_map;
 
-use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
+use crate::chains::chains::IC_CHAIN;
 use crate::ic::address_helpers::is_principal_id;
 use crate::ic::logging::error_log;
 use crate::stable_kong_settings::kong_settings_map;
@@ -13,11 +13,9 @@ use crate::stable_memory::TOKEN_MAP;
 use crate::stable_token::stable_token::{StableToken, StableTokenId};
 
 /// return Chain.Symbol naming convention for token
-/// if symbol is on multiple chains, user must specify Chain.Symbol explicitly and it returns the same
-/// if symbol is on a single chain, get the chain and return Chain.Symbol
 pub fn symbol_with_chain(symbol: &str) -> Result<String, String> {
     // check if symbol already has chain prefix, if so just return as is
-    if symbol.starts_with(&format!("{}.", IC_CHAIN)) || symbol.starts_with(&format!("{}.", LP_CHAIN)) {
+    if get_chain(symbol).is_some() {
         return Ok(symbol.to_string());
     }
 
@@ -28,20 +26,17 @@ pub fn symbol_with_chain(symbol: &str) -> Result<String, String> {
             .filter_map(|(_, v)| if v.symbol() == symbol { Some(v) } else { None })
             .collect::<Vec<StableToken>>()
     });
-
     match tokens.len() {
-        0 => Err(format!("Symbol {} not found", symbol)),
-        1 => Ok(tokens
-            .first()
-            .ok_or_else(|| format!("Token {} not found", symbol))?
-            .symbol_with_chain()),
-        _ => Err(format!("Symbol {} is on multiple chains, specify chain or address", symbol)),
+        0 => Err("Symbol not found".to_string()),
+        1 => Ok(tokens.first().ok_or("Symbol not found")?.symbol_with_chain()),
+        _ => Err("Symbol on multiple chains, specify chain explicitly".to_string()),
     }
 }
 
+/// return Chain.Address naming convention for token
 pub fn address_with_chain(address: &str) -> Result<String, String> {
     // check if address already has chain prefix, if so just return as is
-    if address.starts_with(&format!("{}.", IC_CHAIN)) || address.starts_with(&format!("{}.", LP_CHAIN)) {
+    if get_chain(address).is_some() {
         return Ok(address.to_string());
     }
 
@@ -49,41 +44,32 @@ pub fn address_with_chain(address: &str) -> Result<String, String> {
     let tokens = TOKEN_MAP.with(|m| {
         m.borrow()
             .iter()
-            .filter_map(|(_, v)| if v.address_with_chain() == address { Some(v) } else { None })
+            .filter_map(|(_, v)| if v.address() == address { Some(v) } else { None })
             .collect::<Vec<StableToken>>()
     });
     match tokens.len() {
-        0 => Err(format!("Address {} not found", address)),
-        1 => Ok(tokens
-            .first()
-            .ok_or_else(|| format!("Address {} not found", address))?
-            .address_with_chain()),
-        _ => Err("Address {} is on multiple chains, specify chain explicitly".to_string()),
+        0 => Err("Address not found".to_string()),
+        1 => Ok(tokens.first().ok_or("Address not found")?.address_with_chain()),
+        _ => Err("Address on multiple chains, specify chain explicitly".to_string()),
     }
 }
 
-/// get the chain prefix from token string
+/// extract the chain prefix from token string
 pub fn get_chain(token: &str) -> Option<String> {
-    if token.starts_with(IC_CHAIN) {
-        Some(IC_CHAIN.to_string())
-    } else if token.starts_with(LP_CHAIN) {
-        Some(LP_CHAIN.to_string())
-    } else {
-        None
+    match token.split_once('.') {
+        Some((prefix, _)) if prefix == IC_CHAIN => Some(IC_CHAIN.to_string()),
+        _ => None,
     }
 }
 
-/// get the address from token string
+/// extract the address from token string
 pub fn get_address(token: &str) -> Option<String> {
     let address = match get_chain(token) {
-        Some(chain) => {
-            // remove chain prefix and return address
-            token.replace(&format!("{}.", chain), "")
-        }
-        None => token.to_string(),
+        Some(chain) => token.strip_prefix(&format!("{}.", chain))?,
+        None => token,
     };
-    if is_principal_id(&address) {
-        Some(address)
+    if is_principal_id(address) {
+        Some(address.to_string())
     } else {
         None
     }
@@ -99,7 +85,7 @@ pub fn get_by_token_wildcard(token: &str) -> Vec<StableToken> {
         m.borrow()
             .iter()
             .filter_map(|(_, v)| {
-                if search_token.matches(v.symbol_with_chain().as_str()) || search_token.matches(v.address_with_chain().as_str()) {
+                if search_token.matches(&v.symbol()) || search_token.matches(&v.address()) {
                     Some(v)
                 } else {
                     None
@@ -135,7 +121,7 @@ fn get_by_symbol(symbol: &str) -> Result<StableToken, String> {
                 }
             })
         })
-        .ok_or_else(|| format!("Token {} not found", symbol_with_chain))
+        .ok_or("Token not found".to_string())
 }
 
 // address can be in the format of Address or Chain.Address
@@ -153,7 +139,7 @@ pub fn get_by_address(address: &str) -> Result<StableToken, String> {
                 }
             })
         })
-        .ok_or_else(|| format!("Token {} not found", address_with_chain))
+        .ok_or("Token not found".to_string())
 }
 
 /// return ckUSDT token
@@ -182,8 +168,8 @@ pub fn exists(address_with_chain: &str) -> bool {
 }
 
 pub fn insert(token: &StableToken) -> Result<u32, String> {
-    if exists(token.address_with_chain().as_str()) {
-        Err(format!("Token {} already exists", token.symbol_with_chain()))?
+    if exists(&token.address_with_chain()) {
+        Err("Token already exists")?
     }
 
     let insert_token = TOKEN_MAP.with(|m| {
@@ -207,7 +193,7 @@ pub fn update(token: &StableToken) {
 }
 
 pub fn remove(token_id: u32) -> Result<(), String> {
-    let token = get_by_token_id(token_id).ok_or(format!("Token_id #{} not found", token_id))?;
+    let token = get_by_token_id(token_id).ok_or("Token not found")?;
 
     // set is_removed to true to remove token
     let remove_token = match token {
@@ -220,7 +206,7 @@ pub fn remove(token_id: u32) -> Result<(), String> {
 }
 
 pub fn unremove(token_id: u32) -> Result<(), String> {
-    let token = get_by_token_id(token_id).ok_or(format!("Token_id #{} not found", token_id))?;
+    let token = get_by_token_id(token_id).ok_or("Token not found")?;
 
     // set is_removed to false to unremove token
     let unremove_token = match token {
@@ -263,4 +249,67 @@ fn archive_to_kong_data(token: &StableToken) -> Result<(), String> {
     });
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::chains::chains::LP_CHAIN;
+
+    #[test]
+    fn test_get_chain() {
+        // Test with IC chain prefix
+        let with_ic_prefix = format!("{}.ryjl3-tyaaa-aaaaa-aaaba-cai", IC_CHAIN);
+        assert_eq!(get_chain(&with_ic_prefix), Some(IC_CHAIN.to_string()));
+
+        // Test with IC chain prefix alone
+        assert_eq!(get_chain(IC_CHAIN), None);
+
+        // Test with LP chain prefix
+        let with_lp_prefix = format!("{}.token", LP_CHAIN);
+        assert_eq!(get_chain(&with_lp_prefix), None); // Should return None as LP_CHAIN is not a valid chain
+
+        // Test with empty string
+        assert_eq!(get_chain(""), None);
+
+        // Test with non-matching string
+        assert_eq!(get_chain("ryjl3-tyaaa-aaaaa-aaaba-cai"), None);
+
+        // Test with partial match
+        let partial_ic = &IC_CHAIN[0..IC_CHAIN.len() - 1]; // Take all but last character
+        assert_eq!(get_chain(partial_ic), None);
+
+        // Test with case differences (assuming IC_CHAIN is lowercase)
+        let lowercase_ic = IC_CHAIN.to_lowercase();
+        assert_eq!(get_chain(&lowercase_ic), None);
+
+        // Test with prefix embedded in middle of string
+        assert_eq!(get_chain(&format!("prefix{}", IC_CHAIN)), None);
+
+        // Test with whitespace
+        assert_eq!(get_chain(&format!(" {}", IC_CHAIN)), None);
+        assert_eq!(get_chain(&format!("{} ", IC_CHAIN)), None);
+    }
+
+    #[test]
+    fn test_get_address() {
+        let valid_principal = "ryjl3-tyaaa-aaaaa-aaaba-cai";
+        let valid_principal_with_chain = format!("{}.", IC_CHAIN) + valid_principal;
+        let invalid_principal = "not-a-principal";
+
+        assert_eq!(get_address(valid_principal), Some(valid_principal.to_string()));
+        assert_eq!(get_address(&valid_principal_with_chain), Some(valid_principal.to_string()));
+
+        assert_eq!(get_address(&format!("{}.", valid_principal)), None); // Invalid format
+        assert_eq!(get_address(&format!("{}.", IC_CHAIN)), None);
+        assert_eq!(get_address(&format!("{}.", LP_CHAIN)), None);
+
+        let with_lp_prefix = format!("{}.", LP_CHAIN) + valid_principal;
+        assert_eq!(get_address(&with_lp_prefix), None);
+
+        // Invalid principal formats
+        assert_eq!(get_address("not-a-principal"), None);
+        assert_eq!(get_address(""), None);
+        assert_eq!(get_address(&format!("{}.{}", IC_CHAIN, invalid_principal)), None);
+    }
 }

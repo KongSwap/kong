@@ -1,14 +1,13 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import Modal from "$lib/components/common/Modal.svelte";
-  import { auth } from "$lib/stores/auth";
+  import { auth, swapActor } from "$lib/stores/auth";
   import { loadBalances } from "$lib/stores/tokenStore";
   import { userTokens } from "$lib/stores/userTokens";
   import { toastStore } from "$lib/stores/toastStore";
   import { debounce } from "$lib/utils/debounce";
   import { fade } from "svelte/transition";
   import BigNumber from "bignumber.js";
-  import { canisters, type KONG_BACKEND } from "$lib/config/auth.config";
   import { fetchTokenMetadata } from "$lib/api/tokens/TokenApiClient";
 
   // Props
@@ -172,13 +171,7 @@
     try {
       try {
         // Call the add_token canister function directly
-        const kongBackendActor = auth.pnp.getActor<KONG_BACKEND>({
-          canisterId: canisters.kongBackend.canisterId,
-          idl: canisters.kongBackend.idl,
-          anon: false,
-          requiresSigning: false,
-        });
-        
+        const kongBackendActor = swapActor({anon: true, requiresSigning: false});
         const addTokenResult = await kongBackendActor.add_token({ token: formattedCanisterId });
         
         if ('Err' in addTokenResult) {
@@ -247,7 +240,7 @@
           type="text"
           bind:value={customTokenCanisterId}
           placeholder="e.g. ryjl3-tyaaa-aaaaa-aaaba-cai"
-          class="w-full px-3 py-2.5 bg-kong-bg-dark/70 border border-kong-border/40 rounded-lg text-kong-text-primary placeholder-kong-text-secondary/70 focus:outline-none focus:ring-1 focus:ring-kong-accent-blue/40 {customTokenError ? 'border-kong-accent-red/70 focus:ring-kong-accent-red/40' : ''}"
+          class="w-full px-3 py-2.5 bg-kong-bg-primary/70 border border-kong-border/40 rounded-lg text-kong-text-primary placeholder-kong-text-secondary/70 focus:outline-none focus:ring-1 focus:ring-kong-accent-blue/40 {customTokenError ? 'border-kong-error/70 focus:ring-kong-error/40' : ''}"
           onkeydown={(e) => {
             if (e.key === 'Enter' && customTokenCanisterId.trim()) {
               handleAddNewToken();
@@ -260,7 +253,7 @@
           </div>
         {:else if customTokenCanisterId.trim()}
           <button 
-            class="absolute right-3 top-1/2 transform -translate-y-1/2 text-kong-text-secondary hover:text-kong-text-primary p-1 rounded-full hover:bg-kong-bg-light/20 transition-colors"
+            class="absolute right-3 top-1/2 transform -translate-y-1/2 text-kong-text-secondary hover:text-kong-text-primary p-1 rounded-full hover:bg-kong-bg-secondary/20 transition-colors"
             title="Refresh token preview"
             aria-label="Refresh token preview"
             onclick={() => loadTokenPreview(true)}
@@ -275,15 +268,15 @@
         {/if}
       </div>
       {#if customTokenError}
-        <p class="mt-1.5 text-sm text-kong-accent-red">{customTokenError}</p>
+        <p class="mt-1.5 text-sm text-kong-error">{customTokenError}</p>
       {/if}
     </div>
     
     {#if previewToken}
-        <div class="flex items-center gap-4 bg-kong-bg-dark p-3 mb-4 rounded-lg border border-kong-border/20" transition:fade={{ duration: 200 }}>
+        <div class="flex items-center gap-4 bg-kong-bg-primary p-3 mb-4 rounded-lg border border-kong-border/20" transition:fade={{ duration: 200 }}>
           <div class="flex-shrink-0">
             {#if previewToken.logo_url}
-              <img src={previewToken.logo_url} alt={previewToken.symbol} class="w-12 h-12 rounded-full object-cover bg-kong-bg-light/30" />
+              <img src={previewToken.logo_url} alt={previewToken.symbol} class="w-12 h-12 rounded-full object-cover bg-kong-bg-secondary/30" />
             {:else}
               <div class="w-12 h-12 rounded-full bg-kong-primary/20 text-kong-primary flex items-center justify-center font-bold text-lg">{previewToken.symbol.substring(0, 2)}</div>
             {/if}
@@ -323,7 +316,7 @@
     
     <div class="flex justify-end gap-3 mt-4">
       <button 
-        class="px-4 py-2 bg-kong-bg-dark/70 text-kong-text-primary rounded-md hover:bg-kong-bg-dark/90 transition-colors"
+        class="px-4 py-2 bg-kong-bg-primary/70 text-kong-text-primary rounded-md hover:bg-kong-bg-primary/90 transition-colors"
         onclick={props.onClose}
       >
         Cancel

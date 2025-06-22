@@ -1,9 +1,10 @@
 // Base theme definition with types and default values
 export interface ThemeColors {
   // Background colors
-  bgDark: string;
-  bgLight: string;
-  hoverBgLight?: string;
+  bgPrimary: string;      // Primary background (darkest)
+  bgSecondary: string;    // Secondary background (medium)
+  bgTertiary: string;     // Tertiary background (lightest)
+  hoverBgSecondary?: string;  // Hover state for secondary background
   
   // Primary and secondary colors
   primary: string;
@@ -12,18 +13,20 @@ export interface ThemeColors {
   secondaryHover: string;
   
   // Accent colors
-  accentBlue: string;
-  accentRed: string;
-  accentGreen: string;
-  accentYellow: string;
-  accentPurple: string;
-  accentCyan: string;
+  accent: string;
+  error: string;
+  success: string;
+  warning: string;
+  info: string;
+  muted: string;
   
   // Hover variants
-  accentGreenHover: string;
-  accentBlueHover: string;
-  accentRedHover: string;
-  accentYellowHover?: string;
+  successHover: string;
+  accentHover: string;
+  errorHover: string;
+  warningHover: string;
+  infoHover: string;
+  mutedHover: string;
   
   // Text colors
   textPrimary: string;
@@ -32,9 +35,12 @@ export interface ThemeColors {
   textLight?: string;
   textDark?: string;
   textOnPrimary?: string;
-  textAccentGreen?: string;
-  textAccentBlue?: string;
-  textAccentRed?: string;
+  textSuccess?: string;
+  textWarning?: string;
+  textInfo?: string;
+  textMuted?: string;
+  textAccent?: string;
+  textError?: string;
   
   // Font settings
   fontFamily?: string;
@@ -53,33 +59,13 @@ export interface ThemeColors {
   // Borders
   border: string;
   borderLight: string;
-  
-  // Surface colors
-  surfaceDark: string;
-  surfaceLight: string;
+  kongBorder?: string;
   
   // Logo properties
   logoBrightness: number;
   logoInvert: number;
   logoHoverBrightness: number;
   logoPath?: string; // Custom logo path, defaults to standard app logo if not set
-  
-  // Token selector dropdown colors
-  tokenSelectorBg?: string;
-  tokenSelectorHeaderBg?: string;
-  tokenSelectorItemBg?: string;
-  tokenSelectorItemHoverBg?: string;
-  tokenSelectorItemActiveBg?: string;
-  tokenSelectorSearchBg?: string;
-  tokenSelectorBorder?: string;
-  tokenSelectorRoundness?: "rounded-none" | "rounded-sm" | "rounded" | "rounded-md" | "rounded-lg" | "rounded-xl" | "rounded-2xl" | "rounded-3xl" | "rounded-full";
-  tokenSelectorShadow?: string;
-  
-  // Plugin Manager colors
-  pmDark: string;
-  pmBorder: string;
-  pmAccent: string;
-  pmTextSecondary: string;
   
   // Switch button styling
   switchButtonBg?: string;         // Background color for the switch button
@@ -97,7 +83,6 @@ export interface ThemeColors {
   tokenTickerBorderStyle?: 'default' | 'win95' | 'none'; // Special border style presets
   tokenTickerRoundness?: "rounded-none" | "rounded-sm" | "rounded" | "rounded-md" | "rounded-lg" | "rounded-xl" | "rounded-2xl" | "rounded-3xl" | "rounded-full";
   tokenTickerHoverBg?: string;     // Background color on hover
-  tokenTickerShadow?: string;      // Shadow style for token tickers
   tokenTickerUpColor?: string;     // Color for positive price changes
   tokenTickerDownColor?: string;   // Color for negative price changes
   tokenTickerBgOpacity?: number;   // Background opacity (0-100)
@@ -140,6 +125,7 @@ export interface ThemeColors {
   backgroundSolid?: string;
   backgroundImage?: string;
   backgroundOpacity?: number;
+  backgroundFallbackGradient?: string; // Gradient to use on non-swap pages when using pattern background
   
   // Expanded background configuration for more flexibility
   backgroundSize?: string;        // CSS background-size (e.g., 'cover', 'contain', '100% 100%')
@@ -152,10 +138,7 @@ export interface ThemeColors {
   backgroundRight?: string;       // Right position of background element (e.g., '0', 'auto')
   backgroundBottom?: string;      // Bottom position of background element (e.g., '0', 'auto')
   
-  // Parallax effect
-  enableParallax?: boolean;       // Whether to enable parallax effect on the background
-  parallaxStrength?: number;      // Strength of parallax effect (0.0-1.0, default 0.2)
-  
+
   // Special effects
   enableNebula?: boolean;
   enableStars?: boolean;
@@ -180,142 +163,126 @@ export const baseTheme: ThemeDefinition = {
   author: 'Kong Team',
   authorLink: 'https://kongswap.io',
   colors: {
-    // Background colors
-    bgDark: '#0D111F',       // Deep navy
-    bgLight: '#141826',      // Lighter navy
-    hoverBgLight: '#141826', // Same as bgLight by default in dark theme
+    // Background colors - Professional slate-based palette
+    bgPrimary: '#0C0F17',       // Deep charcoal with subtle blue undertone
+    bgSecondary: '#141925',      // Slightly lighter for clear visual hierarchy
+    bgTertiary: '#1D2433',      // Elevated surface color
+    hoverBgSecondary: '#242B3D', // Clear interactive state
     
-    // Primary and secondary colors
-    primary: '#0095EB',      // Kong's brand blue
-    primaryHover: '#0086D3', // Darker variant
-    secondary: '#22D3EE',    
-    secondaryHover: '#0EA5E9',
+    // Primary and secondary colors - Sophisticated blue palette
+    primary: '#4A7CFF',      // Professional bright blue
+    primaryHover: '#3B6CE6', // Deeper blue on interaction
+    secondary: '#00D4AA',    // Vibrant teal accent
+    secondaryHover: '#00B896', // Deeper teal for hover
     
-    // Accent colors
-    accentBlue: '#00A7FF',   // Brighter blue
-    accentRed: '#FF4545',    // Vibrant red
-    accentGreen: '#05EC86',  // Vibrant green
-    accentYellow: '#FFC107', // Material Yellow
-    accentPurple: '#6F5DFB', // Vibrant purple
-    accentCyan: '#22D3EE',   
+    // Accent colors - Balanced and accessible
+    accent: '#4F46E5',   // Darker indigo for better contrast with white text
+    error: '#DC2626',    // Darker red for better contrast with white text
+    success: '#059669',  // Darker green for better contrast with white text
+    warning: '#D97706',  // Darker amber for better contrast with white text
+    info: '#2563EB',     // Darker blue for better contrast with white text
+    muted: '#6B7280',    // Neutral gray
     
     // Hover variants
-    accentGreenHover: '#04CE75',
-    accentBlueHover: '#0090DC',
-    accentRedHover: '#EB3737',
-    accentYellowHover: '#FFA726', // Darker yellow
+    successHover: '#047857',
+    accentHover: '#4338CA',
+    errorHover: '#B91C1C',
+    warningHover: '#B45309',
+    infoHover: '#1D4ED8',
+    mutedHover: '#4B5563',
     
-    // Text colors
-    textPrimary: '#FFFFFF',
-    textSecondary: '#B0B6C5', // Brighter secondary text
-    textDisabled: '#6B7280',
-    textLight: '#ffffff',
-    textDark: '#0D111F',
-    textOnPrimary: '#0D111F',
-    textAccentGreen: '#05EC86', // Same as accent-green
-    textAccentRed: '#FF4545',   // Same as accent-red
-    textAccentBlue: '#0095EB',
-    
+    // Text colors - High contrast and readable
+    textPrimary: '#F9FAFB',      // Almost white for primary text
+    textSecondary: '#9CA3AF',    // Softer gray for secondary
+    textDisabled: '#6B7280',     // Muted for disabled states
+    textLight: '#F9FAFB',
+    textDark: '#111827',
+    textOnPrimary: '#FFFFFF',
+    textSuccess: '#ECFDF5',
+    textError: '#FEF2F2',
+    textAccent: '#FFFFFF',
+    textWarning: '#FFFBEB',
+    textInfo: '#EFF6FF',
+    textMuted: '#F3F4F6',
+
     // Font settings
-    fontFamily: "'Exo 2', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     
-    // UI settings
-    panelRoundness: 'rounded-lg', // Default panel roundness
-    swapPanelRoundness: 'rounded-xl', // Swap panels are slightly more rounded
-    swapPanelBorder: '1px solid rgba(255, 255, 255, 0.1)',
-    swapPanelShadow: 'shadow-sm',
+    // UI settings - Modern and clean
+    panelRoundness: 'rounded-xl',
+    swapPanelRoundness: 'rounded-2xl',
+    swapPanelBorder: '1px solid rgba(255, 255, 255, 0.08)',
+    swapPanelShadow: 'shadow-xl',
     swapPanelInputsRounded: true,
-    transparentSwapPanel: true, // Default to transparent swap panels
-    transparentPanel: true,
+    transparentSwapPanel: false,
+    transparentPanel: false,
     swapPanelBorderStyle: 'default',
-    statsTableTransparent: true, // Default to transparent stats table for modern look
+    statsTableTransparent: false,
     
-    // Borders
-    border: '#1C202E',
-    borderLight: '#232735',
-    
-    // Surface colors
-    surfaceDark: '#111523',
-    surfaceLight: '#181C2A',
+    // Borders - Subtle definition
+    border: '#1F2937',
+    borderLight: '#374151',
     
     // Logo properties
     logoBrightness: 1,
     logoInvert: 0,
-    logoHoverBrightness: 0.9,
-    
-    // Token selector dropdown colors
-    tokenSelectorBg: '#111523',
-    tokenSelectorHeaderBg: '#181C2A',
-    tokenSelectorItemBg: '#1C202E',
-    tokenSelectorItemHoverBg: '#232735',
-    tokenSelectorItemActiveBg: '#282C3A',
-    tokenSelectorSearchBg: '#232735',
-    tokenSelectorBorder: '1px solid rgba(255, 255, 255, 0.1)',
-    tokenSelectorRoundness: 'rounded-lg',
-    tokenSelectorShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',
-    
-    // Plugin Manager colors
-    pmDark: '#171923',
-    pmBorder: '#282C3A',
-    pmAccent: '#6F5DFB', // Same as accent-purple
-    pmTextSecondary: '#9EA4BA',
+    logoHoverBrightness: 1.1,
     
     // Switch button styling
-    switchButtonBg: '#111523',
-    switchButtonHoverBg: '#232735',
-    switchButtonBorder: '1px solid rgba(255, 255, 255, 0.1)',
-    switchButtonShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',
+    switchButtonBg: '#1D2433',
+    switchButtonHoverBg: '#242B3D',
+    switchButtonBorder: '1px solid rgba(255, 255, 255, 0.06)',
+    switchButtonShadow: '0 4px 24px rgba(0, 0, 0, 0.4)',
     
     // Chart text color
-    chartTextColor: '#FFFFFF',
+    chartTextColor: '#F9FAFB',
     
     // Token ticker styling
-    tokenTickerBg: '#111523',
-    tokenTickerText: '#FFFFFF',
-    tokenTickerBorder: '1px solid rgba(255, 255, 255, 0.1)',
+    tokenTickerBg: '#141925',
+    tokenTickerText: '#F9FAFB',
+    tokenTickerBorder: '1px solid rgba(255, 255, 255, 0.06)',
     tokenTickerBorderStyle: 'default',
-    tokenTickerRoundness: 'rounded-lg',
-    tokenTickerHoverBg: '#232735',
-    tokenTickerShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',
-    tokenTickerUpColor: '#05EC86',
-    tokenTickerDownColor: '#FF4545',
+    tokenTickerRoundness: 'rounded-xl',
+    tokenTickerHoverBg: '#1D2433',
+    tokenTickerUpColor: '#10B981',
+    tokenTickerDownColor: '#EF4444',
     tokenTickerBgOpacity: 100,
     
-    // Button styling
-    buttonBg: '#111523',
-    buttonHoverBg: '#232735',
-    buttonText: '#FFFFFF',
-    buttonBorder: '1px solid rgba(255, 255, 255, 0.1)',
-    buttonBorderColor: '#FFFFFF',
-    buttonShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',
-    buttonRoundness: 'rounded-lg',
+    // Button styling - Clean and modern
+    buttonBg: '#1D2433',
+    buttonHoverBg: '#242B3D',
+    buttonText: '#F9FAFB',
+    buttonBorder: '1px solid rgba(255, 255, 255, 0.06)',
+    buttonBorderColor: 'rgba(255, 255, 255, 0.06)',
+    buttonShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+    buttonRoundness: 'rounded-xl',
     
     // Primary button styling
-    primaryButtonBg: '#0095EB',
-    primaryButtonHoverBg: '#0086D3',
+    primaryButtonBg: '#4A7CFF',
+    primaryButtonHoverBg: '#3B6CE6',
     primaryButtonText: '#FFFFFF',
-    primaryButtonBorder: '1px solid rgba(255, 255, 255, 0.1)',
-    primaryButtonBorderColor: '#FFFFFF',
+    primaryButtonBorder: 'none',
+    primaryButtonBorderColor: 'transparent',
     
-    // Swap Button styling
-    swapButtonPrimaryGradientStart: '#0095EB',
-    swapButtonPrimaryGradientEnd: '#0072B1',
-    swapButtonErrorGradientStart: '#E85373',
-    swapButtonErrorGradientEnd: '#C23758',
-    swapButtonProcessingGradientStart: '#6B8CFF',
-    swapButtonProcessingGradientEnd: '#4563DB',
-    swapButtonBorderColor: 'rgba(255, 255, 255, 0.15)',
-    swapButtonGlowColor: '#0095EB',
-    swapButtonShineColor: '#00BFFF',
-    swapButtonReadyGlowStart: '#0095EB',
-    swapButtonReadyGlowEnd: '#006699',
+    // Swap Button styling - Premium feel
+    swapButtonPrimaryGradientStart: '#4A7CFF',
+    swapButtonPrimaryGradientEnd: '#3B6CE6',
+    swapButtonErrorGradientStart: '#EF4444',
+    swapButtonErrorGradientEnd: '#DC2626',
+    swapButtonProcessingGradientStart: '#8B5CF6',
+    swapButtonProcessingGradientEnd: '#7C3AED',
+    swapButtonBorderColor: 'rgba(255, 255, 255, 0.1)',
+    swapButtonGlowColor: '#4A7CFF',
+    swapButtonShineColor: '#60A5FA',
+    swapButtonReadyGlowStart: '#4A7CFF',
+    swapButtonReadyGlowEnd: '#3B6CE6',
     swapButtonTextColor: '#FFFFFF',
-    swapButtonRoundness: 'rounded-lg',
-    swapButtonShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',
+    swapButtonRoundness: 'rounded-2xl',
+    swapButtonShadow: '0 8px 32px rgba(74, 124, 255, 0.25)',
     
-    // Background configuration
+    // Background configuration - Subtle gradient
     backgroundType: 'gradient',
-    backgroundGradient: 'linear-gradient(180deg, rgb(2, 6, 23) 0%, rgb(10, 15, 35) 100%)',
+    backgroundGradient: 'linear-gradient(180deg, #0C0F17 0%, #0F1219 50%, #0C0F17 100%)',
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
@@ -325,10 +292,9 @@ export const baseTheme: ThemeDefinition = {
     backgroundLeft: '0',
     backgroundRight: 'auto',
     backgroundBottom: '0',
-    enableParallax: false,
     enableNebula: true,
     enableStars: false,
-    nebulaOpacity: 0.3,
-    starsOpacity: 0.8
+    nebulaOpacity: 0.15,
+    starsOpacity: 0.1
   }
 }; 

@@ -87,38 +87,9 @@ export const formatToNonZeroDecimal = (input: number | string): string => {
 
   // For numbers >= 0.1
   // If > 1, use 2 decimals; otherwise, use 3 decimals
-  const decimals = bigNum.isGreaterThan(1) ? 2 : 3;
+  const decimals = bigNum.isGreaterThanOrEqualTo(1) ? 2 : 3;
   return bigNum.toFormat(decimals);
 };
-
-/**
- * Formats large numbers with appropriate abbreviations (K, M, B).
- * Examples:
- *  - 1500 -> "1.50K"
- *  - 1500000 -> "1.50M"
- *  - 1500000000 -> "1.50B"
- * 
- * @param value The number to format (string or number)
- * @returns Formatted string with appropriate abbreviation
- */
-export function formatLargeNumber(value: string | number): string {
-  if (!value) return "0";
-  
-  const num = typeof value === 'string' ? parseFloat(value) : value;
-  
-  if (isNaN(num)) return "0";
-  
-  // Format based on size
-  if (num >= 1_000_000_000) {
-    return (num / 1_000_000_000).toFixed(2) + "B";
-  } else if (num >= 1_000_000) {
-    return (num / 1_000_000).toFixed(2) + "M";
-  } else if (num >= 1_000) {
-    return (num / 1_000).toFixed(2) + "K";
-  } else {
-    return formatToNonZeroDecimal(num);
-  }
-}
 
 /**
  * Calculates the USD value of a token amount based on its price.
@@ -140,8 +111,8 @@ export function calculateTokenUsdValue(amount: string, token: any): string {
   }
 
   // Calculate USD value
-  const usdValue = Number(amount) * Number(price);
-  return formatToNonZeroDecimal(usdValue);
+  const usdValue = new BigNumber(amount).multipliedBy(price);
+  return formatToNonZeroDecimal(usdValue.toString());
 }
 
 /**
@@ -192,14 +163,14 @@ export function parseTokenAmount(
   return BigInt(scaledStr);
 }
 
-export const calculatePercentage = (amount: number | undefined, total: number | undefined): number => {
-    const amountNum = Number(amount || 0);
-    const totalNum = Number(total || 0);
+export const calculatePercentage = (amount: string | undefined, total: string | undefined): number => {
+    const amountNum = new BigNumber(amount || 0);
+    const totalNum = new BigNumber(total || 0);
     
-    if (isNaN(amountNum) || isNaN(totalNum)) return 0;
-    if (totalNum === 0) return amountNum > 0 ? 100 : 0;
+    if (amountNum.isNaN() || totalNum.isNaN()) return 0;
+    if (totalNum.isZero()) return amountNum.gt(0) ? 100 : 0;
     
-    return (amountNum / totalNum) * 100;
+    return amountNum.dividedBy(totalNum).multipliedBy(100).toNumber();
 };
 
 export const formatCategory = (category: any): string => {
@@ -208,13 +179,8 @@ export const formatCategory = (category: any): string => {
     return Object.keys(category)[0].replace(/_/g, ' ');
 };
 
-export const toFixed = (amount: number, decimals: number): number => {
-  console.log("amount", amount);
-  console.log("decimals", decimals);
-  console.log("new BigNumber(amount)", new BigNumber(amount));
-  console.log("new BigNumber(10).pow(decimals)", new BigNumber(10).pow(decimals));
-  console.log("new BigNumber(amount).multipliedBy(new BigNumber(10).pow(decimals)).toNumber()", new BigNumber(amount).multipliedBy(new BigNumber(10).pow(decimals)).toNumber());
-    return new BigNumber(amount).multipliedBy(new BigNumber(10).pow(decimals)).toNumber();
+export const toFixed = (amount: string, decimals: number): string => {
+    return new BigNumber(amount).multipliedBy(new BigNumber(10).pow(decimals)).toString();
 };
 
 /**
@@ -225,10 +191,11 @@ export const toFixed = (amount: number, decimals: number): number => {
  * @param decimals Number of decimals for the token (e.g. 8)
  * @returns Scaled amount as string suitable for contract calls
  */
-export const toScaledAmount = (amount: number, decimals: number): string => {
-    if (!amount || amount <= 0) return "0";
+export const toScaledAmount = (amount: string, decimals: number): string => {
+    const bigAmount = new BigNumber(amount);
+    if (bigAmount.isNaN() || bigAmount.isZero()) return "0";
     
-    return new BigNumber(amount)
+    return bigAmount
         .multipliedBy(new BigNumber(10).pow(decimals))
         .integerValue(BigNumber.ROUND_DOWN)
         .toString();
@@ -237,13 +204,14 @@ export const toScaledAmount = (amount: number, decimals: number): string => {
 /**
  * Format a USD volume value into a human-readable string with appropriate suffixes
  */
-export function formatVolume(volume: number): string {
-  if (volume >= 1_000_000) {
-    return `$${(volume / 1_000_000).toFixed(2)}M`;
-  } else if (volume >= 1_000) {
-    return `$${(volume / 1_000).toFixed(2)}K`;
+export function formatVolume(volume: string): string {
+  const bigVolume = new BigNumber(volume);
+  if (bigVolume.isGreaterThanOrEqualTo(1_000_000)) {
+    return `$${(bigVolume.dividedBy(1_000_000)).toFixed(2)}M`;
+  } else if (bigVolume.isGreaterThanOrEqualTo(1_000)) {
+    return `$${(bigVolume.dividedBy(1_000)).toFixed(2)}K`;
   } else {
-    return `$${volume.toFixed(2)}`;
+    return `$${bigVolume.toFixed(2)}`;
   }
 }
 
@@ -252,4 +220,18 @@ export function formatVolume(volume: number): string {
  */
 export function formatNumberWithCommas(num: number): string {
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+export function calculatePercentageAmount(
+  balance: bigint,
+  percentage: number,
+  token: Kong.Token
+): string {
+  const balanceNumber = new BigNumber(balance.toString());
+  const percentageAmount = balanceNumber
+    .multipliedBy(percentage)
+    .dividedBy(100)
+    .dividedBy(new BigNumber(10).pow(token.decimals))
+    
+  return percentageAmount.minus(token.fee).toFixed(token.decimals);
 }

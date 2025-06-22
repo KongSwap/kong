@@ -11,7 +11,7 @@ use crate::resolution::resolution::{*, ResolutionResult};
 use crate::controllers::admin::*;
 use crate::market::market::*;
 use crate::storage::{MARKETS, RESOLUTION_PROPOSALS};
-use crate::types::{MarketId, OutcomeIndex};
+use crate::types::{MarketId, ResolutionArgs};
 
 /// Resolves a market directly (for admin created markets)
 ///
@@ -27,24 +27,23 @@ use crate::types::{MarketId, OutcomeIndex};
 /// # Returns
 /// * `Result<(), ResolutionError>` - Success or error reason if resolution fails
 pub async fn resolve_market_directly(
-    market_id: MarketId,
+    args: ResolutionArgs,
     market: &mut Market,
-    winning_outcomes: Vec<OutcomeIndex>,
     resolver: Principal
 ) -> Result<(), ResolutionError> {
     // First finalize the market (distribute payouts)
-    finalize_market(market, winning_outcomes.clone()).await?;
+    finalize_market(market, args.winning_outcomes.clone()).await?;
     
     // Update market status to closed with the winning outcomes
     market.status = MarketStatus::Closed(
-        winning_outcomes.iter().map(|idx| Nat::from(idx.clone())).collect()
+        args.winning_outcomes.iter().map(|idx| Nat::from(idx.clone())).collect()
     );
     
     // Record who resolved the market
     market.resolved_by = Some(resolver);
     
     // Clone market_id before using it in closures
-    let market_id_clone = market_id.clone();
+    let market_id_clone = args.market_id.clone();
     
     // Update market in stable storage
     MARKETS.with(|markets| {
@@ -76,11 +75,11 @@ pub async fn resolve_market_directly(
 /// Only admins can call this function.
 // Note: #[update] attribute removed to avoid conflict with the original function in dual_approval.rs
 pub async fn force_resolve_market(
-    market_id: MarketId,
-    winning_outcomes: Vec<OutcomeIndex>
+    args: ResolutionArgs
+
 ) -> ResolutionResult {
     // Validate outcome indices are not empty
-    if winning_outcomes.is_empty() {
+    if args.winning_outcomes.is_empty() {
         return ResolutionResult::Error(ResolutionError::InvalidOutcome);
     }
     
@@ -94,7 +93,7 @@ pub async fn force_resolve_market(
     // Get the market
     let mut market = match MARKETS.with(|markets| {
         let markets_ref = markets.borrow();
-        markets_ref.get(&market_id)
+        markets_ref.get(&args.market_id)
     }) {
         Some(market) => market,
         None => return ResolutionResult::Error(ResolutionError::MarketNotFound)
@@ -106,7 +105,7 @@ pub async fn force_resolve_market(
     }
     
     // Validate outcome indices
-    for outcome_index in &winning_outcomes {
+    for outcome_index in &args.winning_outcomes {
         let idx = outcome_index.to_u64() as usize;
         if idx >= market.outcomes.len() {
             return ResolutionResult::Error(ResolutionError::InvalidOutcome);
@@ -114,10 +113,10 @@ pub async fn force_resolve_market(
     }
     
     // Log the force resolution action
-    ic_cdk::println!("Admin {} is force-resolving market {}", admin, market_id);
+    ic_cdk::println!("Admin {} is force-resolving market {}", admin, args.market_id);
     
     // Resolve directly
-    match resolve_market_directly(market_id, &mut market, winning_outcomes, admin).await {
+    match resolve_market_directly(args, &mut market, admin).await {
         Ok(_) => ResolutionResult::Success,
         Err(e) => ResolutionResult::Error(e)
     }

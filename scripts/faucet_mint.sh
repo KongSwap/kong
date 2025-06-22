@@ -6,9 +6,9 @@ kong_faucet="kong_faucet"
 
 to_principal_id=$(dfx canister id $network $kong_faucet)
 
-# 100,000,000 ksUSDT
+# 100,000,000 ckUSDT
 amount=100_000_000_000_000
-token="ksusdt"
+token="ckusdt"
 token_ledger="${token}_ledger"
 
 dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
@@ -28,7 +28,7 @@ dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
 
 # 1,500 ksBTC
 amount=150_000_000_000
-token="ksbtc"
+token="ckbtc"
 token_ledger="${token}_ledger"
 
 dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
@@ -38,7 +38,7 @@ dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
 
 # 30,000 ksETH
 amount=30_000_000_000_000_000_000_000
-token="kseth"
+token="cketh"
 token_ledger="${token}_ledger"
 
 dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
@@ -46,9 +46,9 @@ dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
 	amount=$amount;
 },)"
 
-# 2,000,000 ksKONG
+# 2,000,000 KONG
 amount=200_000_000_000_000
-token="kskong"
+token="kong"
 token_ledger="${token}_ledger"
 
 dfx canister call $network $identity $token_ledger icrc1_transfer "(record {

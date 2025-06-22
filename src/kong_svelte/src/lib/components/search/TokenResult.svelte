@@ -3,6 +3,7 @@
   import { Coins, ArrowRight } from 'lucide-svelte';
   import { createEventDispatcher } from 'svelte';
   import { getPriceChangeClass } from '$lib/utils/statsUtils';
+  import { formatTokenName } from '$lib/utils/tokenFormatUtils';
 
   export let tokens: Kong.Token[] = [];
   export let selectedIndex = -1;
@@ -56,10 +57,10 @@
       {#each tokens as token, index}
         <button
           class="result-item token-result {selectedIndex === startIndex + index ? 'selected' : ''}"
-          on:click={() => handleSelect(token)}
-          on:touchstart={handleTouchStart}
-          on:touchmove={handleTouchMove}
-          on:touchend={(e) => handleTouchEnd(token, e)}
+          onclick={() => handleSelect(token)}
+          ontouchstart={handleTouchStart}
+          ontouchmove={handleTouchMove}
+          ontouchend={(e) => handleTouchEnd(token, e)}
         >
           <div class="result-content">
             <div class="token-icon">
@@ -74,7 +75,7 @@
               <div class="token-symbol">{token.symbol} • {formatPrice(token.metrics?.price)}</div>
             </div>
             {#if token.metrics?.price_change_24h}
-              <div class="token-price-change {getPriceChangeClass(token.metrics.price_change_24h)}">
+              <div class="token-price-change {getPriceChangeClass(token)}">
                 {formatPriceChange(token.metrics.price_change_24h)}
               </div>
             {/if}

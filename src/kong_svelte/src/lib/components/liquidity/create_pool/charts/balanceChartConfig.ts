@@ -8,7 +8,7 @@ export function getBalanceChartConfig(token0: any, token1: any): ChartConfigurat
       datasets: [
         {
           data: [65, 59, 80, 81, 56, 55, 40],
-          borderColor: '#00cc81', // kong-accent-green
+          borderColor: '#00cc81', // kong-success
           tension: 0.4,
           pointRadius: 0,
           borderWidth: 2,
@@ -47,7 +47,7 @@ export function getBalanceChartConfig(token0: any, token1: any): ChartConfigurat
           display: false
         },
         tooltip: {
-          backgroundColor: 'rgba(11, 14, 23, 0.9)', // kong-bg-dark with opacity
+          backgroundColor: 'rgba(11, 14, 23, 0.9)', // kong-bg-primary with opacity
           padding: 12,
           titleColor: '#9BA1B0', // kong-text-secondary
           bodyColor: '#FFFFFF', // kong-text-primary

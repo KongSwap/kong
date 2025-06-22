@@ -40,7 +40,7 @@ fn test_multi_token_markets() {
     
     // Define token IDs (from memory)
     let kong_token_id = Option::<String>::None; // Default token
-    let ksicp_token_id = Some("umunu-kh777-77774-qaaca-cai".to_string()); // ksICP token ID
+    let ksicp_token_id = Some("o7oak-iyaaa-aaaaq-aadzq-cai".to_string()); // ksICP token ID
     
     println!("TEST 1: Admin creating market with ksICP token");
     println!("  → Admin principals can create markets with any token type");

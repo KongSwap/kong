@@ -321,7 +321,7 @@
       <!-- Download options dropdown button -->
       <button
         class="p-1.5 rounded-md text-kong-text-secondary hover:text-kong-primary hover:bg-kong-text-primary/5 transition-colors"
-        on:click={() => showDownloadModal = true}
+        onclick={() => showDownloadModal = true}
         disabled={isLoading}
         title="Download transaction history"
       >
@@ -338,7 +338,7 @@
         option.id
           ? 'bg-kong-primary/10 text-kong-primary'
           : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-text-primary/5'}"
-        on:click={() => handleFilterChange(option.id)}
+        onclick={() => handleFilterChange(option.id)}
       >
         {option.label}
       </button>
@@ -355,7 +355,7 @@
       </div>
     </div>
   {:else if error}
-    <div class="text-kong-accent-red text-sm text-center py-4">
+    <div class="text-kong-error text-sm text-center py-4">
       {error}
     </div>
   {:else if selectedFilter === "predict"}
@@ -423,7 +423,7 @@
         <div class="p-4 text-center">
           <button
             class="px-4 py-2 text-xs font-medium rounded-lg bg-kong-text-primary/10 text-kong-text-primary hover:bg-kong-text-primary/15 transition-colors"
-            on:click={() => loadTransactions(true)}
+            onclick={() => loadTransactions(true)}
             disabled={loadingMore}
           >
             {loadingMore ? "Loading..." : "Load More Transactions"}

@@ -1,6 +1,6 @@
 import { BigNumber } from 'bignumber.js';
 import { get } from 'svelte/store';
-import { currentUserBalancesStore } from '$lib/stores/tokenStore';
+import { currentUserBalancesStore } from '$lib/stores/balancesStore';
 import { calculateLiquidityAmounts } from "$lib/api/pools";
 
 /**

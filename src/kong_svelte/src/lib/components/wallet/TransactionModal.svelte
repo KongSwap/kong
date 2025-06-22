@@ -29,8 +29,8 @@
         <span
           class="text-xs px-2 py-1 rounded-full {transaction.status ===
           'Success'
-            ? 'bg-kong-accent-green/10 text-kong-text-accent-green'
-            : 'bg-kong-accent-red/10 text-kong-accent-red'}"
+            ? 'bg-kong-success/10 text-kong-success'
+            : 'bg-kong-error/10 text-kong-error'}"
         >
           {transaction.status}
         </span>
@@ -51,7 +51,7 @@
           Transaction Details
         </div>
         {#if transaction.type === "Swap"}
-          <div class="bg-kong-bg-dark/30 p-3 rounded-lg space-y-3">
+          <div class="bg-kong-bg-primary/30 p-3 rounded-lg space-y-3">
             <div class="space-y-2">
               <div class="text-xs text-kong-text-secondary">From</div>
               <div class="flex items-center justify-between">
@@ -138,7 +138,7 @@
             </div>
           </div>
         {:else if transaction.type === "Add Liquidity" || transaction.type === "Remove Liquidity"}
-          <div class="bg-kong-bg-dark/30 p-3 rounded-lg space-y-3">
+          <div class="bg-kong-bg-primary/30 p-3 rounded-lg space-y-3">
             <div class="space-y-2">
               <div class="text-xs text-kong-text-secondary">Token 1</div>
               <div class="flex items-center justify-between">
@@ -233,7 +233,7 @@
             </div>
           </div>
         {:else if transaction.type === "Send"}
-          <div class="bg-kong-bg-dark/30 p-3 rounded-lg space-y-3">
+          <div class="bg-kong-bg-primary/30 p-3 rounded-lg space-y-3">
             <div class="space-y-2">
               <div class="text-xs text-kong-text-secondary">Token</div>
               <div class="flex items-center justify-between">

@@ -1,186 +1,107 @@
 <script lang="ts">
   import Swap from "./Swap.svelte";
-  import Panel from "$lib/components/common/Panel.svelte";
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
-  import { onMount } from "svelte";
   import { livePools } from "$lib/stores/poolStore";
-  import { swapState } from "$lib/services/swap/SwapStateService";
+  import { swapState } from "$lib/stores/swapStateStore";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
-  import TokenInfo from "./TokenInfo.svelte";
+  import TokenInfoEnhanced from "./TokenInfoEnhanced.svelte";
+  import { app } from "$lib/state/app.state.svelte";
+  import { DEFAULT_TOKENS } from "$lib/constants/canisterConstants";
 
-  export let initialFromToken: Kong.Token | null = null;
-  export let initialToToken: Kong.Token | null = null;
-  export let currentMode: "normal" | "pro" = "pro";
+  let { initialFromToken, initialToToken } = $props<{ initialFromToken: Kong.Token | null, initialToToken: Kong.Token | null }>();
 
-  let fromToken = initialFromToken;
-  let toToken = initialToToken;
-  let isChartMinimized = false;
-  let isMobile: boolean;
+  let activeToken = $state($swapState.receiveToken || initialToToken); //initialize to toToken
 
-  // Add new state for mobile tabs
-  let activeTab: 'swap' | 'chart' = 'swap';
-
-  // Initialize tokens from swapState immediately when component loads
-  $: {
-    fromToken = $swapState.payToken || initialFromToken;
-    toToken = $swapState.receiveToken || initialToToken;
-  }
-
-  // Watch for swapState changes
-  $: {
-    if ($swapState.payToken) fromToken = $swapState.payToken;
-    if ($swapState.receiveToken) toToken = $swapState.receiveToken;
-  }
+  let fromToken = $derived($swapState.payToken || initialFromToken);
+  let toToken = $derived($swapState.receiveToken || initialToToken);
+  
+  let isMobile = $derived(app.isMobile);
 
   // Get the pool based on selected tokens
-  $: selectedPool = $livePools?.find(p => {
+  let selectedPool = $derived.by(() => {
     if (!fromToken?.address || !toToken?.address) return null;
+
+    let pool = $livePools?.find(p => {
+      return (p.address_0 === fromToken.address && p.address_1 === toToken.address) ||
+             (p.address_1 === fromToken.address && p.address_0 === toToken.address);
+    });
+
+    if (!pool) {
+      pool = $livePools?.find(p => {
+        return (p.address_0 === DEFAULT_TOKENS.icp && p.address_1 === toToken.address) ||
+               (p.address_1 === DEFAULT_TOKENS.icp && p.address_0 === toToken.address);
+      });
+    }
     
-    return (p.address_0 === fromToken.address && p.address_1 === toToken.address) ||
-           (p.address_1 === fromToken.address && p.address_0 === toToken.address);
-  });
+    return pool;
+  }); 
 
-  let baseToken: Kong.Token | null = null;
-  let quoteToken: Kong.Token | null = null;
-  $: {
-    baseToken = selectedPool?.address_0 === fromToken?.address ? fromToken : toToken;
-    quoteToken = selectedPool?.address_0 === toToken?.address ? fromToken : toToken;
-  }
+  let selectedPoolId = $derived(selectedPool?.pool_id);
+  let baseToken = $derived(selectedPool?.address_0 === fromToken?.address ? fromToken : toToken);
+  let quoteToken = $derived(selectedPool?.address_0 === toToken?.address ? fromToken : toToken);
 
-  // Handle token selection changes
-  function handleTokenChange(event: CustomEvent) {
-    const { fromToken: newFromToken, toToken: newToToken } = event.detail;
-    fromToken = newFromToken;
-    toToken = newToToken;
-  }
-
-  // Initialize on mount
-  onMount(() => {
-    // Initialize tokens from swapState if available
-    if ($swapState.payToken) fromToken = $swapState.payToken;
-    if ($swapState.receiveToken) toToken = $swapState.receiveToken;
-
-    const mediaQuery = window.matchMedia("(max-width: 768px)");
-    isMobile = mediaQuery.matches;
-
-    const handleResize = (e: MediaQueryListEvent) => {
-      isMobile = e.matches;
-    };
-
-    mediaQuery.addEventListener("change", handleResize);
-
-    return () => {
-      mediaQuery.removeEventListener("change", handleResize);
-    };
-  });
+  // Mobile view state for swap toggle
+  let showSwap = $state(false);
 </script>
 
 <div class="swap-pro-container">
-  <div class="layout-container">
-    {#if isMobile}
-      <!-- Mobile Tab Navigation -->
-      <div class="mobile-tabs">
-        <button 
-          class="tab-button" 
-          class:active={activeTab === 'swap'}
-          on:click={() => activeTab = 'swap'}
-        >
-          Swap
+  {#if isMobile}
+    <!-- Mobile Layout -->
+    <div class="mobile-layout">
+      <div class="mobile-trade-section">
+        <TokenInfoEnhanced fromToken={fromToken} toToken={toToken} bind:activeToken />
+        
+        <button class="swap-toggle-button" onclick={() => showSwap = !showSwap}>
+          {showSwap ? 'Hide' : 'Show'} Swap
         </button>
-        <button 
-          class="tab-button" 
-          class:active={activeTab === 'chart'}
-          on:click={() => activeTab = 'chart'}
-        >
-          Chart
-        </button>
-      </div>
 
-      <!-- Mobile Tab Content -->
-      {#if activeTab === 'chart'}
-        <div class="mobile-chart-section">
-          <Panel
-            variant="transparent"
-            type="main"
-            className="chart-area !p-0"
-            width="100%"
-          >
-            <div class="chart-wrapper !p-0" class:minimized={isChartMinimized}>
-              {#if baseToken && quoteToken}
-                <TradingViewChart 
-                  poolId={selectedPool ? Number(selectedPool.pool_id) : undefined}
-                  quoteToken={quoteToken}
-                  baseToken={baseToken}
-                />
-              {:else}
-                <div class="flex items-center justify-center h-full text-white">
-                  Select tokens to view chart
-                </div>
-              {/if}
-            </div>
-          </Panel>
-          <TransactionFeed token={toToken} className="transaction-feed !p-0" />
-        </div>
-      {:else}
-        <div class="mobile-swap-section">
-          <div class="swap-section">
+        {#if showSwap}
+          <div class="mobile-swap-wrapper">
             <Swap
-              on:modeChange
-              on:tokenChange={handleTokenChange}
+              widthFull={true}
             />
           </div>
-          <div class="token-info-section">
-            <TokenInfo token={toToken} />
-          </div>
+        {/if}
+      </div>
+      
+      {#if baseToken && quoteToken}
+        <TradingViewChart 
+          className="mobile-chart-panel"
+          poolId={selectedPoolId}
+          quoteToken={quoteToken}
+          baseToken={baseToken}
+        />
+      {:else}
+        <div class="chart-placeholder">
+          Select tokens to view chart
         </div>
       {/if}
-    {:else}
-      <!-- Existing desktop layout -->
-      <div class="main-content">
-        <div class="left-section">
-          <!-- Chart Area -->
-          <Panel
-            variant="transparent"
-            type="main"
-            className="chart-area !p-0"
-            width="100%"
-          >
-            <div class="chart-wrapper !p-0" class:minimized={isChartMinimized}>
-              {#if baseToken && quoteToken}
-                <TradingViewChart 
-                  poolId={selectedPool ? Number(selectedPool.pool_id) : undefined}
-                  quoteToken={quoteToken}
-                  baseToken={baseToken}
-                />
-              {:else}
-                <div class="flex items-center justify-center h-full text-white">
-                  Select tokens to view chart
-                </div>
-              {/if}
-            </div>
-          </Panel>
 
-          <!-- Transaction Feed -->
-          <TransactionFeed token={toToken} className="transaction-feed !p-0" />
-        </div>
+      <TransactionFeed token={activeToken} />
+    </div>
+  {:else}
+    <!-- Desktop Grid Layout -->
+    <div class="desktop-grid">
+      <!-- Chart Panel -->
+      <TradingViewChart 
+        className="chart-panel !p-0"
+        poolId={selectedPoolId}
+        quoteToken={quoteToken}
+        baseToken={baseToken}
+      />
 
-        <div class="right-section">
-          <!-- Swap interface -->
-          <div class="swap-section">
-            <Swap
-              on:modeChange
-              on:tokenChange={handleTokenChange}
-            />
-          </div>
-          
-          <!-- Token Info section -->
-          <div class="token-info-section">
-            <TokenInfo token={toToken} />
-          </div>
-        </div>
+
+      <TransactionFeed token={activeToken} />
+
+      <!-- Right Column: Token Info + Swap -->
+      <div class="trading-section">
+        <TokenInfoEnhanced fromToken={fromToken} toToken={toToken} bind:activeToken />
+        <Swap
+          widthFull={true}
+        />
       </div>
-    {/if}
-  </div>
+    </div>
+  {/if}
 </div>
 
 <style lang="postcss">
@@ -188,223 +109,108 @@
     width: 100%;
     height: 100%;
     background: var(--color-background);
-    position: relative;
-    @apply px-4;
-    padding-top: 0;
     overflow: hidden;
   }
 
-  .layout-container {
-    height: 100%;
-    width: 100%;
-  }
-
-  .main-content {
-    display: flex;
-    gap: 1.5rem;
-    height: 100%;
-    width: 100%;
-  }
-
-  .left-section {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
+  /* Desktop Grid Layout */
+  .desktop-grid {
+    display: grid;
+    grid-template-columns: 3fr 420px;
+    grid-template-rows: 500px 1fr;
+    grid-template-areas: 
+      "chart trading"
+      "feed trading";
     gap: 1rem;
     height: 100%;
-    min-width: 0; /* Allow shrinking */
+    padding: 1rem;
+    padding-top: 0;
+
+    @media (max-width: 1120px) {
+      grid-template-columns: 3fr 2fr;
+    }
   }
 
-  .chart-wrapper {
-    width: 100%;
-    height: 100%;
-    min-height: 400px;
-  }
-
-  :global(.chart-area) {
-    flex: 2;
-    min-height: 300px;
-  }
-
-  :global(.transaction-feed) {
-    flex: 1;
-    min-height: 200px;
-  }
-
-  .right-section {
-    width: 500px;
-    min-width: 500px;
-    height: 100%;
+  .trading-section {
+    grid-area: trading;
     display: flex;
     flex-direction: column;
     gap: 1rem;
     overflow-y: auto;
+    padding: 0 0.25rem 0.25rem 0.25rem;
   }
 
-  .swap-section {
+  /* Chart Panel Styling */
+  .chart-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: rgb(var(--text-secondary));
+    font-size: 0.9rem;
+  }
+
+  /* Mobile Layout */
+  .mobile-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    height: 100%;
+    padding: 0.5rem;
+    padding-top: 0;
+    overflow-y: auto;
+  }
+  
+  :global(.mobile-chart-panel) {
+    height: 350px !important;
+    min-height: 300px;
     flex-shrink: 0;
   }
 
-  .token-info-section {
-    flex-shrink: 0;
+  .mobile-trade-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
-  /* Mobile styles */
+  .swap-toggle-button {
+    width: 100%;
+    padding: 0.75rem;
+    background: rgb(var(--primary));
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .swap-toggle-button:hover {
+    opacity: 0.9;
+  }
+
+  .mobile-swap-wrapper {
+    margin-top: 0.5rem;
+  }
+
   @media (max-width: 768px) {
-    .swap-pro-container {
-      padding: 0.5rem;
-      padding-top: 0;
-      height: 100%;
-      overflow: auto;
-    }
-
-    .main-content {
-      flex-direction: column;
-      gap: 1rem;
-      height: auto;
-    }
-
-    .left-section {
-      gap: 1rem;
-    }
-
-    .right-section {
-      width: 100%;
-      min-width: 0;
-      height: auto;
-      overflow: visible;
-    }
-
-    .mobile-chart-section {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      height: auto;
-      padding: 0.5rem;
-      overflow: visible;
-    }
-
-    :global(.chart-area) {
-      flex: none;
-      height: 400px !important;
-      min-height: 300px;
-      max-height: 400px;
-      margin-bottom: 1rem;
-    }
-
-    :global(.transaction-feed) {
-      flex: none;
-      height: 300px !important;
-      min-height: 200px;
-      max-height: 300px;
-      overflow-y: auto;
-      border-top: 1px solid rgb(var(--border) / 0.8);
-      padding-top: 1rem;
-    }
-
-    .chart-wrapper {
-      height: 100%;
-      min-height: 300px;
-      margin-bottom: 0;
+    .desktop-grid {
+      display: none;
     }
   }
 
-  /* Desktop adjustments */
-  @media (min-width: 1920px) {
-    .right-section {
-      width: 600px;
-      min-width: 600px;
-    }
-  }
-
-  @media (max-width: 1200px) and (min-width: 769px) {
-    .right-section {
-      width: 400px;
-      min-width: 400px;
+  @media (min-width: 769px) {
+    .mobile-layout {
+      display: none;
     }
   }
 
   /* Height-based responsive adjustments */
-  @media (max-height: 800px) {
-    .swap-pro-container {
-      padding: 1rem;
+  @media (max-height: 700px) {
+    .desktop-grid {
+      padding: 0.75rem;
       padding-top: 0;
+      gap: 0.75rem;
     }
-
-    .main-content {
-      gap: 1rem;
-    }
-
-    :global(.chart-area) {
-      min-height: 250px;
-    }
-
-    :global(.transaction-feed) {
-      min-height: 150px;
-    }
-  }
-
-  /* Very short screens */
-  @media (max-height: 600px) {
-    :global(.chart-area) {
-      min-height: 200px;
-    }
-
-    :global(.transaction-feed) {
-      min-height: 120px;
-    }
-  }
-
-  /* Update mobile tab styles */
-  .mobile-tabs {
-    display: flex;
-    gap: 2px;
-    background: rgb(var(--bg-light) / 0.5);
-    padding: 0x;
-    border-radius: 12px;
-    margin-bottom: 0.5rem;
-    border: 1px solid rgb(var(--border) / 0.8);
-  }
-
-  .tab-button {
-    flex: 1;
-    padding: 0.4rem;
-    text-align: center;
-    background: rgb(var(--bg-dark));
-    color: rgb(var(--text-secondary));
-    border: none;
-    border-radius: 10px;
-    transition: all 0.2s ease;
-    font-size: 0.9375rem;
-    font-weight: 500;
-    opacity: 0.9;
-  }
-
-  .tab-button:hover {
-    background: rgb(var(--bg-light));
-    color: rgb(var(--text-primary));
-    opacity: 1;
-  }
-
-  .tab-button.active {
-    background: rgb(var(--primary));
-    color: rgb(var(--text-primary));
-    font-weight: 600;
-    opacity: 1;
-    box-shadow: 0 2px 8px rgb(var(--primary) / 0.3);
-    transform: scale(1.02);
-  }
-
-  .mobile-chart-section {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    min-height: 00px;
-  }
-
-  .mobile-swap-section {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
   }
 </style>

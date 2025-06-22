@@ -131,7 +131,6 @@ export const fetchPoolsForCanister = async (canisterId: string): Promise<BE.Pool
 export const loadPools = async () => {
   // Prevent concurrent fetches
   if (fetchInProgress) {
-    console.log("[PoolStore] Fetch already in progress, skipping duplicate request");
     // Use a local variable to store the current value
     let currentPools: ExtendedPool[] = [];
     poolsStore.subscribe(value => {

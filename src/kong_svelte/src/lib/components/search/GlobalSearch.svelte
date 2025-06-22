@@ -228,10 +228,6 @@
     // Special handling for swap page navigation which requires special attention to ensure data reloading
     const isSwapSection = section === 'swaps';
     
-    console.log(`Navigating from GlobalSearch to: ${path}`);
-    console.log(`- Same section different wallet: ${isSameSectionDifferentWallet}`);
-    console.log(`- Is swap section: ${isSwapSection}`);
-    
     // First close the search modal to prevent UI issues
     closeSearch();
     
@@ -242,7 +238,6 @@
       if (isSameSectionDifferentWallet || isSwapSection) {
         const timestamp = Date.now();
         goto(`${path}?t=${timestamp}`);
-        console.log(`Added timestamp ${timestamp} to URL for proper reloading`);
       } else {
         goto(path);
       }

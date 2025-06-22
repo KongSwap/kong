@@ -1,17 +1,13 @@
-import { writable, derived, get } from 'svelte/store';
+import { writable, derived } from 'svelte/store';
 import type { Message } from '$lib/api/trollbox';
 import * as trollboxApi from '$lib/api/trollbox';
 import { browser } from '$app/environment';
 import { Principal } from '@dfinity/principal';
-import { createNamespacedStore } from '$lib/config/localForage.config';
 
 // Constants
 const TROLLBOX_NAMESPACE = 'trollbox';
-const PENDING_MESSAGES_KEY = 'pending_messages';
-const MESSAGE_SUBMISSION_FLAG = 'message_submission';
-
-// Create namespaced store
-const trollboxStorage = createNamespacedStore(TROLLBOX_NAMESPACE);
+const PENDING_MESSAGES_KEY = `${TROLLBOX_NAMESPACE}:pending_messages`;
+const MESSAGE_SUBMISSION_FLAG = `${TROLLBOX_NAMESPACE}:message_submission`;
 
 // Define store state
 interface TrollboxState {
@@ -43,7 +39,7 @@ const initialState: TrollboxState = {
   bannedUsers: new Map()
 };
 
-// Helper function to save pending messages to localForage
+// Helper function to save pending messages to localStorage
 async function savePendingMessagesToStorage(pendingMessages: Array<{ message: string; created_at: bigint; id: string }>) {
   if (!browser) return;
   
@@ -54,7 +50,7 @@ async function savePendingMessagesToStorage(pendingMessages: Array<{ message: st
       created_at: msg.created_at.toString()
     }));
     
-    await trollboxStorage.setItem(PENDING_MESSAGES_KEY, serializable);
+    localStorage.setItem(PENDING_MESSAGES_KEY, JSON.stringify(serializable));
   } catch (error) {
     console.error('Error saving pending messages to storage:', error);
   }
@@ -296,7 +292,7 @@ function createTrollboxStore() {
         
         // Set flag that we're starting a message submission (for page reloads)
         if (browser) {
-          trollboxStorage.setItem(MESSAGE_SUBMISSION_FLAG, true);
+          localStorage.setItem(MESSAGE_SUBMISSION_FLAG, 'true');
         }
         
         // Save to storage immediately
@@ -395,7 +391,8 @@ function createTrollboxStore() {
       if (!browser) return;
       
       try {
-        const storedPendingMessages = await trollboxStorage.getItem<any[]>(PENDING_MESSAGES_KEY);
+        const stored = localStorage.getItem(PENDING_MESSAGES_KEY);
+        const storedPendingMessages = stored ? JSON.parse(stored) as any[] : null;
         
         if (storedPendingMessages && Array.isArray(storedPendingMessages)) {
           update(state => {

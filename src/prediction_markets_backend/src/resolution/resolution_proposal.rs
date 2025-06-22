@@ -12,7 +12,10 @@ use crate::resolution::resolution_refunds::create_dispute_refund_claims;
 use crate::storage::*;
 use crate::types::*;
 
-pub async fn propose_resolution(market_id: MarketId, winning_outcomes: Vec<OutcomeIndex>) -> ResolutionResult {
+pub async fn propose_resolution(args: ResolutionArgs) -> ResolutionResult {
+    let market_id = args.market_id;
+    let winning_outcomes = args.winning_outcomes;
+    
     let caller = ic_cdk::caller();
 
     // Validate authorization: Only market creator or admin can propose resolution

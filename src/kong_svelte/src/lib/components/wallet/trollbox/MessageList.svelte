@@ -86,7 +86,7 @@
 <div 
   bind:this={chatContainer}
   on:scroll={handleScroll}
-  class="h-full overflow-y-auto p-3 space-y-2.5 scrollbar-custom relative bg-kong-bg-dark"
+  class="h-full overflow-y-auto p-3 space-y-2.5 scrollbar-custom relative bg-kong-bg-primary"
 >
   {#if showInstructions}
     <InstructionsPanel onHide={onToggleInstructions} />

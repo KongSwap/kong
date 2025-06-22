@@ -1,6 +1,5 @@
 import { writable, get, derived } from "svelte/store";
-import { auth } from "$lib/stores/auth";
-import { STORAGE_KEYS, createNamespacedStore } from '$lib/config/localForage.config';
+import { browser } from '$app/environment';
 
 // Internal store for favorites state
 interface FavoriteState {
@@ -11,8 +10,7 @@ interface FavoriteState {
 
 function createFavoriteStore() {
   // Create the storage namespace for favorite tokens
-  const FAVORITE_TOKENS_KEY = STORAGE_KEYS.FAVORITE_TOKENS;
-  const storage = createNamespacedStore(STORAGE_KEYS.FAVORITE_TOKENS);
+  const FAVORITE_TOKENS_KEY = 'favoriteTokens';
   
   // Create a writable store with initial state
   const initialState: FavoriteState = {
@@ -23,13 +21,8 @@ function createFavoriteStore() {
   
   const store = writable<FavoriteState>(initialState);
   
-  /**
-   * Get the current wallet ID
-   */
-  const getCurrentWalletId = (): string => {
-    const wallet = get(auth);
-    return wallet?.account?.owner || "anonymous";
-  };
+  // Store the current wallet ID internally
+  let currentWalletId = "anonymous";
   
   /**
    * Key for storing favorites for a specific wallet
@@ -39,10 +32,18 @@ function createFavoriteStore() {
   };
   
   /**
+   * Set the current wallet ID (should be called when auth changes)
+   */
+  const setWalletId = (walletId: string | null) => {
+    currentWalletId = walletId || "anonymous";
+    // Reload favorites when wallet changes
+    loadFavorites();
+  };
+  
+  /**
    * Load favorites from storage into the store
    */
   const loadFavorites = async (): Promise<string[]> => {
-    const currentWalletId = getCurrentWalletId();
     
     // Check if we're already using the correct wallet
     const { walletId: storedWalletId, favorites, ready } = get(store);
@@ -64,7 +65,8 @@ function createFavoriteStore() {
     
     try {
       const key = getStorageKey(currentWalletId);
-      const storedFavorites = await storage.getItem<{address: string, timestamp: number}[]>(key) || [];
+      const stored = localStorage.getItem(key);
+      const storedFavorites = stored ? JSON.parse(stored) as {address: string, timestamp: number}[] : [];
       const ids = storedFavorites.map(fav => fav.address);
       
       // Update the store with loaded data
@@ -91,7 +93,6 @@ function createFavoriteStore() {
    * Add a token to favorites
    */
   const addFavorite = async (canisterId: string): Promise<boolean> => {
-    const currentWalletId = getCurrentWalletId();
     
     if (currentWalletId === "anonymous") {
       return false;
@@ -99,7 +100,8 @@ function createFavoriteStore() {
     
     try {
       const key = getStorageKey(currentWalletId);
-      const storedFavorites = await storage.getItem<{address: string, timestamp: number}[]>(key) || [];
+      const stored = localStorage.getItem(key);
+      const storedFavorites = stored ? JSON.parse(stored) as {address: string, timestamp: number}[] : [];
       
       // Check if already exists
       const existing = storedFavorites.find(fav => fav.address === canisterId);
@@ -114,7 +116,7 @@ function createFavoriteStore() {
       });
       
       // Save back to storage
-      await storage.setItem(key, storedFavorites);
+      localStorage.setItem(key, JSON.stringify(storedFavorites));
       
       // Update the store
       store.update(state => {
@@ -138,7 +140,6 @@ function createFavoriteStore() {
    * Remove a token from favorites
    */
   const removeFavorite = async (canisterId: string): Promise<boolean> => {
-    const currentWalletId = getCurrentWalletId();
     
     if (currentWalletId === "anonymous") {
       return false;
@@ -146,7 +147,8 @@ function createFavoriteStore() {
     
     try {
       const key = getStorageKey(currentWalletId);
-      const storedFavorites = await storage.getItem<{address: string, timestamp: number}[]>(key) || [];
+      const stored = localStorage.getItem(key);
+      const storedFavorites = stored ? JSON.parse(stored) as {address: string, timestamp: number}[] : [];
       
       // Find if exists
       const index = storedFavorites.findIndex(fav => fav.address === canisterId);
@@ -158,7 +160,7 @@ function createFavoriteStore() {
       storedFavorites.splice(index, 1);
       
       // Save back to storage
-      await storage.setItem(key, storedFavorites);
+      localStorage.setItem(key, JSON.stringify(storedFavorites));
       
       // Update the store
       store.update(state => {
@@ -195,7 +197,6 @@ function createFavoriteStore() {
    */
   const isFavorite = async (canisterId: string): Promise<boolean> => {
     const { ready, favorites, walletId } = get(store);
-    const currentWalletId = getCurrentWalletId();
     
     if (currentWalletId === "anonymous") {
       return false;
@@ -214,18 +215,10 @@ function createFavoriteStore() {
   // Create a derived store for the count
   const favoriteCount = derived(store, ($store) => $store.favorites.size);
   
-  // Automatically load favorites when auth changes
-  auth.subscribe(() => {
-    const currentWalletId = getCurrentWalletId();
-    const { walletId } = get(store);
-    
-    if (currentWalletId !== walletId) {
-      loadFavorites();
-    }
-  });
   
   return {
     subscribe: store.subscribe,
+    setWalletId,
     loadFavorites,
     addFavorite,
     removeFavorite,

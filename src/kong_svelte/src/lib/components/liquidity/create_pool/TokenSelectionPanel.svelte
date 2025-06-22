@@ -1,6 +1,7 @@
 <script lang="ts">
   import Portal from "svelte-portal";
   import TokenSelectorDropdown from "$lib/components/swap/swap_ui/TokenSelectorDropdown.svelte";
+  import { ChevronDown, Plus } from "lucide-svelte";
   
   export let token0: Kong.Token | null;
   export let token1: Kong.Token | null;
@@ -21,10 +22,19 @@
   }
 </script>
 
-    <div class="flex gap-4">
+<div class="space-y-3">
+  <!-- Token Selection Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <!-- Base Token -->
+    <div class="token-selection-card">
+      <div class="token-label">
+        <span class="text-xs font-medium text-kong-text-primary/60 uppercase tracking-wider">Base Token</span>
+      </div>
+      
       <button
         class="token-selector-button"
-        on:click={() => openTokenSelector(0)}
+        onclick={() => openTokenSelector(0)}
+        class:selected={token0}
       >
         {#if token0}
           <div class="token-info">
@@ -32,13 +42,25 @@
             <span class="token-symbol">{token0.symbol}</span>
           </div>
         {:else}
-          <span class="select-token-text">Select Token</span>
+          <div class="select-token-content">
+            <Plus class="w-5 h-5 text-kong-text-primary/40" />
+            <span class="select-token-text">Select Base Token</span>
+          </div>
         {/if}
+        <ChevronDown class="w-4 h-4 text-kong-text-primary/40 ml-auto" />
       </button>
+    </div>
 
+    <!-- Quote Token -->
+    <div class="token-selection-card">
+      <div class="token-label">
+        <span class="text-xs font-medium text-kong-text-primary/60 uppercase tracking-wider">Quote Token</span>
+      </div>
+      
       <button
         class="token-selector-button"
-        on:click={() => openTokenSelector(1)}
+        onclick={() => openTokenSelector(1)}
+        class:selected={token1}
       >
         {#if token1}
           <div class="token-info">
@@ -46,10 +68,29 @@
             <span class="token-symbol">{token1.symbol}</span>
           </div>
         {:else}
-          <span class="select-token-text">Select Token</span>
+          <div class="select-token-content">
+            <Plus class="w-5 h-5 text-kong-text-primary/40" />
+            <span class="select-token-text">Select Quote Token</span>
+          </div>
         {/if}
+        <ChevronDown class="w-4 h-4 text-kong-text-primary/40 ml-auto" />
       </button>
     </div>
+  </div>
+
+  <!-- Pool Status -->
+  {#if token0 && token1}
+    <div class="flex items-center justify-between mt-2">
+      <div class="flex items-center gap-2 text-sm text-kong-text-primary/70">
+        <span class="font-medium">{token0.symbol}/{token1.symbol}</span>
+        <span class="text-kong-text-primary/50">Pool</span>
+      </div>
+      <span class="text-xs text-kong-success bg-kong-success/10 px-2 py-1 rounded-full">
+        Pair Selected
+      </span>
+    </div>
+  {/if}
+</div>
 
     <!-- Token Selectors -->
     {#if showToken0Selector}
@@ -58,7 +99,7 @@
           show={true}
           currentToken={token0}
           otherPanelToken={token1}
-          onSelect={(token) => onTokenSelect(0, token)}
+          onSelect={(token: Kong.Token) => onTokenSelect(0, token)}
           onClose={() => (showToken0Selector = false)}
           title="Base Token"
         />
@@ -71,7 +112,7 @@
           show={true}
           currentToken={token1}
           otherPanelToken={token0}
-          onSelect={(token) => onTokenSelect(1, token)}
+          onSelect={(token: Kong.Token) => onTokenSelect(1, token)}
           onClose={() => (showToken1Selector = false)}
           allowedCanisterIds={secondaryTokenIds}
           title="Quote Token"
@@ -80,35 +121,59 @@
     {/if}
 
 <style lang="postcss">
+  .token-selection-card {
+    @apply space-y-2;
+  }
+
+  .token-label {
+    @apply pb-1;
+  }
+
   .token-selector-button {
-    @apply flex-1 flex items-center justify-center;
-    @apply bg-white/[0.02] hover:bg-white/[0.04];
-    @apply rounded-xl px-4 py-3;
-    @apply border border-kong-border;
+    @apply w-full flex items-center justify-between;
+    @apply bg-kong-bg-secondary/50 hover:bg-kong-bg-secondary/80;
+    @apply rounded-lg px-4 py-3;
+    @apply border border-kong-border/50;
     @apply transition-all duration-200;
-    backdrop-filter: blur(11px);
   }
 
   .token-selector-button:hover {
-    @apply border-kong-border-light;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    @apply border-kong-border;
+    @apply shadow-sm;
+  }
+
+  .token-selector-button.selected {
+    @apply bg-kong-primary/5 border-kong-primary/30;
+    @apply shadow-sm;
   }
 
   .token-info {
-    @apply flex items-center gap-3;
+    @apply flex items-center gap-3 flex-1;
   }
 
   .token-logo {
-    @apply w-7 h-7 rounded-full bg-white/[0.02] object-contain p-0.5;
-    @apply border border-white/[0.03];
+    @apply w-8 h-8 rounded-full bg-kong-bg-primary/10 object-contain p-0.5;
+    @apply border border-kong-border/30;
+    @apply flex-shrink-0;
   }
 
   .token-symbol {
-    @apply text-lg text-kong-text-primary/90 font-medium tracking-tight;
+    @apply text-base text-kong-text-primary font-semibold tracking-tight;
+  }
+
+  .select-token-content {
+    @apply flex items-center gap-2 flex-1;
   }
 
   .select-token-text {
-    @apply text-lg text-kong-text-primary/50 font-medium tracking-tight;
+    @apply text-sm text-kong-text-primary/60 font-medium;
+  }
+
+  .token-selector-button:hover .select-token-text {
+    @apply text-kong-text-primary/80;
+  }
+
+  .token-selector-button.selected:hover {
+    @apply bg-kong-primary/10 border-kong-primary/40;
   }
 </style> 

@@ -6,8 +6,8 @@ import BigNumber from 'bignumber.js';
 export function getPriceChangeClass(token: Kong.Token): string {
   if (!token?.metrics?.price_change_24h) return '';
   const change = Number(token?.metrics?.price_change_24h);
-  if (change > 0) return 'text-kong-text-accent-green';
-  if (change < 0) return 'text-kong-accent-red';
+  if (change > 0) return 'text-kong-success';
+  if (change < 0) return 'text-kong-error';
   return '';
 }
 
@@ -28,13 +28,24 @@ export async function formatPoolData(pools: BE.Pool[]): Promise<BE.Pool[]> {
 }
 
 export function getPoolPriceUsd(pool: BE.Pool): number {
-  if (!pool) return 0;
-  let balance0 = new BigNumber(pool.balance_0.toString());
-  let balance1 = new BigNumber(pool.balance_1.toString());
-  let lpFee0 = new BigNumber(pool.lp_fee_0.toString());
-  let lpFee1 = new BigNumber(pool.lp_fee_1.toString());
-  let poolPrice = new BigNumber((balance1.plus(lpFee1)).div(balance0.plus(lpFee0)));
-  return poolPrice.toNumber();
+  if (!pool || !pool.balance_0 || !pool.balance_1) return 0;
+  
+  try {
+    let balance0 = new BigNumber(pool.balance_0.toString());
+    let balance1 = new BigNumber(pool.balance_1.toString());
+    let lpFee0 = new BigNumber((pool.lp_fee_0 || 0).toString());
+    let lpFee1 = new BigNumber((pool.lp_fee_1 || 0).toString());
+    
+    // Avoid division by zero
+    const denominator = balance0.plus(lpFee0);
+    if (denominator.isZero()) return 0;
+    
+    let poolPrice = new BigNumber((balance1.plus(lpFee1)).div(denominator));
+    return poolPrice.toNumber();
+  } catch (error) {
+    console.warn('Error calculating pool price:', error);
+    return 0;
+  }
 }
 
 /**

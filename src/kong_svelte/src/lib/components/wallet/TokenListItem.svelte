@@ -4,6 +4,7 @@
 	import TokenImages from "$lib/components/common/TokenImages.svelte";
 	import Badge from "$lib/components/common/Badge.svelte";
 	import { currentUserBalancesStore } from "$lib/stores/balancesStore";
+	import { formatTokenName } from "$lib/utils/tokenFormatUtils";
 
 	// Define props
 	export let token: Kong.Token;
@@ -44,26 +45,24 @@
 </script>
 
 <div
-	class="px-4 z-[10] !shadow py-3.5 bg-kong-bg-dark border-t border-kong-border/50 hover:bg-kong-primary/10 transition-all duration-200 relative
+	class="px-4 z-[10] !shadow py-3.5 bg-kong-bg-primary border-t border-kong-border/50 hover:bg-kong-primary/10 transition-all duration-200 relative
 		{isSyncing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
 		{isActive ? 
 			'border-l-4 border-l-kong-primary border border-kong-primary/20 shadow-[0_0_15px_rgba(0,0,0,0.1)] bg-kong-primary/10' : 'border-l-2 border-l-transparent'}"
-	on:click={(e) => !isSyncing && onClick(e)}
+	onclick={(e) => !isSyncing && onClick(e)}
 >
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-3">
 			{#if token}
-				<div class="flex-shrink-0">
 					<TokenImages
 						tokens={[token]}
-						size={36}
+						size={38}
 						showSymbolFallback={true}
 						tooltip={{
 							text: token.name,
 							direction: "top",
 						}}
 					/>
-				</div>
 			{:else}
 				<div
 					class="w-9 h-9 rounded-full bg-kong-text-primary/10 flex items-center justify-center border border-kong-border flex-shrink-0"
@@ -76,13 +75,8 @@
 			<div class="flex flex-col justify-center">
 				<div class="flex items-center gap-1.5">
 					<span class="font-medium text-kong-text-primary text-sm leading-tight">
-						{token.name}
+						{formatTokenName(token.name, 25)}
 					</span>
-					{#if badgeText}
-						<Badge variant={badgeVariant} size="xs" pill={true}>
-							{badgeText}
-						</Badge>
-					{/if}
 				</div>
 				<div class="text-xs text-kong-text-secondary mt-1 leading-tight">
 					{#if showUsdValues}
@@ -108,8 +102,8 @@
 			</div>
 			<div
 				class="text-xs {Number(token.metrics.price_change_24h) >= 0
-					? 'text-kong-accent-green'
-					: 'text-kong-accent-red'} font-medium mt-1 leading-tight"
+					? 'text-kong-success'
+					: 'text-kong-error'} font-medium mt-1 leading-tight"
 			>
 				{Number(formatToNonZeroDecimal(token.metrics.price_change_24h)) >= 0
 					? "+"

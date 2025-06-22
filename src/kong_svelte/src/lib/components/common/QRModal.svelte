@@ -40,17 +40,17 @@
       </div>
     </div>
     
-    <div class="w-full p-3 px-4 bg-kong-bg-light rounded-lg border border-kong-border">
+    <div class="w-full p-3 px-4 bg-kong-bg-secondary rounded-lg border border-kong-border">
       <p class="text-xs text-kong-text-secondary mb-2 text-left">Address:</p>
       <div class="flex items-center justify-between gap-3">
         <span class="font-mono text-xs text-kong-text-primary break-all text-left flex-grow">{$qrModalStore.address}</span>
         <button 
-          class="p-1 rounded-full bg-transparent border-none cursor-pointer text-kong-text-secondary transition-colors duration-200 flex items-center justify-center flex-shrink-0 hover:text-kong-primary hover:bg-kong-bg-light/20"
+          class="p-1 rounded-full bg-transparent border-none cursor-pointer text-kong-text-secondary transition-colors duration-200 flex items-center justify-center flex-shrink-0 hover:text-kong-primary hover:bg-kong-bg-secondary/20"
           title={copied ? "Copied!" : "Copy Address"}
-          on:click={() => copyAddress($qrModalStore.address)}
+          onclick={() => copyAddress($qrModalStore.address)}
         >
           {#if copied}
-            <Check size={16} class="text-kong-accent-green" />
+            <Check size={16} class="text-kong-success" />
           {:else}
             <Copy size={16} />
           {/if}

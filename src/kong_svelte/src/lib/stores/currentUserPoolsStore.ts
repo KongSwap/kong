@@ -1,10 +1,9 @@
 import { writable, get } from 'svelte/store';
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
-import { auth } from "$lib/stores/auth";
-import { canisters } from '$lib/config/auth.config';
-import type { CanisterType } from '$lib/config/auth.config';
-import { UserPool, type UserPoolData } from '$lib/models/UserPool';
-import { fetchPools } from '$lib/api/pools';
+import { auth, swapActor } from "$lib/stores/auth";
+import { fetchPools } from "$lib/api/pools";
+import { UserPool, type UserPoolData } from "$lib/models/UserPool";
+import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
 
 interface PoolListState {
   processedPools: ProcessedPool[];
@@ -18,14 +17,13 @@ interface PoolListState {
   initialFilterApplied: boolean;
 }
 
-interface ProcessedPool extends UserPoolData {
-  searchableText: string;
-}
+// ProcessedPool extends UserPoolData type from UserPool model
+type ProcessedPool = UserPoolData;
 
 const initialState: PoolListState = {
   processedPools: [],
   filteredPools: [],
-  loading: true,
+  loading: false,
   error: null,
   isSearching: false,
   searchResultsReady: false,
@@ -53,13 +51,9 @@ function createCurrentUserPoolsStore() {
       const currentAuth = get(auth);
       const currentPrincipal = currentAuth?.account?.owner || '';
       
-      // If we're already initializing for this principal, return the existing promise
+      // Check if already initialized or initializing for this principal
       if (initializationPromise && lastInitializationPrincipal === currentPrincipal) {
-        const currentState = get({ subscribe });
-        // Only return existing promise if we're still loading
-        if (currentState.loading) {
-          return initializationPromise;
-        }
+        return initializationPromise;
       }
       
       // Create new initialization promise
@@ -69,17 +63,13 @@ function createCurrentUserPoolsStore() {
         update(s => ({ ...s, loading: true, error: null }));
         
         try {
-          const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
-            canisterId: canisters.kongBackend.canisterId,
-            idl: canisters.kongBackend.idl,
-            anon: true,
-          });
+          const actor = swapActor({ anon: true, requiresSigning: false });
           
           const response = await actor.user_balances(currentPrincipal);
                   
           if ('Ok' in response) {
             // Process the new raw data
-            const rawPools = response.Ok.map(pool => pool.LP);
+            const rawPools = response.Ok.map((pool: any) => pool.LP);
             
             // Fetch tokens for the new pools
             await fetchTokensForPools(rawPools); 
@@ -190,20 +180,22 @@ function createCurrentUserPoolsStore() {
       
       return pools.map(pool => {
         const parsed = UserPool.parse(pool, tokens, allPools);
-        return {
-          ...parsed,
-          searchableText: getPoolSearchData(parsed, tokens)
-        };
+        // searchableText is already part of UserPoolData, but we'll ensure it's set
+        if (!parsed.searchableText) {
+          parsed.searchableText = getPoolSearchData(parsed, tokens);
+        }
+        return parsed;
       });
     } catch (error) {
       console.error("Failed to fetch pool data for calculations:", error);
       // Fallback: process without pool data
       return pools.map(pool => {
         const parsed = UserPool.parse(pool, tokens);
-        return {
-          ...parsed,
-          searchableText: getPoolSearchData(parsed, tokens)
-        };
+        // searchableText is already part of UserPoolData, but we'll ensure it's set
+        if (!parsed.searchableText) {
+          parsed.searchableText = getPoolSearchData(parsed, tokens);
+        }
+        return parsed;
       });
     }
   }
@@ -241,14 +233,12 @@ function getTokenAliases(symbol: string): string {
 
 function filterPools(pools: ProcessedPool[], query: string): ProcessedPool[] {
   return pools.filter(poolItem => {
-    // If there's no search query, include all pools with any balance
+    // If there's no search query, show all user pools (including zero balance)
     if (!query) {
-      return Number(poolItem.usd_balance) > 0;
+      return true;
     }
-    // Otherwise filter by both search and balance
-    const matchesSearch = poolItem.searchableText.includes(query.toLowerCase());
-    const hasBalance = Number(poolItem.usd_balance) > 0;
-    return matchesSearch && hasBalance;
+    // For search queries, filter by searchable text
+    return poolItem.searchableText.includes(query.toLowerCase());
   });
 }
 

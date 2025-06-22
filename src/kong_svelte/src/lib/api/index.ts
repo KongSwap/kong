@@ -1,5 +1,6 @@
 // Export the API URL
 export const API_URL = getIndexerUrl();
+// export const API_URL = "http://localhost:8081";
 
 // Export base API components
 export * from './base';
@@ -19,7 +20,7 @@ export * from './upload';
 
 function getIndexerUrl() {
   if (process.env.DFX_NETWORK === "local") {
-      return "http://localhost:8080";
+      return "http://localhost:8081";
   } else if (process.env.DFX_NETWORK === "staging") {
       return 'https://clownfish-app-2dvg3.ondigitalocean.app';
   } else {

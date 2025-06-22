@@ -66,7 +66,7 @@
       ? `h-[34px] px-2.5 flex items-center gap-1.5 ${$panelRoundness} text-xs font-semibold text-kong-text-primary/95 bg-kong-primary/40 border border-kong-primary/80 transition-all duration-150 hover:bg-kong-primary/60 hover:border-kong-primary/90`
       : variant === "mobile"
       ? `h-[34px] w-[34px] flex items-center justify-center ${$panelRoundness} text-kong-text-primary bg-kong-primary/15 border border-kong-primary/30 transition-all duration-150 hover:bg-kong-primary/20 hover:border-kong-primary/40`
-      : `h-[34px] px-2.5 flex items-center gap-1.5 ${$panelRoundness} text-xs font-medium text-kong-text-secondary bg-kong-bg-dark border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-bg-light hover:border-kong-border-light`
+      : `h-[34px] px-2.5 flex items-center gap-1.5 ${$panelRoundness} text-xs font-medium text-kong-text-secondary bg-kong-bg-primary border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-bg-secondary hover:border-kong-border-light`
   );
 
   // Selected and disabled classes
@@ -82,7 +82,7 @@
   class:is-primary={variant === "primary"}
   class:wallet-button={isWalletButton}
   style={buttonStyle}
-  on:click={onClick}
+  onclick={onClick}
   disabled={disabled}
   data-testid={testId || "navbar-button"}
   use:tooltip={tooltipText ? tooltipProps : null}
@@ -103,7 +103,7 @@
     {:else}
       {@render icon({ size: iconSize })}
       {#if badgeCount > 0}
-        <span class="absolute {variant === 'mobile' ? '-top-2 -left-2' : '-top-3 -left-3'} w-4 h-4 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center z-10">
+        <span class="absolute {variant === 'mobile' ? '-top-2 -left-2' : '-top-3 -left-3'} w-4 h-4 rounded-full bg-kong-error text-white text-[10px] font-medium flex items-center justify-center z-10">
           {badgeCount}
         </span>
       {/if}
@@ -132,14 +132,14 @@
   /* Theme variables */
   button.use-theme-variables:not(.has-custom-style) {
     &:not(.is-primary) {
-      @apply bg-kong-bg-dark text-kong-text-primary hover:bg-kong-bg-light hover:text-kong-text-primary;
+      @apply bg-kong-bg-primary text-kong-text-primary hover:bg-kong-bg-secondary hover:text-kong-text-primary;
       border: var(--button-border, 1px solid) var(--button-border-color, rgba(255, 255, 255, 0.1));
       box-shadow: var(--button-shadow, none);
     }
     
     &.is-primary {
       background-color: var(--primary-button-bg, #0095EB);
-      color: var(--text-light, #FFFFFF);
+      color: var(--text-primary, #FFFFFF);
       border: var(--primary-button-border, 1px solid) var(--primary-button-border-color, rgba(255, 255, 255, 0.1));
       
       &:hover:not(.disabled) {
@@ -150,18 +150,18 @@
   
   /* Wallet button */
   button.wallet-button {
-    @apply !bg-kong-primary !text-kong-text-light;
+    @apply !bg-kong-primary !text-kong-text-primary;
     
     &.is-primary {
       background-color: var(--btn-bg-color, var(--primary-button-bg, #0095EB)) !important;
     }
     
     &:not(.is-primary) {
-      @apply !bg-kong-primary hover:!text-kong-text-light;
+      @apply !bg-kong-primary hover:!text-kong-text-primary;
     }
     
     &:hover:not(.disabled) {
-      @apply !bg-kong-primary/90 !text-kong-text-light;
+      @apply !bg-kong-primary/90 !text-kong-text-primary;
       opacity: 0.9;
     }
   }
@@ -171,7 +171,7 @@
   }
   
   /* Windows 98 style theme overrides */
-  :global(.theme-win98light) {
+  :global(.theme-microswap) {
     button.use-theme-border {
       border-width: 2px !important;
       border-style: solid !important;
@@ -182,7 +182,7 @@
     button.wallet-button {
       &.is-primary {
         background-color: var(--primary-button-bg, #010081) !important;
-        color: var(--text-light, #FFFFFF) !important;
+        color: var(--text-primary, #FFFFFF) !important;
       }
       
       &:not(.is-primary) {

@@ -10,7 +10,7 @@
   import { createEventDispatcher } from "svelte";
   import { tooltip } from "$lib/actions/tooltip";
   import LoadingEllipsis from "$lib/components/common/LoadingEllipsis.svelte";
-  import { afterNavigate } from "$app/navigation";
+  import { afterNavigate, goto } from "$app/navigation";
   import { WalletDataService, walletDataStore } from "$lib/services/wallet";
   
   let { initialDataLoading, initError } = $props<{ initialDataLoading: boolean, initError: string | null }>();
@@ -154,33 +154,21 @@
     
     // Check if we need to update our local principal
     if (currentPrincipal && currentPrincipal !== principal) {
-      console.log(`URL principal changed from ${principal} to ${currentPrincipal}`);
       
-      // Always reset allPools when principal changes to prevent showing stale data
-      console.log(`Resetting allPools due to principal change`);
       allPools = [];
-      
-      // Set loading state to true when switching wallets
       isLoading = true;
-      
-      // Always reset the wallet pool list store when principal changes
-      console.log(`Resetting walletPoolListStore due to principal change`);
       walletPoolListStore.reset();
       
-      // Update our local principal
       principal = currentPrincipal;
     }
     
-    // Check if wallet data is loaded for the current principal
     if (currentPrincipal && 
         $walletDataStore.currentWallet === currentPrincipal && 
         $walletDataStore.tokens.length > 0 && 
         !$walletDataStore.isLoading) {
       
-      // If we have wallet data but no pools, load the pools
       if ($walletPoolListStore.walletId !== currentPrincipal || 
           $walletPoolListStore.processedPools.length === 0) {
-        console.log(`Wallet data loaded for ${currentPrincipal}, loading pools`);
         loadPoolData(currentPrincipal);
       }
     }
@@ -199,7 +187,6 @@
     // Clear allPools if the walletPoolListStore has data for a different wallet
     if ($walletPoolListStore.walletId && 
         $walletPoolListStore.walletId !== currentPrincipal) {
-      console.log(`WalletPoolListStore has data for ${$walletPoolListStore.walletId} but current principal is ${currentPrincipal}, clearing allPools`);
       allPools = [];
       return;
     }
@@ -207,7 +194,6 @@
     // Update allPools from walletPoolListStore only if it matches the current principal
     if ($walletPoolListStore.processedPools.length > 0 && 
         $walletPoolListStore.walletId === currentPrincipal) {
-      console.log(`Updating allPools with ${$walletPoolListStore.processedPools.length} pools from store for ${currentPrincipal}`);
       allPools = [...$walletPoolListStore.processedPools];
     }
   });
@@ -218,7 +204,6 @@
     
     // Always reset allPools when loading data for a different principal
     if ($walletPoolListStore.walletId !== principalId) {
-      console.log(`Principal changed from ${$walletPoolListStore.walletId} to ${principalId}, resetting allPools`);
       allPools = [];
       
       // Set loading state to true when fetching new data
@@ -226,7 +211,6 @@
       
       // Reset the store to ensure we don't have stale data
       if ($walletPoolListStore.walletId !== principalId) {
-        console.log(`Resetting walletPoolListStore before loading data for ${principalId}`);
         walletPoolListStore.reset();
       }
     }
@@ -234,12 +218,10 @@
     // Check if we already have pools for this principal
     if ($walletPoolListStore.walletId === principalId && 
         $walletPoolListStore.processedPools.length > 0) {
-      console.log(`Already have pools for ${principalId}, no need to reload`);
       return;
     }
     
     try {
-      console.log(`Fetching pool data for ${principalId}`);
       
       // Set loading state to true when fetching new data
       isLoading = true;
@@ -248,9 +230,7 @@
       
       // Check if pools were loaded successfully
       if ($walletPoolListStore.processedPools.length === 0) {
-        console.log(`No pools found for ${principalId} after fetching`);
       } else {
-        console.log(`Successfully loaded ${$walletPoolListStore.processedPools.length} pools for ${principalId}`);
       }
     } catch (error) {
       console.error("Error loading pool data:", error);
@@ -273,7 +253,6 @@
     
     // Update our local principal if needed
     if (currentPrincipal !== principal) {
-      console.log(`Principal changed during navigation from ${principal} to ${currentPrincipal}`);
       principal = currentPrincipal;
       
       // Reset pools data when principal changes during navigation
@@ -287,8 +266,6 @@
         !$walletPoolListStore.loading && 
         ($walletPoolListStore.walletId !== currentPrincipal || 
          $walletPoolListStore.processedPools.length === 0)) {
-      
-      console.log(`Navigated to liquidity page for ${currentPrincipal}, checking if pools need to be loaded`);
       
       // If wallet data is already loaded, load pools
       if ($walletDataStore.currentWallet === currentPrincipal && 
@@ -334,7 +311,7 @@
     </div>
     
     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6 mt-4">
-      <div class="flex flex-col p-3 sm:p-4 bg-kong-bg-dark/30 rounded-lg">
+      <div class="flex flex-col p-3 sm:p-4 bg-kong-bg-primary/30 rounded-lg">
         <div class="flex items-center gap-2 text-kong-text-secondary text-sm mb-1">
           <DollarSign class="w-3 h-3 sm:w-4 sm:h-4" />
           <span>Total Value</span>
@@ -348,7 +325,7 @@
         </div>
       </div>
       
-      <div class="flex flex-col p-3 sm:p-4 bg-kong-bg-dark/30 rounded-lg">
+      <div class="flex flex-col p-3 sm:p-4 bg-kong-bg-primary/30 rounded-lg">
         <div class="flex items-center gap-2 text-kong-text-secondary text-sm mb-1">
           <TrendingUp class="w-3 h-3 sm:w-4 sm:h-4" />
           <span class="flex items-center gap-1">
@@ -358,7 +335,7 @@
               use:tooltip={{ 
                 text: "This APR is weighted by the USD value of each position, giving more influence to larger positions.", 
                 direction: "top",
-                background: "bg-kong-bg-dark",
+                background: "bg-kong-bg-primary",
                 paddingClass: "p-3",
                 textSize: "sm"
               }}
@@ -367,7 +344,7 @@
             </span>
           </span>
         </div>
-        <div class="text-lg sm:text-xl font-medium text-kong-text-accent-green">
+        <div class="text-lg sm:text-xl font-medium text-kong-success">
           {#if $walletPoolListStore.loading || isLoading}
             <LoadingEllipsis color="text-kong-text-primary" size="text-lg sm:text-xl" />
           {:else if averageAPY > 0}
@@ -378,7 +355,7 @@
         </div>
       </div>
       
-      <div class="flex flex-col p-3 sm:p-4 bg-kong-bg-dark/30 rounded-lg">
+      <div class="flex flex-col p-3 sm:p-4 bg-kong-bg-primary/30 rounded-lg">
         <div class="flex items-center gap-2 text-kong-text-secondary text-sm mb-1">
           <Droplets class="w-3 h-3 sm:w-4 sm:h-4" />
           <span>Active Positions</span>
@@ -400,7 +377,7 @@
       <h3 class="text-sm uppercase font-medium text-kong-text-primary">Liquidity Positions</h3>
       
       <div class="flex items-center gap-2">
-        <button class="p-2 rounded-lg hover:bg-kong-bg-dark/60 transition-colors" title="Filter Options">
+        <button class="p-2 rounded-lg hover:bg-kong-bg-primary/60 transition-colors" title="Filter Options">
           <SlidersHorizontal class="w-3 h-3 sm:w-4 sm:h-4 text-kong-text-secondary" />
         </button>
         <div class="p-2 rounded-lg bg-kong-primary/10">
@@ -415,7 +392,7 @@
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-kong-primary" />
         </div>
       {:else if loadingError}
-        <div class="text-center py-8 text-kong-accent-red">
+        <div class="text-center py-8 text-kong-error">
           {loadingError}
         </div>
       {:else if sortedPools.length === 0}
@@ -424,10 +401,10 @@
         </div>
       {:else}
         <!-- Table Headers with sorting - Hidden on mobile -->
-        <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,0.8fr,0.8fr,1fr] sm:gap-4 px-4 py-2 text-sm text-kong-text-secondary font-medium border-b border-kong-bg-dark">
+        <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,1fr,1fr] sm:gap-4 px-4 py-2 text-sm text-kong-text-secondary font-medium border-b border-kong-bg-primary">
           <button 
             class="flex items-center gap-1 text-left hover:text-kong-text-primary transition-colors"
-            on:click={() => updateSort("name")}
+            onclick={() => updateSort("name")}
           >
             <span>Pool</span>
             {#if sortBy === "name"}
@@ -437,7 +414,7 @@
           <div>Token Amounts</div>
           <button 
             class="flex items-center gap-1 justify-end hover:text-kong-text-primary transition-colors"
-            on:click={() => updateSort("value")}
+            onclick={() => updateSort("value")}
           >
             <span>Value</span>
             {#if sortBy === "value"}
@@ -447,11 +424,11 @@
           <div class="text-right">Share</div>
           <button 
             class="flex items-center gap-1 justify-end hover:text-kong-text-primary transition-colors"
-            on:click={() => updateSort("apy")}
+            onclick={() => updateSort("apy")}
             use:tooltip={{ 
               text: "Annual Percentage Yield - Estimated return based on recent trading activity", 
               direction: "top",
-              background: "bg-kong-bg-dark",
+              background: "bg-kong-bg-primary",
               paddingClass: "p-2"
             }}
           >
@@ -468,20 +445,20 @@
             <span class="text-xs text-kong-text-secondary">Sort by:</span>
             <div class="flex gap-2">
               <button 
-                class="px-2 py-1 text-xs rounded {sortBy === 'name' ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-dark/50 text-kong-text-secondary'}"
-                on:click={() => updateSort("name")}
+                class="px-2 py-1 text-xs rounded {sortBy === 'name' ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-primary/50 text-kong-text-secondary'}"
+                onclick={() => updateSort("name")}
               >
                 Name {#if sortBy === "name"}<span class="text-[0.6rem]">{sortDirection === 'asc' ? '↑' : '↓'}</span>{/if}
               </button>
               <button 
-                class="px-2 py-1 text-xs rounded {sortBy === 'value' ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-dark/50 text-kong-text-secondary'}"
-                on:click={() => updateSort("value")}
+                class="px-2 py-1 text-xs rounded {sortBy === 'value' ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-primary/50 text-kong-text-secondary'}"
+                onclick={() => updateSort("value")}
               >
                 Value {#if sortBy === "value"}<span class="text-[0.6rem]">{sortDirection === 'asc' ? '↑' : '↓'}</span>{/if}
               </button>
               <button 
-                class="px-2 py-1 text-xs rounded {sortBy === 'apy' ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-dark/50 text-kong-text-secondary'}"
-                on:click={() => updateSort("apy")}
+                class="px-2 py-1 text-xs rounded {sortBy === 'apy' ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-primary/50 text-kong-text-secondary'}"
+                onclick={() => updateSort("apy")}
               >
               APR {#if sortBy === "apy"}<span class="text-[0.6rem]">{sortDirection === 'asc' ? '↑' : '↓'}</span>{/if}
               </button>
@@ -490,10 +467,11 @@
         </div>
         
         <!-- Table Body -->
-        <div class="divide-y divide-kong-bg-dark">
+        <div class="divide-y divide-kong-bg-primary">
           {#each sortedPools as pool}
             <!-- Desktop view - grid layout -->
-            <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,0.8fr,0.8fr,1fr] sm:gap-4 sm:items-center px-4 py-3 hover:bg-kong-bg-dark/30 transition-colors">
+            <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,1fr,1fr] sm:gap-4 sm:items-center px-4 py-3 hover:bg-kong-bg-primary/30 hover:border-l-2 hover:border-kong-primary transition-all cursor-pointer"
+                 onclick={() => goto(`/pools/${pool.address_0}_${pool.address_1}/position`)}>
               <!-- Pool -->
               <div class="flex items-center gap-2">
                 <TokenImages
@@ -546,18 +524,18 @@
               <div class="text-right text-sm relative">
                 <span 
                   class="font-medium flex items-center gap-1 justify-end ml-auto group cursor-pointer"
-                  class:text-kong-text-accent-green={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy > 0}
-                  class:text-kong-text-accent-red={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy < 0}
+                  class:text-kong-success={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy > 0}
+                  class:text-kong-error={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy < 0}
                   class:text-kong-text-secondary={pool.rolling_24h_apy === undefined || pool.rolling_24h_apy === null}
                   use:tooltip={{
                     text: pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null 
                       ? `Based on recent trading activity. Estimated daily earnings: $${calculateEarnings(pool, 1)}`
                       : "APR data is currently unavailable for this pool",
                     direction: "top",
-                    background: "bg-kong-bg-dark",
+                    background: "bg-kong-bg-primary",
                     paddingClass: "p-2"
                   }}
-                  on:click={(e) => showAPYDetails(pool, e)}
+                  onclick={(e) => showAPYDetails(pool, e)}
                 >
                   {#if pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null}
                     {formatPercentage(pool.rolling_24h_apy)}
@@ -570,7 +548,8 @@
             </div>
             
             <!-- Mobile view - card layout -->
-            <div class="sm:hidden p-4 hover:bg-kong-bg-dark/30 transition-colors">
+            <div class="sm:hidden p-4 hover:bg-kong-bg-primary/30 hover:border-l-2 hover:border-kong-primary transition-all cursor-pointer"
+                 onclick={() => goto(`/pools/${pool.address_0}_${pool.address_1}/position`)}>
               <!-- Pool and Value -->
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2">
@@ -608,33 +587,22 @@
                 </div>
               </div>
               
-              <!-- Pool Share and APY row -->
-              <div class="flex justify-between items-center gap-4">
-                <!-- Pool Share -->
-                <div class="flex justify-between items-center flex-1">
-                  <div class="text-xs text-kong-text-secondary">Share</div>
-                  <div class="text-sm font-medium text-kong-text-primary">
-                    {formatToNonZeroDecimal(pool.poolSharePercentage || 0)}%
-                  </div>
-                </div>
-                
-                <!-- APY -->
-                <div class="flex justify-between items-center flex-1">
-                  <div class="text-xs text-kong-text-secondary">APR</div>
-                  <div 
-                    class="flex items-center gap-1 text-sm"
-                    class:text-kong-text-accent-green={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy > 0}
-                    class:text-kong-text-accent-red={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy < 0}
-                    class:text-kong-text-secondary={pool.rolling_24h_apy === undefined || pool.rolling_24h_apy === null}
-                    on:click={(e) => showAPYDetails(pool, e)}
-                  >
-                    {#if pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null}
-                      {formatPercentage(pool.rolling_24h_apy)}
-                    {:else}
-                      <span>--</span>
-                    {/if}
-                    <Info class="w-3 h-3" />
-                  </div>
+              <!-- APY -->
+              <div class="flex justify-between items-center">
+                <div class="text-xs text-kong-text-secondary">APR</div>
+                <div 
+                  class="flex items-center gap-1 text-sm"
+                  class:text-kong-success={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy > 0}
+                  class:text-kong-error={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy < 0}
+                  class:text-kong-text-secondary={pool.rolling_24h_apy === undefined || pool.rolling_24h_apy === null}
+                  onclick={(e) => showAPYDetails(pool, e)}
+                >
+                  {#if pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null}
+                    {formatPercentage(pool.rolling_24h_apy)}
+                  {:else}
+                    <span>--</span>
+                  {/if}
+                  <Info class="w-3 h-3" />
                 </div>
               </div>
             </div>
@@ -649,18 +617,18 @@
   {@const selectedPool = allPools.find(p => p.id === selectedPoolId)}
   {#if selectedPool}
     <div 
-      class="apy-tooltip fixed bg-kong-bg-dark border border-kong-border rounded-lg shadow-lg p-4 z-50 w-64"
+      class="apy-tooltip fixed bg-kong-bg-primary border border-kong-border rounded-lg shadow-lg p-4 z-50 w-64"
       style="left: {Math.min(tooltipPosition.x, window.innerWidth - 280)}px; top: {Math.min(tooltipPosition.y + 10, window.innerHeight - 280)}px"
     >
       <div class="flex justify-between items-center mb-3">
         <h4 class="text-sm font-medium">Estimated Earnings</h4>
-        <button class="text-kong-text-secondary hover:text-kong-text-primary" on:click={hideAPYDetails}>×</button>
+        <button class="text-kong-text-secondary hover:text-kong-text-primary" onclick={hideAPYDetails}>×</button>
       </div>
       
       {#if selectedPool.rolling_24h_apy !== undefined && selectedPool.rolling_24h_apy !== null}
         <div class="grid grid-cols-2 gap-2">
           {#each [{ label: "Daily", days: 1 }, { label: "Weekly", days: 7 }, { label: "Monthly", days: 30 }, { label: "Yearly", days: 365 }] as period}
-            <div class="bg-kong-bg-light/30 rounded-lg p-2 flex flex-col">
+            <div class="bg-kong-bg-secondary/30 rounded-lg p-2 flex flex-col">
               <span class="text-xs text-kong-text-secondary">{period.label}</span>
               <span class="text-sm font-medium">${calculateEarnings(selectedPool, period.days)}</span>
             </div>

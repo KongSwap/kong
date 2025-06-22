@@ -66,7 +66,7 @@
   }
 
   .key {
-    @apply px-2.5 py-1.5 bg-kong-surface-dark border border-kong-border rounded-md text-sm font-medium text-kong-text-secondary mb-1.5;
+    @apply px-2.5 py-1.5 bg-kong-bg-tertiary border border-kong-border rounded-md text-sm font-medium text-kong-text-secondary mb-1.5;
   }
 
   .description {

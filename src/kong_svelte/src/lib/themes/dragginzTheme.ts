@@ -9,9 +9,10 @@ export const dragginzTheme: ThemeDefinition = {
   authorLink: 'https://windoge98.com',
   colors: {
     // Background colors
-    bgDark: '#0A1F19',       // Deep forest green
-    bgLight: '#122925',      // Lighter forest green
-    hoverBgLight: '#173631', // Slightly lighter for hover states
+    bgPrimary: '#0A1F19',       // Deep forest green
+    bgSecondary: '#122925',      // Lighter forest green
+    bgTertiary: '#173631',       // Even lighter for tertiary
+    hoverBgSecondary: '#173631', // Slightly lighter for hover states
     
     // Primary and secondary colors
     primary: '#FF5722',      // Dragon orange from logo
@@ -19,19 +20,21 @@ export const dragginzTheme: ThemeDefinition = {
     secondary: '#22C9D3',    // Cyan blue (from character's hair)
     secondaryHover: '#1BA8B1',
     
-    // Accent colors
-    accentBlue: '#22C9D3',   // Cyan blue
-    accentRed: '#FF1744',    // Brighter, cooler red for contrast
-    accentGreen: '#4BEA80',  // Brighter mystical green (like the baby dragon)
-    accentYellow: '#FFB74D', // Warm yellow
-    accentPurple: '#9C64A6', // Mystical purple
-    accentCyan: '#26C6DA',   
+    // Semantic colors
+    accent: '#22C9D3',   // Cyan blue
+    error: '#FF1744',    // Brighter, cooler red for contrast
+    success: '#1FA754',  // Darker green for better contrast with white text
+    warning: '#FFB74D', // Warm yellow
+    info: '#26C6DA',    // Cyan
+    muted: '#5D6673',   // Dark gray   
     
     // Hover variants
-    accentGreenHover: '#3AD970',
-    accentBlueHover: '#1BA8B1',
-    accentRedHover: '#D50000',   // Darker version of the brighter red
-    accentYellowHover: '#FFA726',
+    successHover: '#198F46',
+    accentHover: '#1BA8B1',
+    errorHover: '#D50000',   // Darker version of the brighter red
+    warningHover: '#FFA726',
+    infoHover: '#1FB3C5',    // Darker cyan
+    mutedHover: '#4B5560',   // Darker gray
     
     // Text colors
     textPrimary: '#FFFFFF',
@@ -40,9 +43,9 @@ export const dragginzTheme: ThemeDefinition = {
     textLight: '#E0F7FA',
     textDark: '#0A1F19',
     textOnPrimary: '#FFFFFF',
-    textAccentGreen: '#4BEA80',
-    textAccentRed: '#FF5722',
-    textAccentBlue: '#22C9D3',
+    textSuccess: '#4BEA80',
+    textError: '#FF5722',
+    textAccent: '#22C9D3',
     
     // Font settings - updating to a more fantasy-style font that fits the MMO theme
     fontFamily: "'Caudex', 'Almendra', 'Exo 2', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -62,32 +65,11 @@ export const dragginzTheme: ThemeDefinition = {
     border: '#1E3B35',
     borderLight: '#2C534A',
     
-    // Surface colors - slightly more vibrant
-    surfaceDark: '#112420',
-    surfaceLight: '#183A35',
-    
     // Logo properties
     logoBrightness: 1.05,
     logoInvert: 0,
     logoHoverBrightness: 1.15,
-    logoPath: '/images/dkp.png', // Using the dragon logo
-    
-    // Token selector dropdown colors - more distinct with fantasy theme colors
-    tokenSelectorBg: '#0F201C',
-    tokenSelectorHeaderBg: '#183A35',
-    tokenSelectorItemBg: '#1E3B35',
-    tokenSelectorItemHoverBg: '#2C534A',
-    tokenSelectorItemActiveBg: '#346259',
-    tokenSelectorSearchBg: '#2C534A',
-    tokenSelectorBorder: '1px solid rgba(255, 255, 255, 0.2)',
-    tokenSelectorRoundness: 'rounded',
-    tokenSelectorShadow: '0 12px 35px rgba(0, 0, 0, 0.45), 0 0 15px rgba(34, 201, 211, 0.15)',
-    
-    // Plugin Manager colors
-    pmDark: '#0F2019',
-    pmBorder: '#2C534A',
-    pmAccent: '#9C64A6', // Purple accent
-    pmTextSecondary: '#B8E6DD',
+    logoPath: '/images/logo-white-wide.webp', // Using the dragon logo
     
     // Switch button styling - more fantasy-themed
     switchButtonBg: '#112420',
@@ -105,7 +87,6 @@ export const dragginzTheme: ThemeDefinition = {
     tokenTickerBorderStyle: 'default',
     tokenTickerRoundness: 'rounded-xl',
     tokenTickerHoverBg: 'rgba(44, 83, 74, 0.9)',
-    tokenTickerShadow: '0 8px 32px rgba(0, 0, 0, 0.32), 0 0 15px rgba(34, 201, 211, 0.15)',
     tokenTickerUpColor: '#4BEA80',
     tokenTickerDownColor: '#FF5722',
     tokenTickerBgOpacity: 85,
@@ -149,10 +130,7 @@ export const dragginzTheme: ThemeDefinition = {
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
     backgroundOpacity: 100,
-    enableParallax: false,
-    parallaxStrength: 0, // Slightly reduced for subtlety
     enableNebula: false,
-    enableStars: true,
-    starsOpacity: 0.6
+    enableStars: false,
   }
 }; 

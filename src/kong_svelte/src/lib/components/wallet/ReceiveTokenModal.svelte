@@ -136,7 +136,7 @@
   <div class="p-4 flex flex-col gap-4">
     <!-- Token Info Banner -->
     <div
-      class="flex items-center gap-3 p-3 rounded-lg bg-kong-bg-light/10 border border-kong-border/30 transition-all duration-300"
+      class="flex items-center gap-3 p-3 rounded-lg bg-kong-bg-secondary/10 border border-kong-border/30 transition-all duration-300"
       style="opacity: {closing
         ? 0
         : mounted
@@ -148,7 +148,7 @@
           : '10px'});"
     >
       <div
-        class="w-10 h-10 rounded-full bg-kong-bg-light p-1 border border-kong-border/20 flex-shrink-0"
+        class="w-10 h-10 rounded-full bg-kong-bg-secondary p-1 border border-kong-border/20 flex-shrink-0"
       >
         <TokenImages tokens={[token]} size={32} showSymbolFallback={true} />
       </div>
@@ -175,7 +175,7 @@
     >
       <!-- Principal ID -->
       <div
-        class="bg-kong-bg-light/10 rounded-lg border border-kong-border/30 p-4"
+        class="bg-kong-bg-secondary/10 rounded-lg border border-kong-border/30 p-4"
       >
         <div class="flex justify-between items-center mb-2">
           <h3 class="text-sm font-medium text-kong-text-primary">
@@ -195,7 +195,7 @@
         </div>
         <div class="relative">
           <div
-            class="bg-kong-bg-light/30 rounded border border-kong-border/50 p-2.5 pr-10 text-sm text-kong-text-secondary break-all font-mono"
+            class="bg-kong-bg-secondary/30 rounded border border-kong-border/50 p-2.5 pr-10 text-sm text-kong-text-secondary break-all font-mono"
           >
             {$auth.account?.owner || "Loading..."}
           </div>
@@ -208,7 +208,7 @@
             }}
           >
             {#if principalCopied}
-              <Check size={16} class="text-kong-accent-green" />
+              <Check size={16} class="text-kong-success" />
             {:else}
               <Copy size={16} />
             {/if}
@@ -224,7 +224,7 @@
       {#if token?.symbol === "ICP" && accountId}
         <!-- Account ID for ICP -->
         <div
-          class="bg-kong-bg-light/10 rounded-lg border border-kong-border/30 p-4"
+          class="bg-kong-bg-secondary/10 rounded-lg border border-kong-border/30 p-4"
         >
           <div class="flex justify-between items-center mb-2">
             <h3 class="text-sm font-medium text-kong-text-primary">
@@ -244,7 +244,7 @@
           </div>
           <div class="relative">
             <div
-              class="bg-kong-bg-light/30 rounded border border-kong-border/50 p-2.5 pr-10 text-sm text-kong-text-secondary break-all font-mono"
+              class="bg-kong-bg-secondary/30 rounded border border-kong-border/50 p-2.5 pr-10 text-sm text-kong-text-secondary break-all font-mono"
             >
               {accountId || "Loading..."}
             </div>
@@ -257,7 +257,7 @@
               }}
             >
               {#if accountIdCopied}
-                <Check size={16} class="text-kong-accent-green" />
+                <Check size={16} class="text-kong-success" />
               {:else}
                 <Copy size={16} />
               {/if}
@@ -304,11 +304,11 @@
       style="z-index: 999999;"
     >
       <div
-        class="relative bg-kong-bg-dark p-4 rounded-xl max-w-md w-full flex flex-col items-center"
+        class="relative bg-kong-bg-primary p-4 rounded-xl max-w-md w-full flex flex-col items-center"
         on:click|stopPropagation={() => {}}
       >
         <button
-          class="absolute top-3 right-3 p-1.5 text-kong-text-secondary hover:text-kong-text-primary bg-kong-bg-light/20 rounded-full"
+          class="absolute top-3 right-3 p-1.5 text-kong-text-secondary hover:text-kong-text-primary bg-kong-bg-secondary/20 rounded-full"
           on:click={closeEnlargedQrCode}
         >
           <X size={20} />

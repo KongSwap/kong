@@ -10,7 +10,7 @@
     width = 'w-full',
     itemClass = '',
     // Add overflow-y-auto back to default style
-    contentStyle = 'bg-kong-bg-dark rounded-b-lg shadow-xl border border-white/10 border-t-0 overflow-y-auto',
+    contentStyle = 'bg-kong-bg-primary rounded-b-lg shadow-xl border border-white/10 border-t-0 overflow-y-auto',
     itemStyle = 'px-4 py-3 text-left hover:bg-kong-bg-secondary/20 hover:text-kong-primary group flex items-center gap-2 transition-colors'
   } = $props<{
     position?: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right';
@@ -33,7 +33,6 @@
 
   // Event handlers
   function toggleDropdown() {
-    console.log('Dropdown: toggleDropdown called'); // Log toggle
     const newState = !isOpen;
     if (open !== undefined) {
       open = newState; // Update bound prop if provided
@@ -58,8 +57,6 @@
     const target = event.target as Node;
     if (!triggerRef.contains(target) && !contentRef.contains(target)) {
       closeDropdown();
-    } else {
-      // console.log('Dropdown: handleClickOutside ignored (inside)');
     }
   }
 
@@ -118,7 +115,7 @@
   <!-- Trigger element -->
   <div
     bind:this={triggerRef}
-    on:click={toggleDropdown}
+    onclick={toggleDropdown}
     class={`cursor-pointer ${triggerClass}`}
     role="button"
     aria-haspopup="true"

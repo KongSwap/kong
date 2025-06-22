@@ -50,7 +50,7 @@
   <div class="flex flex-col gap-4">
     {#if signatureError}
       <div
-        class="flex items-center gap-2 p-3 rounded-lg bg-kong-accent-red/10 text-kong-accent-red border border-kong-accent-red/20 text-sm"
+        class="flex items-center gap-2 p-3 rounded-lg bg-kong-error/10 text-kong-error border border-kong-error/20 text-sm"
         role="alert"
       >
         <AlertCircle size={16} class="flex-shrink-0" />
@@ -58,13 +58,13 @@
       </div>
     {/if}
 
-    <div class="bg-kong-bg-light/10 rounded-lg border gap-8 flex flex-col justify-center items-center border-kong-border/30 p-4">
+    <div class="bg-kong-bg-secondary/10 rounded-lg border gap-8 flex flex-col justify-center items-center border-kong-border/30 p-4">
       <img src={message.logo} class="w-20 h-20 rounded-full mr-2" />
       <h3 class="text-base font-medium text-kong-text-primary mb-2">
         Please check your wallet for the signature request.
       </h3>
       <p class="text-sm text-kong-text-secondary">
-        <ButtonV2 variant="outline" theme="error" size="md" on:click={handleClose}>Disconnect</ButtonV2>
+        <ButtonV2 variant="outline" theme="error" size="md" onclick={handleClose}>Disconnect</ButtonV2>
       </p>
     </div>
   </div>

@@ -7,8 +7,9 @@
 
 :root, .theme-dark {
   /* Default fallback colors - these will be overridden by custom_css_properties */
-  --tv-color-platform-background: var(--bg-dark);
-  --tv-color-pane-background: var(--bg-dark) ;
+  --tv-color-platform-background: var(--bg-light);
+  --tv-color-pane-background: var(--bg-light) ;
+  --tv-color-background: var(--bg-light) ;
   --tv-color-toolbar-button-background-hover: var(--bg-light);
   --tv-color-toolbar-button-background-expanded: var(--border);
   --tv-color-toolbar-button-background-active: var(--border-light);

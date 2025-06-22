@@ -40,6 +40,7 @@ pub use crate::market::featured::{get_featured_markets, set_market_featured};
 pub use crate::market::featured::{GetFeaturedMarketsArgs, GetFeaturedMarketsResult};
 
 use crate::market::estimate_return_types::{BetPayoutRecord, EstimatedReturn, TimeWeightPoint};
+use crate::market::get_stats::StatsResult;
 // Standard types
 use crate::failed_transaction::FailedTransaction;
 use crate::resolution::resolution::*;
@@ -79,8 +80,8 @@ pub mod user;
 pub mod utils;
 
 // Re-export common types for convenience
-pub use claims::claims_types::{BatchClaimResult, ClaimRecord, ClaimResult, ClaimStatus, ClaimType, ClaimableSummary};
-pub use types::{BetCount, MarketId, OutcomeIndex, PoolAmount, Timestamp, TokenAmount, TokenIdentifier};
+pub use types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, PoolAmount, BetCount, TokenIdentifier, PlaceBetArgs, ResolutionArgs};
+pub use claims::claims_types::{ClaimRecord, ClaimStatus, ClaimType, ClaimableSummary, BatchClaimResult, ClaimResult};
 
 // Constants
 // const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; ///Production KONG canister

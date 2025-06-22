@@ -52,7 +52,7 @@
       <button
         type="button"
         onclick={copyAddress}
-        class="px-3 py-2 bg-kong-surface-dark border border-kong-border hover:border-kong-primary rounded-lg text-kong-text-primary transition-colors duration-200"
+        class="px-3 py-2 bg-kong-bg-tertiary border border-kong-border hover:border-kong-primary rounded-lg text-kong-text-primary transition-colors duration-200"
         title="Copy address"
       >
         <Copy size={16} />
@@ -60,7 +60,7 @@
       <button
         type="button"
         onclick={() => showSearchDialog = true}
-        class="px-3 py-2 bg-kong-surface-dark border border-kong-border hover:border-kong-primary rounded-lg text-kong-text-primary transition-colors duration-200"
+        class="px-3 py-2 bg-kong-bg-tertiary border border-kong-border hover:border-kong-primary rounded-lg text-kong-text-primary transition-colors duration-200"
         title="Search wallet"
       >
         <Search size={16} />
@@ -83,7 +83,7 @@
         type="text"
         bind:value={searchInput}
         placeholder="Enter wallet address..."
-        class="w-full pl-10 pr-3 py-2 bg-kong-surface-dark border border-kong-border rounded-lg text-kong-text-primary placeholder-kong-text-secondary focus:outline-none focus:border-kong-primary font-mono text-sm"
+        class="w-full pl-10 pr-3 py-2 bg-kong-bg-tertiary border border-kong-border rounded-lg text-kong-text-primary placeholder-kong-text-secondary focus:outline-none focus:border-kong-primary font-mono text-sm"
       />
     </div>
     <div class="flex justify-end space-x-2">

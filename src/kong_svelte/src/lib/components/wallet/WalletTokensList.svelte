@@ -18,6 +18,7 @@
 	import { loadUserBalances, setLastRefreshed } from "$lib/services/balanceService";
 	import TokenListItem from "./TokenListItem.svelte";
 	import WalletListHeader from "./WalletListHeader.svelte";
+	import { fetchPoolTotals } from "$lib/api/pools";
 
 	// Define a type that combines a token with its balance information
 	interface TokenWithBalance {
@@ -163,6 +164,32 @@
 		tokensToRemove: []
 	});
 
+	// Add pool stats state
+	let poolStats = $state<{
+		total_volume_24h: number;
+		total_tvl: number;
+		total_fees_24h: number;
+	} | null>(null);
+	let isLoadingPoolStats = $state(false);
+
+	// Function to load pool stats
+	async function loadPoolStats() {
+		if (isLoadingPoolStats) return;
+		isLoadingPoolStats = true;
+		try {
+			poolStats = await fetchPoolTotals();
+		} catch (error) {
+			console.error("Error loading pool stats:", error);
+		} finally {
+			isLoadingPoolStats = false;
+		}
+	}
+
+	// Load pool stats on mount
+	onMount(() => {
+		loadPoolStats();
+	});
+
 	// --- Fetch Solana Balances ---
 	// async function fetchSolanaBalances() {
 	// 	if (!auth.pnp?.provider?.getSolBalance || !auth.pnp?.provider?.getSplTokenBalances) {
@@ -275,20 +302,17 @@
 
 	// Handle refresh button click
 	function handleRefresh() {
-		console.log('🔄 WalletTokensList: handleRefresh clicked, walletId:', walletId);
 		if (onRefresh) {
 			onRefresh();
 		} else if (walletId) {
 			loadUserBalancesWrapper(true);
 		} else {
-			console.warn('⚠️ WalletTokensList: No walletId available for refresh');
 		}
 	}
 
 	// Load user balances function - uses the service
 	async function loadUserBalancesWrapper(forceRefresh = false) {
 		if (!walletId) {
-			console.log('⚠️ WalletTokensList: No walletId available in loadUserBalancesWrapper');
 			return;
 		}
 
@@ -302,10 +326,8 @@
 				const refreshTimestamp = Date.now();
 				lastRefreshed = refreshTimestamp;
 				setLastRefreshed(refreshTimestamp);
-				console.log('✅ WalletTokensList: Balances loaded successfully, calling onBalancesLoaded');
 				onBalancesLoaded();
 			} else {
-				console.log('⚠️ WalletTokensList: No balances were loaded');
 			}
 		} catch (err) {
 			console.error("❌ WalletTokensList: Error loading balances:", err);
@@ -393,7 +415,6 @@
 
 	// Cancel the sync operation (now just closes the modal)
 	function cancelSync() {
-		console.log("[WalletTokensList] cancelSync called");
 		tokenSyncCandidates = { tokensToAdd: [], tokensToRemove: [] }; // Clear candidates on cancel
 		showSyncConfirmModal = false;
 	}
@@ -553,8 +574,7 @@
 				// 	break;
 				// }
 
-				const url = `/pools/add?token0=${token0Id}&token1=${token1Id}`;
-				console.log('Navigating to Add LP:', url);
+				const url = `/pools/${token0Id}_${token1Id}/position`;	
 				goto(url);
 				// Optionally call the prop if the parent needs to react *before* navigation
 				// onAction(action, selectedToken);
@@ -621,7 +641,6 @@
 
 		// If discovery didn't show the confirmation modal, fall back to regular sync
 		if (!foundTokens) {
-			console.log("Discovery found no changes, falling back to regular sync analysis (skipping redundant balance refresh).");
 			// Force a refresh to ensure balances are up to date
 			await loadUserBalancesWrapper(true);
 			handleSyncTokens(true); // Pass true to skip the initial refresh
@@ -630,7 +649,7 @@
 </script>
 
 <!-- Component container without scrolling behavior -->
-<div>
+<div class="flex flex-col h-full">
 	<!-- Fixed header that doesn't scroll -->
 	<WalletListHeader 
 		title="Assets"
@@ -640,8 +659,8 @@
 	>
 		<svelte:fragment slot="actions">
 			<button 
-				class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-dark/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-				on:click={handleSyncButtonClick}
+				class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+				onclick={handleSyncButtonClick}
 				disabled={isSyncing || isLoading || isLoadingBalances}
 			>
 				<Shuffle size={12} class={isSyncing ? 'text-kong-primary animate-glow' : ''} />
@@ -654,7 +673,7 @@
 					transition:fade={{ duration: 200 }}
 				>
 					{#if syncStatus.added > 0 || syncStatus.removed > 0}
-						<span class="text-kong-accent-green">
+						<span class="text-kong-success">
 							{syncStatus.added > 0 ? `+${syncStatus.added}` : ""}
 							{syncStatus.added > 0 && syncStatus.removed > 0 ? "/" : ""}
 							{syncStatus.removed > 0 ? `-${syncStatus.removed}` : ""}
@@ -665,12 +684,36 @@
 				</div>
 			{/if}
 		</svelte:fragment>
+
+		<!-- Add Pool Stats -->
+		<svelte:fragment slot="stats">
+			{#if isLoadingPoolStats}
+				<div class="flex gap-4 text-xs text-kong-text-secondary/60">
+					<div>Loading stats...</div>
+				</div>
+			{:else if poolStats}
+				<div class="flex gap-4 text-xs">
+					<div class="flex flex-col">
+						<span class="text-kong-text-secondary/60">24h Volume</span>
+						<span class="text-kong-text-primary">${poolStats.total_volume_24h.toLocaleString()}</span>
+					</div>
+					<div class="flex flex-col">
+						<span class="text-kong-text-secondary/60">TVL</span>
+						<span class="text-kong-text-primary">${poolStats.total_tvl.toLocaleString()}</span>
+					</div>
+					<div class="flex flex-col">
+						<span class="text-kong-text-secondary/60">24h Fees</span>
+						<span class="text-kong-text-primary">${poolStats.total_fees_24h.toLocaleString()}</span>
+					</div>
+				</div>
+			{/if}
+		</svelte:fragment>
 	</WalletListHeader>
 
 	<!-- Scrollable content area -->
-	<div class="overflow-y-auto scrollbar-thin" style="max-height: calc(100vh - 225px);">
+	<div class="flex-1 overflow-y-auto scrollbar-thin">
 		{#if balanceLoadError}
-			<div class="text-xs text-kong-accent-red mt-1 px-4 mb-2">
+			<div class="text-xs text-kong-error mt-1 px-4 mb-2">
 				Error loading ICP balances: {balanceLoadError}
 			</div>
 		{/if}
@@ -693,13 +736,13 @@
 				</p>
 			</div>
 		{:else}
-			<div class="relative"> 
+			<div class="relative pv"> 
 				{#if isSyncing}
 					<div 
-						class="absolute inset-0 flex flex-col items-center justify-start pt-10 bg-kong-bg-dark/80 rounded-md z-10"
+						class="absolute inset-0 flex flex-col items-center justify-start pt-10 bg-kong-bg-primary/80 rounded-md z-10"
 						transition:fade={{ duration: 150 }}
 					>
-						<LoadingIndicator text="Syncing tokens..." size={18} />
+						<LoadingIndicator message="Syncing tokens..." fullHeight />
 					</div>
 				{/if}
 				<div class="space-y-0">
@@ -720,7 +763,7 @@
 							<!-- Token Actions Row - Expanded underneath the token -->
 							{#if selectedTokenId === token.address && showDropdown}
 								<div 
-									class="px-4 py-3 border-b border-kong-border/30 bg-kong-bg-light" 
+									class="px-4 py-3 border-b border-kong-border/30 bg-kong-bg-secondary" 
 									transition:slide={{ duration: 200 }}
 								>
 									<TokenDropdown 
@@ -736,10 +779,10 @@
 					{/each}
 					
 					<!-- Token Management Buttons -->
-					<div class="p-4 flex justify-center gap-3">
+					<div class="p-2 flex justify-center gap-3">
 						<button
-							class="flex items-center gap-2 py-2 px-4 bg-kong-bg-dark/10 hover:bg-kong-bg-dark/20 text-kong-text-primary rounded-md transition-colors"
-							on:click={openManageTokensModal}
+							class="flex items-center gap-2 py-2 px-4 bg-kong-bg-primary/10 hover:bg-kong-bg-primary/20 text-kong-text-primary rounded-md transition-colors"
+							onclick={openManageTokensModal}
 						>
 							<Settings size={16} />
 							<span>Manage Tokens</span>

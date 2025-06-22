@@ -33,7 +33,7 @@
 
 <div class="{paddingClass[size]} text-center text-kong-text-secondary">
   <div class="flex justify-center mb-6">
-    <div class="bg-kong-bg-light bg-opacity-20 rounded-full p-4 border border-kong-border">
+    <div class="bg-kong-bg-secondary bg-opacity-20 rounded-full p-4 border border-kong-border">
       <svelte:component this={icon} class="{iconSizeClass[size]} opacity-40" />
     </div>
   </div>

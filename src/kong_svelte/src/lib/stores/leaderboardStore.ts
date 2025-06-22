@@ -128,38 +128,41 @@ const createLeaderboardStore = () => {
       }
       
       const response = await fetchVolumeLeaderboard(period);
+      let leaderboardItems: LeaderboardEntry[] = [];
+      let totalTraders = 0;
       
       // Handle the two possible return types
       if (Array.isArray(response)) {
         // Handle case where response is LeaderboardEntry[]
-        const leaderboardItems = response;
-        const totalTraders = leaderboardItems.length;
-        const totalVolume = leaderboardItems.reduce((sum, entry) => sum + entry.total_volume_usd, 0);
-        
-        update(state => ({
-          ...state,
-          leaderboardData: leaderboardItems,
-          totalTraders,
-          totalVolume,
-          isLoading: false
-        }));
+        leaderboardItems = response;
+        totalTraders = leaderboardItems.length;
       } else if (response && 'items' in response) {
         // Handle case where response is VolumeLeaderboardResponse
         const typedResponse = response as unknown as FullLeaderboardResponse;
-        const leaderboardItems = typedResponse.items;
-        const totalTraders = typedResponse.total_count;
-        const totalVolume = leaderboardItems.reduce((sum, entry) => sum + entry.total_volume_usd, 0);
-        
-        update(state => ({
-          ...state,
-          leaderboardData: leaderboardItems,
-          totalTraders,
-          totalVolume,
-          isLoading: false
-        }));
+        leaderboardItems = typedResponse.items;
+        totalTraders = typedResponse.total_count;
       } else {
         throw new Error("Invalid response format");
       }
+      
+      const totalVolume = leaderboardItems.reduce((sum, entry) => sum + entry.total_volume_usd, 0);
+      
+      update(state => ({
+        ...state,
+        leaderboardData: leaderboardItems,
+        totalTraders,
+        totalVolume,
+        isLoading: false
+      }));
+      
+      // Auto-load tokens for all users after leaderboard data is loaded
+      for (let i = 0; i < leaderboardItems.length; i++) {
+        const user = leaderboardItems[i];
+        if (user.traded_token_canister_ids?.length) {
+          await loadTokensForRow(i);
+        }
+      }
+      
     } catch (err) {
       update(state => ({
         ...state,

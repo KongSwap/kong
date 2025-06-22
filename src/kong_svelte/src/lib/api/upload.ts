@@ -11,7 +11,6 @@ export async function uploadFile(file: File): Promise<string> {
 
   // Construct the upload URL
   const uploadUrl = `${API_URL}/api/upload/image`;
-  console.log("Uploading file to:", uploadUrl);
 
   try {
     const response = await fetch(uploadUrl, {
@@ -31,7 +30,6 @@ export async function uploadFile(file: File): Promise<string> {
     }
 
     const data = await response.json();
-    console.log("Upload success, received URL:", data.url);
     return data.url;
   } catch (error) {
     console.error("Upload request failed:", error);

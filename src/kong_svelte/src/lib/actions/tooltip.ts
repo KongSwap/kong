@@ -1,5 +1,8 @@
 // src/kong_svelte/src/lib/actions/tooltip.ts
 
+import { get } from 'svelte/store';
+import { themeColors } from '../stores/derivedThemeStore';
+
 export interface TooltipOptions {
   text?: string;
   html?: HTMLElement;
@@ -93,14 +96,16 @@ export function tooltip(node: HTMLElement, options: TooltipOptions = { direction
     tooltipEl = document.createElement('div');
     tooltipEl.classList.add(
       'absolute',
-      'z-50',
+      'z-10',
       'rounded',
-      'shadow-lg',
+      'shadow',
       'pointer-events-none',
+      'border-kong-border',
+      'border',
       'transition-opacity',
       'duration-200',
       'opacity-0',
-      'text-white',
+      'text-kong-text-primary',
       'max-w-xs',
       options.textSize ? `text-${options.textSize}` : 'text-sm'
     );
@@ -109,14 +114,14 @@ export function tooltip(node: HTMLElement, options: TooltipOptions = { direction
     if (options.background) {
       tooltipEl.classList.add(options.background);
     } else {
-      tooltipEl.classList.add('bg-black', 'bg-opacity-75');
+      tooltipEl.classList.add('bg-kong-bg-primary');
     }
 
     // Apply padding
     if (options.paddingClass) {
       tooltipEl.classList.add(options.paddingClass);
     } else {
-      tooltipEl.classList.add('p-2');
+      tooltipEl.classList.add('px-4', 'py-2');
     }
 
     // Add content
@@ -134,41 +139,86 @@ export function tooltip(node: HTMLElement, options: TooltipOptions = { direction
     // Get the computed background color
     const tooltipBgColor = getComputedStyle(tooltipEl).backgroundColor;
 
-    // Create and add arrow
-    const direction = options.direction || 'top';
-    const arrow = document.createElement('div');
-    arrow.classList.add(
-      'absolute',
-      'w-0',
-      'h-0',
-      'border-solid'
-    );
+    // Get the computed border color using themeStore
+    const currentTheme = get(themeColors);
+    const borderColor = currentTheme.border;
+
+    // Create border arrow (slightly larger)
+    const borderArrow = document.createElement('div');
+    borderArrow.classList.add('absolute', 'w-0', 'h-0');
+    // Create background arrow (slightly smaller)
+    const bgArrow = document.createElement('div');
+    bgArrow.classList.add('absolute', 'w-0', 'h-0');
 
     // Set arrow position and style based on direction
+    const direction = options.direction || 'top';
     switch (direction) {
       case 'top':
-        arrow.classList.add('bottom-[-8px]', 'left-1/2', '-translate-x-1/2');
-        arrow.style.borderWidth = '8px 8px 0 8px';
-        arrow.style.borderColor = `${tooltipBgColor} transparent transparent transparent`;
+        borderArrow.classList.add('bottom-[-9px]', 'left-1/2', '-translate-x-1/2');
+        borderArrow.style.borderWidth = '9px 9px 0 9px';
+        borderArrow.style.borderColor = `${borderColor} transparent transparent transparent`;
+        bgArrow.classList.add('bottom-[-8px]', 'left-1/2', '-translate-x-1/2');
+        bgArrow.style.borderWidth = '8px 8px 0 8px';
+        bgArrow.style.borderColor = `${tooltipBgColor} transparent transparent transparent`;
         break;
       case 'bottom':
-        arrow.classList.add('top-[-8px]', 'left-1/2', '-translate-x-1/2');
-        arrow.style.borderWidth = '0 8px 8px 8px';
-        arrow.style.borderColor = `transparent transparent ${tooltipBgColor} transparent`;
+        borderArrow.classList.add('top-[-9px]', 'left-1/2', '-translate-x-1/2');
+        borderArrow.style.borderWidth = '0 9px 9px 9px';
+        borderArrow.style.borderColor = `transparent transparent ${borderColor} transparent`;
+        bgArrow.classList.add('top-[-8px]', 'left-1/2', '-translate-x-1/2');
+        bgArrow.style.borderWidth = '0 8px 8px 8px';
+        bgArrow.style.borderColor = `transparent transparent ${tooltipBgColor} transparent`;
         break;
       case 'left':
-        arrow.classList.add('right-[-8px]', 'top-1/2', '-translate-y-1/2');
-        arrow.style.borderWidth = '8px 0 8px 8px';
-        arrow.style.borderColor = `transparent transparent transparent ${tooltipBgColor}`;
+        borderArrow.classList.add('right-[-9px]', 'top-1/2', '-translate-y-1/2');
+        borderArrow.style.borderWidth = '9px 0 9px 9px';
+        borderArrow.style.borderColor = `transparent transparent transparent ${borderColor}`;
+        bgArrow.classList.add('right-[-8px]', 'top-1/2', '-translate-y-1/2');
+        bgArrow.style.borderWidth = '8px 0 8px 8px';
+        bgArrow.style.borderColor = `transparent transparent transparent ${tooltipBgColor}`;
         break;
       case 'right':
-        arrow.classList.add('left-[-8px]', 'top-1/2', '-translate-y-1/2');
-        arrow.style.borderWidth = '8px 8px 8px 0';
-        arrow.style.borderColor = `transparent ${tooltipBgColor} transparent transparent`;
+        borderArrow.classList.add('left-[-9px]', 'top-1/2', '-translate-y-1/2');
+        borderArrow.style.borderWidth = '9px 9px 9px 0';
+        borderArrow.style.borderColor = `transparent ${borderColor} transparent transparent`;
+        bgArrow.classList.add('left-[-8px]', 'top-1/2', '-translate-y-1/2');
+        bgArrow.style.borderWidth = '8px 8px 8px 0';
+        bgArrow.style.borderColor = `transparent ${tooltipBgColor} transparent transparent`;
         break;
     }
-    
-    tooltipEl.appendChild(arrow);
+
+    // Create shadow arrow (slightly larger and offset for shadow effect)
+    const shadowArrow = document.createElement('div');
+    shadowArrow.classList.add('absolute', 'w-0', 'h-0');
+
+    // Set shadow arrow position and style based on direction
+    switch (direction) {
+      case 'top':
+        shadowArrow.classList.add('bottom-[-10px]', 'left-1/2', '-translate-x-1/2');
+        shadowArrow.style.borderWidth = '10px 10px 0 10px';
+        shadowArrow.style.borderColor = `rgba(0, 0, 0, 0.1) transparent transparent transparent`;
+        break;
+      case 'bottom':
+        shadowArrow.classList.add('top-[-10px]', 'left-1/2', '-translate-x-1/2');
+        shadowArrow.style.borderWidth = '0 10px 10px 10px';
+        shadowArrow.style.borderColor = `transparent transparent rgba(0, 0, 0, 0.1) transparent`;
+        break;
+      case 'left':
+        shadowArrow.classList.add('right-[-10px]', 'top-1/2', '-translate-y-1/2');
+        shadowArrow.style.borderWidth = '10px 0 10px 10px';
+        shadowArrow.style.borderColor = `transparent transparent transparent rgba(0, 0, 0, 0.1)`;
+        break;
+      case 'right':
+        shadowArrow.classList.add('left-[-10px]', 'top-1/2', '-translate-y-1/2');
+        shadowArrow.style.borderWidth = '10px 10px 10px 0';
+        shadowArrow.style.borderColor = `transparent rgba(0, 0, 0, 0.1) transparent transparent`;
+        break;
+    }
+
+    // Append the shadow arrow before the border arrow
+    tooltipEl.appendChild(shadowArrow);
+    tooltipEl.appendChild(borderArrow);
+    tooltipEl.appendChild(bgArrow);
     
     // Position tooltip
     positionTooltip();

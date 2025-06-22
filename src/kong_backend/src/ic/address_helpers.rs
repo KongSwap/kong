@@ -10,7 +10,7 @@ use super::address::Address;
 use super::icp::is_icp_token_id;
 
 static PRINCIPAL_ID_LOCK: OnceLock<Regex> = OnceLock::new();
-const PRINCIPAL_ID_REGEX: &str = r"^([a-z0-9]{5}-){10}[a-z0-9]{3}$|([a-z0-9]{5}-){4}cai$";
+const PRINCIPAL_ID_REGEX: &str = r"^([a-z0-9]{5}-){10}[a-z0-9]{3}$|^([a-z0-9]{5}-){4}cai$";
 static ACCOUNT_ID_LOCK: OnceLock<Regex> = OnceLock::new();
 const ACCOUNT_ID_REGEX: &str = r"^[a-f0-9]{64}$";
 

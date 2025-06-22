@@ -5,7 +5,7 @@ use super::add_token_args::AddTokenArgs;
 use super::add_token_reply::AddTokenReply;
 use super::add_token_reply_helpers::to_add_token_reply;
 
-use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
+use crate::chains::chains::IC_CHAIN;
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_token::ic_token::ICToken;
 use crate::stable_token::lp_token::LPToken;
@@ -37,8 +37,7 @@ async fn add_token(args: AddTokenArgs) -> Result<AddTokenReply, String> {
     // Only IC tokens of format IC.CanisterId supported
     match token_map::get_chain(&args.token) {
         Some(chain) if chain == IC_CHAIN => to_add_token_reply(&add_ic_token(&args.token).await?),
-        Some(chain) if chain == LP_CHAIN => Err("LP tokens not supported".to_string())?,
-        Some(_) | None => Err("Chain not specified or supported".to_string())?,
+        Some(_) | None => Err("Chain not supported)")?,
     }
 }
 

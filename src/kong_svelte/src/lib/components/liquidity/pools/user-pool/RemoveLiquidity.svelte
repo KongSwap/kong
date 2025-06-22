@@ -2,7 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import { fade, fly } from "svelte/transition";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { loadBalance } from "$lib/stores/tokenStore";
+  import { loadBalance } from "$lib/stores/balancesStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
@@ -11,15 +11,19 @@
   
   const dispatch = createEventDispatcher();
 
-  export let pool: any;
-  export let token0: any;
-  export let token1: any;
+  interface Props {
+    pool: any;
+    token0: any;
+    token1: any;
+  }
 
-  let removeLiquidityAmount = "";
-  let estimatedAmounts = { amount0: "0", amount1: "0", lpFee0: "0", lpFee1: "0" };
-  let isRemoving = false;
-  let error: string | null = null;
-  let isCalculating = false;
+  let { pool, token0, token1 }: Props = $props();
+
+  let removeLiquidityAmount = $state("");
+  let estimatedAmounts = $state({ amount0: "0", amount1: "0", lpFee0: "0", lpFee1: "0" });
+  let isRemoving = $state(false);
+  let error = $state<string | null>(null);
+  let isCalculating = $state(false);
 
   function setPercentage(percent: number) {
     const maxAmount = parseFloat(pool.balance);
@@ -53,6 +57,7 @@
         pool.address_1,
         numericAmount,
       );
+
 
       // Get token decimals from fetched token data
       const token0Decimals = token0?.decimals || 8;
@@ -112,7 +117,7 @@
 
         // Check for the complete success sequence or a final failed state
         const isSuccess = requestStatus.statuses.includes("Success");
-        const isFailed = requestStatus.statuses.some(s => s.includes("Failed"));
+        const isFailed = requestStatus.statuses.some((s: string) => s.includes("Failed"));
 
         if (isSuccess) {
           isComplete = true;
@@ -126,7 +131,7 @@
           ]);
         } else if (isFailed) {
           // Toast is handled within pollRequestStatus
-          const failureMessage = requestStatus.statuses.find(s => s.includes("Failed"));
+          const failureMessage = requestStatus.statuses.find((s: string) => s.includes("Failed"));
           throw new Error(failureMessage || "Transaction failed");
         } else {
           // No need for explicit delay here as pollRequestStatus handles polling interval
@@ -164,19 +169,6 @@
     }
   }
 
-  // Calculate total USD value of tokens to receive
-  function calculateTotalUsdValue(): string {
-    const amount0Usd = Number(
-      calculateTokenUsdValue(estimatedAmounts.amount0, token0),
-    );
-    const amount1Usd = Number(
-      calculateTokenUsdValue(estimatedAmounts.amount1, token1),
-    );
-    if (isNaN(amount0Usd) || isNaN(amount1Usd)) {
-      return "0";
-    }
-    return (amount0Usd + amount1Usd).toFixed(2);
-  }
 </script>
 
 <div in:fade={{ duration: 200 }}>
@@ -186,7 +178,7 @@
         <input
           type="number"
           bind:value={removeLiquidityAmount}
-          on:input={handleInputChange}
+          oninput={handleInputChange}
           class="amount-input"
           placeholder="0"
           max={pool.balance}
@@ -205,7 +197,7 @@
           {#each [25, 50, 75, 100] as percent}
             <button
               class="{removeLiquidityAmount && Math.abs(parseFloat(removeLiquidityAmount) - (parseFloat(pool.balance) * percent) / 100) < 0.00000001 ? 'active' : ''}"
-              on:click={() => setPercentage(percent)}
+              onclick={() => setPercentage(percent)}
               type="button"
             >
               {percent === 100 ? 'MAX' : `${percent}%`}
@@ -293,10 +285,10 @@
       <ButtonV2
         theme="accent-red"
         variant="solid"
-        size="md"
+        size="lg"
         isDisabled={!removeLiquidityAmount || isRemoving || isCalculating}
         fullWidth={true}
-        on:click={handleRemoveLiquidity}
+        onclick={handleRemoveLiquidity}
       >
         {#if isRemoving}
           <div class="button-content">
@@ -390,10 +382,6 @@
     @apply text-xs text-kong-text-primary/50 font-medium;
   }
 
-  .output-total {
-    @apply text-sm font-medium text-kong-text-primary;
-  }
-
   .token-outputs {
     @apply space-y-2;
   }
@@ -427,8 +415,7 @@
   }
 
   .modal-footer {
-    @apply border-t border-kong-border/10 mt-4 bg-kong-bg-dark/90 
-           backdrop-blur-md w-full;
+    @apply border-t border-kong-border/10 mt-4 w-full;
   }
 
   .action-buttons {
@@ -445,8 +432,8 @@
   }
 
   .error-message {
-    @apply p-3 rounded-lg bg-kong-accent-red/10 border border-kong-accent-red/20 
-           text-kong-accent-red text-xs backdrop-blur-sm flex items-center gap-2;
+    @apply p-3 rounded-lg bg-kong-error/10 border border-kong-error/20 
+           text-kong-error text-xs backdrop-blur-sm flex items-center gap-2;
   }
 
   .error-icon {

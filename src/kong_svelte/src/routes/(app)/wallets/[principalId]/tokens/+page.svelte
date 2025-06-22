@@ -66,7 +66,6 @@
       loadingError = null;
       
       await WalletDataService.loadTokensOnly(principalId);
-      console.log(`Loaded tokens for wallet ${principalId}`);
       
       if (Object.keys(walletData.balances).length > 0) {
         loadHistory(principalId);
@@ -143,25 +142,19 @@
         !isLoadingHistory && 
         portfolioHistory.length === 0
     ) {
-      console.log(`Tokens page: Wallet store stable for ${principal}, loading history.`);
-      // Debounce history loading slightly
+        // Debounce history loading slightly
       historyLoadTimeout = setTimeout(() => loadHistory(principal), 100) as unknown as number;
     } else if (principal && walletState.currentWallet === principal && !isStoreLoading && hasTokens && !hasBalances) {
       // If we have tokens but no balances, and the store isn't loading, something might be wrong
       // or the parent layout hasn't finished balance loading. Just wait.
-      console.log(`Tokens page: Have tokens, no balances for ${principal}. Waiting.`);
     } else if (principal && walletState.currentWallet !== principal && !isStoreLoading) {
       // If the store has finished loading but for the wrong wallet, wait for layout to correct.
-      console.log(`Tokens page: Store loaded for ${walletState.currentWallet}, expecting ${principal}. Waiting for layout.`);
-    } else if (isStoreLoading) {
-       console.log(`Tokens page: Wallet store is loading for ${walletState.currentWallet}. Waiting.`);
     }
     
     // Reset history if principal changes
     $effect(() => {
       const currentPrincipal = page.params.principalId;
       if (portfolioHistory.length > 0 && walletState.currentWallet !== currentPrincipal) {
-         console.log(`Tokens page: Principal changed, resetting history.`);
          resetPerformanceData();
       }
     });
@@ -211,7 +204,7 @@
             </span>
           </div>
         {:else}
-          <div class="text-lg sm:text-xl font-medium flex items-center" class:text-kong-text-accent-green={performanceMetrics.dailyChange > 0} class:text-kong-text-accent-red={performanceMetrics.dailyChange < 0}>
+          <div class="text-lg sm:text-xl font-medium flex items-center" class:text-kong-success={performanceMetrics.dailyChange > 0} class:text-kong-error={performanceMetrics.dailyChange < 0}>
             {formatPercentage(performanceMetrics.dailyChange)}
             {#if performanceMetrics.dailyChange > 0}
               <ArrowUp class="inline h-3 w-3 sm:h-4 sm:w-4 ml-1" />
@@ -253,17 +246,17 @@
       
       <!-- Content -->
       {#if isDataLoading}
-        <LoadingIndicator text={initialDataLoading ? "Initializing wallet data..." : "Loading balances..."} size={24} />
+        <LoadingIndicator message={initialDataLoading ? "Initializing wallet data..." : "Loading balances..."} />
       {:else if loadingError}
-        <div class="text-kong-accent-red mb-4">{loadingError}</div>
+        <div class="text-kong-error mb-4">{loadingError}</div>
         <button
           class="text-sm text-kong-primary hover:text-opacity-80 transition-colors"
-          on:click={() => page.params.principalId && loadTokensOnly(page.params.principalId)}
+          onclick={() => page.params.principalId && loadTokensOnly(page.params.principalId)}
         >
           Try Again
         </button>
       {:else if walletData.tokens.length === 0}
-        <LoadingIndicator text="Loading token data..." size={24} />
+        <LoadingIndicator message="Loading token data..." />
       {:else}
         <WalletTokenList 
           tokens={walletData.tokens} 

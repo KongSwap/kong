@@ -1,4 +1,36 @@
 declare global {
+  interface TokenBalance {
+    in_tokens: bigint;
+    in_usd: string;
+  }
+
+  interface UserPoolBalance {
+    id: string;
+    address_0?: string;
+    address_1?: string;
+    amount_0: string;
+    amount_1: string;
+    balance: string;
+    name: string;
+    symbol: string;
+    symbol_0?: string;
+    symbol_1?: string;
+    ts: string;
+    usd_amount_0?: number;
+    usd_amount_1?: number;
+    usd_balance?: number;
+    timestamp?: number;
+  }
+
+  interface Transaction {
+    type: "send" | "receive";
+    amount: string;
+    token: string;
+    to?: string;
+    from?: string;
+    date: string;
+  }
+
   namespace Kong {
     interface Token {
       id: number; // Unique identifier for the token (same astoken_id on FE.IcrcToken)
@@ -36,7 +68,8 @@ declare global {
       tvl: string;
       price_change_24h?: string;
       previous_price?: number;
-      market_cap_rank?: number;
+      market_cap_rank?: string;
+      is_verified?: boolean;
       updated_at: string;
     }
 
@@ -71,6 +104,21 @@ declare global {
       total_24h_num_swaps: bigint;
       timestamp: number;
     }
+
+    interface LPToken {
+      address: string;
+      chain: string;
+      decimals: number;
+      fee: bigint;
+      name: string;
+      pool_id_of: number;
+      pool_symbol: string;
+      symbol: string;
+      token: string;
+      token_id: number;
+      total_supply: bigint;
+    }
+  
   }
 }
 

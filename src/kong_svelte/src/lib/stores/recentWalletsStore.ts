@@ -1,20 +1,13 @@
 import { writable } from "svelte/store";
 import { browser } from "$app/environment";
-import {
-  createNamespacedStore,
-  STORAGE_KEYS,
-} from "$lib/config/localForage.config";
 
 export interface RecentWallet {
   id: string;
   timestamp: number;
 }
 
-const RECENT_WALLETS_KEY = "recentWallets";
+const RECENT_WALLETS_KEY = "auth:recentWallets";
 const MAX_RECENT_WALLETS = 5;
-
-// Storage configuration
-const authStorage = createNamespacedStore(STORAGE_KEYS.AUTH_NAMESPACE);
 
 function createRecentWalletsStore() {
   const { subscribe, set, update } = writable<RecentWallet[]>([]);
@@ -25,23 +18,24 @@ function createRecentWalletsStore() {
     try {
       // Create a plain JS copy to remove Svelte proxies before saving
       const plainWallets = JSON.parse(JSON.stringify(wallets));
-      await authStorage.setItem(RECENT_WALLETS_KEY, plainWallets);
+      localStorage.setItem(RECENT_WALLETS_KEY, JSON.stringify(plainWallets));
     } catch (err) {
-      console.error("Could not save recent wallets to localForage:", err);
+      console.error("Could not save recent wallets to localStorage:", err);
     }
   }
 
   async function loadFromStorage() {
     if (!browser) return;
     try {
-      const stored = await authStorage.getItem<RecentWallet[]>(RECENT_WALLETS_KEY);
+      const storedData = localStorage.getItem(RECENT_WALLETS_KEY);
+      const stored = storedData ? JSON.parse(storedData) as RecentWallet[] : null;
       if (stored && Array.isArray(stored)) {
         set(stored);
       } else {
         set([]); // Ensure it's an empty array if nothing is stored
       }
     } catch (err) {
-      console.warn("Could not load recent wallets from localForage:", err);
+      console.warn("Could not load recent wallets from localStorage:", err);
       set([]); // Set to empty on error
     }
   }
@@ -79,9 +73,9 @@ function createRecentWalletsStore() {
       set([]);
       if (!browser) return;
       try {
-        await authStorage.removeItem(RECENT_WALLETS_KEY);
+        localStorage.removeItem(RECENT_WALLETS_KEY);
       } catch (err) {
-        console.warn("Could not clear recent wallets from localForage:", err);
+        console.warn("Could not clear recent wallets from localStorage:", err);
       }
     },
   };

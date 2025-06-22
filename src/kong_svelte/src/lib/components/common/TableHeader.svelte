@@ -25,7 +25,7 @@
 {#if showHeader}
   <th 
     class="p-2 cursor-pointer {textClass} {variantClass}"
-    on:click={handleSort}
+    onclick={handleSort}
   >
     {label}
     <span>

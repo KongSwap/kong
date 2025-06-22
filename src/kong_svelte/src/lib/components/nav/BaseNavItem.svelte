@@ -20,7 +20,7 @@
   class="base-nav-btn {className}"
   class:active={isActive}
   class:disabled={comingSoon}
-  on:click={onClick}
+  onclick={onClick}
 >
   <div class="base-nav-btn-icon {iconBackground} relative">
     {@render icon({ size: 18 })}
@@ -59,7 +59,7 @@
   }
   
   .badge {
-    @apply absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center;
+    @apply absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-kong-error text-white text-[10px] font-medium flex items-center justify-center;
   }
 
   .coming-soon-badge {

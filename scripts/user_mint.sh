@@ -9,9 +9,9 @@ to_principal_id=$(dfx identity get-principal $network --identity kong_user1)
 # to_principal_id=jum6j-nhmrj-nuoi5-lccjt-3ftxs-dw5u6-enrtt-7432h-iaa4z-pnzoo-oqe
 # to_principal_id=4s7ce-nntbc-oebfq-damfd-6fuxi-nydjp-fozv6-fherl-djnrj-xtgie-2qe
 
-# 1,000,000 ksUSDT
+# 1,000,000 ckUSDT
 amount=1_000_000_000_000
-token="ksusdt"
+token="ckusdt"
 token_ledger="${token}_ledger"
 
 dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
@@ -31,7 +31,7 @@ dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
 
 # 5 ksBTC
 amount=500_000_000
-token="ksbtc"
+token="ckbtc"
 token_ledger="${token}_ledger"
 
 dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
@@ -41,7 +41,7 @@ dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
 
 # 60 ksETH
 amount=60_000_000_000_000_000_000
-token="kseth"
+token="cketh"
 token_ledger="${token}_ledger"
 
 dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
@@ -49,9 +49,9 @@ dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
 	amount=$amount;
 },)"
 
-# 5,000,000 ksKONG
+# 5,000,000 KONG
 amount=500_000_000_000_000
-token="kskong"
+token="kong"
 token_ledger="${token}_ledger"
 
 dfx canister call $network $identity $token_ledger icrc1_transfer "(record {

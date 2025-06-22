@@ -9,9 +9,8 @@
   import { onDestroy, createEventDispatcher } from "svelte";
   import { createPool, addLiquidity, pollRequestStatus } from "$lib/api/pools";
   import { toastStore } from "$lib/stores/toastStore";
-  import { loadBalance } from "$lib/stores/tokenStore";
+  import { loadBalance } from "$lib/stores/balancesStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
-  import { auth } from "$lib/stores/auth";
 
   const dispatch = createEventDispatcher();
 
@@ -164,13 +163,13 @@
 >
   <div class="flex flex-col min-h-[400px] px-4 pb-4">
     {#if error}
-      <div class="mb-4 text-red-400 text-center p-4 bg-red-400/20 rounded-xl">
+      <div class="mb-4 text-kong-text-accent-red text-center p-4 bg-red-400/20 rounded-xl">
         {error}
       </div>
     {/if}
 
     <div class="flex-1">
-      <div class="text-white/50 mb-1">You will provide</div>
+      <div class="text-kong-text-primary/90 mb-1">You will provide</div>
 
       <div class="bg-white/5 rounded-xl p-4 space-y-4">
         <div class="flex justify-between items-center">
@@ -181,16 +180,16 @@
               class="w-8 h-8 rounded-full bg-white"
             />
             <div class="flex flex-col">
-              <span class="text-white text-lg">{token0?.symbol}</span>
+              <span class="text-kong-text-primary text-lg">{token0?.symbol}</span>
             </div>
           </div>
           <div class="flex flex-col items-end">
-            <span class="text-white text-xl">{amount0}</span>
-            <span class="text-white/60 text-sm">${token0Value}</span>
+            <span class="text-kong-text-primary text-xl">{amount0}</span>
+            <span class="text-kong-text-secondary text-sm">${token0Value}</span>
           </div>
         </div>
 
-        <div class="text-white/60 text-xl text-center">+</div>
+        <div class="text-kong-text-secondary text-xl text-center">+</div>
 
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-2">
@@ -200,22 +199,22 @@
               class="w-8 h-8 rounded-full bg-white"
             />
             <div class="flex flex-col">
-              <span class="text-white text-lg">{token1?.symbol}</span>
+              <span class="text-kong-text-primary text-lg">{token1?.symbol}</span>
             </div>
           </div>
           <div class="flex flex-col items-end">
-            <span class="text-white text-xl">{amount1}</span>
-            <span class="text-white/60 text-sm">${token1Value}</span>
+            <span class="text-kong-text-primary text-xl">{amount1}</span>
+            <span class="text-kong-text-secondary text-sm">${token1Value}</span>
           </div>
         </div>
       </div>
 
       <div class="mt-4 bg-white/5 rounded-xl p-4 space-y-3">
-        <div class="flex justify-between text-white/80 text-sm">
+        <div class="flex justify-between text-kong-text-primary/80 text-sm">
           <span>Total Value:</span>
           <span>${totalValue}</span>
         </div>
-        <div class="flex justify-between text-white/80 text-sm">
+        <div class="flex justify-between text-kong-text-primary/80 text-sm">
           <span>Exchange Rate:</span>
           <span>1 {token0?.symbol} = {exchangeRate} {token1?.symbol}</span>
         </div>
@@ -225,7 +224,7 @@
         <div
           class="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg"
         >
-          <div class="text-yellow-500/90 text-sm">
+          <div class="text-kong-text-accent-yellow text-sm">
             You are the first liquidity provider.
             <br />
             The ratio of tokens you add will set the price of this pool.
@@ -240,7 +239,7 @@
         theme="accent-green"
         size="lg"
         fullWidth={true}
-        on:click={handleCancel}
+        onclick={handleCancel}
         isDisabled={isLoading}
       >
         Cancel
@@ -250,7 +249,7 @@
         theme="accent-green"
         size="lg"
         fullWidth={true}
-        on:click={handleConfirm}
+        onclick={handleConfirm}
         isDisabled={isLoading}
       >
         <div class="flex items-center justify-center gap-2">

@@ -1,6 +1,6 @@
 import { writable, get } from 'svelte/store';
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
-import { auth } from "$lib/stores/auth";
+import { auth, swapActor } from "$lib/stores/auth";
 import { canisters, type CanisterType } from "$lib/config/auth.config";
 import { UserPool, type UserPoolData } from '$lib/models/UserPool';
 import { fetchPools } from '$lib/api/pools';
@@ -47,13 +47,11 @@ function createWalletPoolListStore() {
     fetchPoolsForWallet: async (walletId: string): Promise<void> => {
       // Skip if no wallet ID
       if (!walletId || walletId === "anonymous") {
-        console.log("No wallet ID or anonymous user, skipping pool fetch");
         return Promise.resolve();
       }
       
       // If the wallet ID has changed, reset the store first
       if (lastLoadedWalletId && lastLoadedWalletId !== walletId) {
-        console.log(`Wallet ID changed from ${lastLoadedWalletId} to ${walletId}, resetting store`);
         set(initialState);
         poolLoadingInProgress = false;
         poolLoadingPromise = null;
@@ -62,13 +60,11 @@ function createWalletPoolListStore() {
       // Debounce requests for the same wallet
       const now = Date.now();
       if (lastLoadedWalletId === walletId && now - lastFetchTime < DEBOUNCE_TIME) {
-        console.log(`Debouncing pool request for ${walletId}, last request was ${now - lastFetchTime}ms ago`);
         return poolLoadingPromise || Promise.resolve();
       }
       
       // If loading for this wallet is already in progress, return the existing promise
       if (poolLoadingInProgress && lastLoadedWalletId === walletId && poolLoadingPromise) {
-        console.log(`Pool loading already in progress for wallet ${walletId}, returning existing promise`);
         return poolLoadingPromise;
       }
       
@@ -90,11 +86,7 @@ function createWalletPoolListStore() {
       // Create a promise for this loading operation
       poolLoadingPromise = new Promise<void>(async (resolve) => {
         try {
-          const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
-            canisterId: canisters.kongBackend.canisterId,
-            idl: canisters.kongBackend.idl,
-            anon: true,
-          });
+          const actor = swapActor({anon: true, requiresSigning: false});
           
           const response = await actor.user_balances(walletId);          
           if ('Ok' in response) {
