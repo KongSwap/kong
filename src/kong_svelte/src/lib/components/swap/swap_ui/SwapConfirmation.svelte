@@ -41,6 +41,7 @@
   
   onMount(() => {
     mounted = true;
+    
     // Create fewer floating particles for better performance
     particles = Array.from({ length: 6 }, (_, i) => ({
       id: i,
@@ -49,10 +50,6 @@
       size: Math.random() * 4 + 2,
       delay: Math.random() * 10
     }));
-  });
-  
-  onDestroy(() => {
-    // Cleanup any animations
   });
 
   async function handleConfirm() {
@@ -190,15 +187,13 @@
         <!-- Arrow Container -->
         <div class="arrow-wrapper animate-fade-in sm:block" transition:scale={{ delay: 150, duration: 300 }}>
           <div class="arrow-container">
-            <!-- Arrow Icon for mobile -->
-            <svg class="arrow-icon-mobile sm:hidden" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- <svg class="arrow-icon-mobile hidden" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="5" y1="12" x2="19" y2="12"></line>
               <polyline points="12 5 19 12 12 19"></polyline>
-            </svg>
-            <!-- Moving particles for desktop -->
-            <div class="moving-particle particle-1 hidden sm:block"></div>
+            </svg> -->
+            <!-- <div class="moving-particle particle-1 hidden sm:block"></div>
             <div class="moving-particle particle-2 hidden sm:block"></div>
-            <div class="moving-particle particle-3 hidden sm:block"></div>
+            <div class="moving-particle particle-3 hidden sm:block"></div> -->
           </div>
         </div>
 
@@ -288,7 +283,7 @@
 
   /* Swap Preview Container */
   .swap-preview-container {
-    @apply flex flex-col sm:grid sm:grid-cols-[1fr_auto_1fr] items-center gap-6 sm:gap-8 md:gap-12;
+    @apply grid grid-cols-[1fr_auto_1fr] items-center gap-6 sm:gap-8 md:gap-12;
   }
 
   /* Token Container */
@@ -299,7 +294,7 @@
   }
 
   .token-label {
-    @apply text-sm sm:text-base font-medium text-kong-text-secondary uppercase tracking-wider pb-4;
+    @apply text-sm font-medium text-kong-text-secondary uppercase tracking-wider pb-4;
     animation: fade-in-down 0.6s ease-out;
   }
 

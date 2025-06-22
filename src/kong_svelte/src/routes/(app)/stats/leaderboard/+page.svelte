@@ -129,14 +129,14 @@
         size="large"
       />
     {:else}
-      <div class="pb-6 mb-4">
+      <div class="py-6 mb-4">
         <!-- Top 3 winners section heading -->
-        <div class="flex items-center justify-center mb-8">
+        <!-- <div class="flex items-center justify-center mb-8">
           <div class="px-4 text-kong-text-primary font-medium flex items-center">
             <Trophy class="w-5 h-5 mr-2 text-yellow-400" />
             <span>Top Traders</span>
           </div>
-        </div>
+        </div> -->
         
         <!-- Top 3 Traders - Champion and Runners-up -->
         {#if leaderboardDataValue.length > 0}
@@ -190,35 +190,37 @@
             type="secondary" 
             width="100%" 
             height="auto" 
-            className="overflow-hidden border border-kong-border shadow-lg animate-fadeIn animation-delay-500" 
+            className="border border-kong-border shadow-lg animate-fadeIn animation-delay-500" 
             unpadded={true}
           >
-            <table class="w-full table-auto">
-              <thead class="bg-kong-bg-secondary border-b border-kong-border">
-                <tr>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-kong-text-secondary uppercase tracking-wider w-16">Rank</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-kong-text-secondary uppercase tracking-wider">Trader</th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-kong-text-secondary uppercase tracking-wider">Volume</th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-kong-text-secondary uppercase tracking-wider">Swaps</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-kong-border">
-                {#each leaderboardDataValue.slice(3) as user, sliceIndex}
-                  {@const index = sliceIndex + 3}
-                  <LeaderboardTraderCard
-                    user={user}
-                    rank={index + 1}
-                    expanded={expandedRowIndex === index}
-                    tradedTokens={tradedTokens[index]}
-                    loadingTokens={loadingTokens[index] || false}
-                    tokenError={tokenErrors[index] || null}
-                    userDetails={userDetails[index]}
-                    loadingUserDetails={loadingUserDetails[index] || false}
-                    onClick={() => toggleRowExpansion(index)}
-                  />
-                {/each}
-              </tbody>
-            </table>
+            <div class="overflow-x-auto">
+              <table class="w-full table-auto min-w-[600px]">
+                <thead class="bg-kong-bg-secondary border-b border-kong-border">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-kong-text-secondary uppercase tracking-wider w-16 min-w-[60px]">Rank</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-kong-text-secondary uppercase tracking-wider min-w-[200px]">Trader</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium text-kong-text-secondary uppercase tracking-wider min-w-[120px]">Volume</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium text-kong-text-secondary uppercase tracking-wider min-w-[100px]">Swaps</th>
+                  </tr>
+                </thead>
+                                 <tbody class="divide-y divide-kong-border">
+                   {#each leaderboardDataValue.slice(3) as user, sliceIndex}
+                     {@const index = sliceIndex + 3}
+                     <LeaderboardTraderCard
+                       user={user}
+                       rank={index + 1}
+                       expanded={expandedRowIndex === index}
+                       tradedTokens={tradedTokens[index]}
+                       loadingTokens={loadingTokens[index] || false}
+                       tokenError={tokenErrors[index] || null}
+                       userDetails={userDetails[index]}
+                       loadingUserDetails={loadingUserDetails[index] || false}
+                       onClick={() => toggleRowExpansion(index)}
+                     />
+                   {/each}
+                 </tbody>
+              </table>
+            </div>
           </Panel>
         {/if}
       </div>
