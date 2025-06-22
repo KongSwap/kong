@@ -22,6 +22,7 @@
   import AddNewTokenModal from "$lib/components/wallet/AddNewTokenModal.svelte";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
   import { loadUserBalances } from "$lib/services/balanceService";
+  import { enableBodyScroll, disableBodyScroll } from "$lib/utils/scrollUtils";
 
   const props = $props();
   const {
@@ -463,6 +464,12 @@
 
   // Reactive effects
   $effect(() => {
+    if (show) {
+      disableBodyScroll();
+    } else {
+      enableBodyScroll();
+    }
+
     // Search effect
     if (browser && searchQuery) {
       void debouncedApiSearch(searchQuery);
@@ -518,7 +525,7 @@
 {#if show}
   <div class="fixed inset-0 bg-kong-bg-primary/30 backdrop-blur-md z-[9999] grid place-items-center overflow-y-auto md:p-6 sm:p-0" on:click|self={closeWithCleanup} role="dialog">
     <div
-      class="relative border bg-kong-bg-primary transition-all duration-200 overflow-hidden w-[420px] bg-kong-bg-secondary {expandDirection} {$panelRoundness} {selectorState.isMobile ? 'fixed inset-0 w-full h-screen rounded-none border-0' : 'border-kong-border border-1'}"
+      class="relative border bg-kong-bg-primary transition-all duration-200 overflow-hidden w-[420px] bg-kong-bg-secondary {expandDirection} {$panelRoundness} {isMobile ? 'fixed inset-0 w-full h-screen rounded-none border-0' : 'border-kong-border border-1'}"
       bind:this={selectorState.dropdownElement}
       on:click|stopPropagation
       transition:scale={{ duration: 200, start: 0.95, opacity: 0, easing: cubicOut }}
