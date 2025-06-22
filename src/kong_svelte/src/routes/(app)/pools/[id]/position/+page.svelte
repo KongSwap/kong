@@ -400,7 +400,7 @@
       </div>
       
       <!-- Key Metrics -->
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div class="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
         {@render metricPanel(
           "Position Value",
           `$${formatToNonZeroDecimal(pool.usd_balance.toString())}`,
