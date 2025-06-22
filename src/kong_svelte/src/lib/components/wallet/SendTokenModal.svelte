@@ -337,7 +337,7 @@
 </script>
 
 <Modal
-  {isOpen}
+  isOpen={isOpen && !showConfirmation}
   onClose={handleClose}
   title="Send {token?.name || 'Token'}"
   width="480px"
@@ -375,7 +375,7 @@
     <!-- Send Form -->
     {#if token}
       <form
-        onsubmit={(e) => e.preventDefault && handleSubmit}
+        onsubmit={handleSubmit}
         class="flex flex-col gap-4 transition-all duration-300"
         style="opacity: {closing ? 0 : mounted ? 1 : 0}; transform: translateY({closing ? '-10px' : mounted ? 0 : '20px'}); transition-delay: {closing ? '0ms' : '100ms'};"
       >
