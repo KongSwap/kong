@@ -15,8 +15,6 @@
     isLoading?: boolean;
   }>();
 
-  $inspect(routingPath);
-
   // Show routing for all swaps
   const showRouting = $derived(routingPath && routingPath.length > 0 && !isLoading);
   const isMultiHop = $derived(routingPath && routingPath.length > 1);
@@ -33,7 +31,7 @@
   });
 </script>
 
-{#if false}
+{#if showRouting}
   <div class="routing-container" transition:fade={{ duration: 200 }}>
     <Panel
       variant="solid"

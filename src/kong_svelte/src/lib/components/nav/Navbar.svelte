@@ -33,7 +33,6 @@
   } from "lucide-svelte";
   import { app } from "$lib/state/app.state.svelte";
   import { settingsStore } from "$lib/stores/settingsStore";
-  import { disableBodyScroll, enableBodyScroll } from "$lib/utils/scrollUtils";
 
   // Components
   import NavOption from "./NavOption.svelte";
@@ -163,14 +162,7 @@
     return "null";
   });
 
-  $effect(() => {
-    if(showWalletSidebar) {
-      disableBodyScroll();
-    } else {
-      enableBodyScroll();
-    }
-  });
-
+  $inspect(activeTab);
 
   // Constants
   const MOBILE_LOGO_PATH = "/titles/logo-white-wide.png";

@@ -13,7 +13,6 @@
   import { auth } from "$lib/stores/auth";
   import { fade, fly } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
-  import { onMount, onDestroy } from "svelte";
 
   // Component imports
   import TrollboxPanel from "$lib/components/wallet/trollbox/TrollboxPanel.svelte";
@@ -98,26 +97,6 @@
   // Sync currentTab with activeTab prop
   $effect(() => {
     currentTab = activeTab;
-  });
-
-  onMount(() => {
-        // Prevent body scrolling when modal is open
-    // const body = document.body;
-    // const scrollY = window.scrollY;
-    // body.style.position = 'fixed';
-    // body.style.top = `-${scrollY}px`;
-    // body.style.width = '100%';
-    // body.style.overflow = 'hidden';
-  });
-
-  onDestroy(() => {
-    // Restore body scrolling when modal is closed
-    // const body = document.body;
-    // const scrollY = body.style.top;
-    // body.style.position = '';
-    // body.style.top = '';
-    // body.style.width = '';
-    // body.style.overflow = '';
   });
 </script>
 
@@ -247,7 +226,7 @@
   }
 
   .tab-button.active .tab-label {
-    @apply sm:block;
+    @apply block;
   }
 
   @media (max-width: 640px) {
@@ -255,7 +234,7 @@
       width: 100%; 
       max-width: 100%;
       border-left: none;
-      height: 100dvh;
+      height: 95vh;
     }
   }
 

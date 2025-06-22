@@ -164,7 +164,7 @@
             style="background-color: {rank === 1 ? '#facc15' : rank === 2 ? '#d1d5db' : rank === 3 ? '#d97706' : '#1a1a2e'}; color: {rank <= 3 ? '#000000' : '#ffffff'};"
             onclick={() => goto(`/wallets/${user.principal_id}`)}
           >
-            {user.principal_id.slice(0, 11)}
+            {user.principal_id.slice(0, 12)}...
           </span>
         </div>
         <div class="flex flex-col gap-2 rounded-lg w-full">
@@ -244,10 +244,11 @@
         </div>
         <div class="text-sm font-medium text-kong-text-primary">
           <span
-            class="px-2 py-0.5 text-xs rounded-full bg-kong-bg-primary text-kong-text-primary border border-kong-border hover:bg-kong-bg-secondary transition-colors cursor-pointer"
-            onclick={(e) => { e.stopPropagation(); goto(`/wallets/${user.principal_id}`); }}
+            class="px-2 py-0.5 text-xs rounded-full whitespace-nowrap cursor-pointer hover:opacity-80"
+            style="background-color: #1a1a2e; color: #ffffff;"
+            onclick={() => goto(`/wallets/${user.principal_id}`)}
           >
-            {user.principal_id.slice(0, 11)}
+            {user.principal_id.slice(0, 12)}...
           </span>
         </div>
       </div>
@@ -257,8 +258,9 @@
     </td>
     <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-kong-text-secondary">
       <div class="flex items-center justify-end">
-        <span class="mr-3">{user.swap_count} swaps</span>
-        <div class="transition-transform transform">
+        <span class="mr-2">{user.swap_count} swaps</span>
+        <div class="transition-transform transform flex items-center cursor-pointer" onclick={onClick}>
+          <span class="text-xs mr-2">{expanded ? "Hide Details" : "Show Details"}</span>
           {#if expanded}
             <ChevronUp class="w-4 h-4" />
           {:else}

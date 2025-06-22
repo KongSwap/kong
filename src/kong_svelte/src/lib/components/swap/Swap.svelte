@@ -23,7 +23,6 @@
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
-  import { disableBodyScroll, enableBodyScroll } from "$lib/utils/scrollUtils";
 
   // Import custom hooks
   import { useSwapQuote } from "$lib/hooks/useSwapQuote.svelte";
@@ -302,15 +301,6 @@
   }
 
   // Effects
-
-  $effect(() => {
-    if($swapState.showConfirmation) {
-      disableBodyScroll();
-    } else {
-      enableBodyScroll();
-    }
-  });
-
   $effect(() => {
     if (
       $auth.account?.owner &&
