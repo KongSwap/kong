@@ -95,20 +95,20 @@
         </div>
         
         <!-- Fees Earned -->
-        {#if userPosition.lp_fee_0 || userPosition.lp_fee_1}
+        {#if userPosition.userFeeShare0 || userPosition.userFeeShare1}
           <div class="pt-3 mt-3 border-t border-kong-border/10">
             <div class="space-y-2">
               <span class="text-xs text-kong-text-primary/60 uppercase tracking-wider">Fees Earned</span>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-kong-text-primary/80">{token0.symbol}</span>
                 <span class="text-sm font-medium text-kong-text-primary">
-                  {formatNumber(userPosition.lp_fee_0 || 0, 4)}
+                  {formatNumber(userPosition.userFeeShare0 || 0, 4)}
                 </span>
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-kong-text-primary/80">{token1.symbol}</span>
                 <span class="text-sm font-medium text-kong-text-primary">
-                  {formatNumber(userPosition.lp_fee_1 || 0, 4)}
+                  {formatNumber(userPosition.userFeeShare1 || 0, 4)}
                 </span>
               </div>
             </div>
