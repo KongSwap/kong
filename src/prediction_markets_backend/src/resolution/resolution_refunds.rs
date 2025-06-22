@@ -222,7 +222,7 @@ pub async fn create_dispute_refund_claims(market_id: &MarketId, market: &Market)
 
         // For other bets (including creator's subsequent bets), create refund claims
         let claim_amount = if bet.amount.clone() > transfer_fee.clone() {
-            bet.amount.clone() - transfer_fee.clone()
+            bet.amount.clone()
         } else {
             ic_cdk::println!(
                 "Cannot create refund claim for {} to {}: amount is less than transfer fee",
