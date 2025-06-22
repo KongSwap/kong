@@ -161,6 +161,12 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
         echo "Creating SOL/ksUSDT pool..."
         bash "${SCRIPT_DIR}/add_sol_pool.sh" "${NETWORK}"
     } || echo "Warning: add_sol_pool.sh not found"
+
+    # create spl usdc pool
+    [ -f "${SCRIPT_DIR}/add_usdc_pool.sh" ] && {
+        echo "Creating USDC/ksUSDT pool..."
+        bash "${SCRIPT_DIR}/add_usdc_pool.sh" "${NETWORK}"
+    } || echo "Warning: add_usdc_pool.sh not found"
 fi
 
 if [[ "${NETWORK}" == "ic" ]]; then

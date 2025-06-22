@@ -2,6 +2,8 @@
 
 # Script to create USDC/ksUSDT pool on Kong
 # Uses devnet USDC for local/staging environments
+# use circle faucet to get devnet USDC
+# https://faucet.circle.com/
 
 set -eu
 
@@ -21,7 +23,7 @@ USDC_CHAIN="SOL"
 USDC_ADDRESS="4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"  # Devnet USDC
 
 # ksUSDT configuration
-KSUSDT_SYMBOL="ksUSDT"k
+KSUSDT_SYMBOL="ksUSDT"
 KSUSDT_CHAIN="IC"
 KSUSDT_LEDGER=$(dfx canister id ${NETWORK_FLAG} $(echo ${KSUSDT_SYMBOL} | tr '[:upper:]' '[:lower:]')_ledger)
 KSUSDT_AMOUNT=1_000_000  # 1 ksUSDT (6 decimals)
@@ -150,7 +152,7 @@ print_info "Transaction: $USDC_TX_SIG"
 print_header "STEP 4: WAIT FOR CONFIRMATION"
 print_info "Waiting for transaction confirmation and kong_rpc processing..."
 print_info "This may take up to 60 seconds..."
-sleep 60
+sleep 5
 
 # Step 5: Approve ksUSDT spending
 print_header "STEP 5: APPROVE KSUSDT"

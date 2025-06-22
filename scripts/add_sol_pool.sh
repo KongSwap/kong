@@ -124,7 +124,9 @@ print_info "Transaction: $SOL_TX_SIG"
 # Step 3: Wait for transaction confirmation
 print_header "STEP 3: WAIT FOR CONFIRMATION"
 print_info "Waiting for transaction confirmation..."
-sleep 20
+
+echo "sleeping for 5 seconds"
+sleep 5
 
 # Step 4: Approve ksUSDT spending
 print_header "STEP 4: APPROVE KSUSDT"
