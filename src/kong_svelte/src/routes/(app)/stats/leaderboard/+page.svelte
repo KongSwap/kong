@@ -5,7 +5,7 @@
   
   // Import the components
   import LeaderboardTraderCard from '$lib/components/stats/LeaderboardTraderCard.svelte';
-  import LoadingState from '$lib/components/common/LoadingState.svelte';
+  import LoadingIndicator from '$lib/components/common/LoadingIndicator.svelte';
   import ErrorState from '$lib/components/common/ErrorState.svelte';
   import EmptyState from '$lib/components/common/EmptyState.svelte';
   import PageHeader from '$lib/components/common/PageHeader.svelte';
@@ -118,7 +118,7 @@
   
   <div class="rounded-xl overflow-hidden px-4">
     {#if isLoadingValue}
-      <LoadingState message="Loading leaderboard data..." size="large" />
+      <LoadingIndicator message="Loading leaderboard data..." />
     {:else if errorValue}
       <ErrorState message={errorValue} size="large" retryHandler={() => leaderboardStore.loadLeaderboard(selectedPeriod)} />
     {:else if leaderboardDataValue.length === 0}

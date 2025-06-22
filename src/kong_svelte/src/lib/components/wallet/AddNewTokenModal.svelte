@@ -8,7 +8,6 @@
   import { debounce } from "$lib/utils/debounce";
   import { fade } from "svelte/transition";
   import BigNumber from "bignumber.js";
-  import { canisters, type KONG_BACKEND } from "$lib/config/auth.config";
   import { fetchTokenMetadata } from "$lib/api/tokens/TokenApiClient";
 
   // Props

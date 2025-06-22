@@ -5,6 +5,9 @@
     "node": ">=18.0.0",
     "npm": ">=10.0.0"
   },
+  "bin": {
+    "kong": "src/cli/bin/index.js"
+  },
   "scripts": {
     "build": "npm run build --workspaces",
     "kong:deploy:local": "cd scripts && ./deploy_kong.sh local ",
@@ -16,10 +19,19 @@
     "cli:build": "npm run build --workspace=@kong/cli"
   },
   "dependencies": {
-    "@dfinity/agent": "^2.4.1",
-    "@dfinity/candid": "^2.4.1",
-    "@dfinity/identity": "^2.4.1",
-    "@dfinity/principal": "^2.4.1"
+    "@dfinity/agent": "2.4.1",
+    "@dfinity/auth-client": "2.4.1",
+    "@dfinity/candid": "2.4.1",
+    "@dfinity/identity": "2.4.1",
+    "@dfinity/ledger-icp": "2.6.12",
+    "@dfinity/nns": "8.4.0",
+    "@dfinity/principal": "2.4.1",
+    "@dfinity/utils": "2.12.0",
+    "@types/three": "^0.175.0",
+    "three": "^0.175.0"
+  },
+  "devDependencies": {
+    "@kong/cli": "file:src/cli"
   },
   "workspaces": [
     "src/kong_svelte"
