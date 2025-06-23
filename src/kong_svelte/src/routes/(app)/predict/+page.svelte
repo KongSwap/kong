@@ -1,6 +1,9 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { placeBet, getAllBets, isAdmin } from "$lib/api/predictionMarket";
+  import { page } from "$app/stores";
+  import { goto } from "$app/navigation";
+  import { browser } from "$app/environment";
+  import { placeBet, getLatestBets } from "$lib/api/predictionMarket";
   import { AlertTriangle, ChevronDown } from "lucide-svelte";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
@@ -11,7 +14,6 @@
   import { auth } from "$lib/stores/auth";
   import {
     marketStore,
-    filteredMarkets,
     type SortOption,
     type StatusFilter,
   } from "$lib/stores/marketStore";
@@ -20,8 +22,13 @@
   import { clickOutside } from "$lib/actions/clickOutside";
   import Badge from "$lib/components/common/Badge.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import { goto } from "$app/navigation";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { userTokens } from "$lib/stores/userTokens";
+  import type { LatestBets } from "../../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import Panel from "$lib/components/common/Panel.svelte";
+  import { truncateAddress } from "$lib/utils/principalUtils";
 
   // Modal state
   let showBetModal = false;
@@ -32,21 +39,55 @@
   let isBetting = false;
   let isApprovingAllowance = false;
 
-  let recentBets: any[] = [];
+  let recentBets: LatestBets[] = [];
   let previousBets: any[] = [];
   let isInitialLoad = true;
   let loadingBets = false;
-  let isUserAdmin = false;
 
   // UI state for dropdowns
   let statusDropdownOpen = false;
   let sortDropdownOpen = false;
+  let layoutDropdownOpen = false;
+  let selectedLayout = 2;
 
   // Store the market and outcome to open after authentication
   let pendingMarket: any = null;
   let pendingOutcome: number | null = null;
   let tokens = [];
   let kongToken = null;
+
+  // Define valid filter/sort options based on marketStore types
+  const validStatusFilters: StatusFilter[] = [
+    "all",
+    "active",
+    "pending",
+    "closed",
+    "disputed",
+    "voided",
+    "myMarkets",
+  ];
+  const validSortOptions: SortOption[] = [
+    "newest",
+    "pool_asc",
+    "pool_desc",
+    "end_time_asc",
+    "end_time_desc",
+  ];
+
+  const layoutOptions = [
+    { value: 1, label: "1 Market" },
+    { value: 2, label: "2 Markets" },
+    { value: 3, label: "3 Markets" },
+    { value: 4, label: "4 Markets" },
+  ];
+
+  function isValidStatusFilter(filter: string | null): filter is StatusFilter {
+    return !!filter && validStatusFilters.includes(filter as StatusFilter);
+  }
+
+  function isValidSortOption(option: string | null): option is SortOption {
+    return !!option && validSortOptions.includes(option as SortOption);
+  }
 
   onDestroy(() => {
     // Stop the polling task
@@ -64,8 +105,7 @@
       previousBets = [...recentBets];
 
       try {
-        recentBets = await getAllBets(0, 5);
-
+        recentBets = await getLatestBets();
         // Minimum loading time of 500ms to prevent flash
         const elapsed = Date.now() - startTime;
         if (elapsed < 500) {
@@ -105,15 +145,29 @@
     return `${bet.timestamp}-${bet.user}`;
   }
 
-  $: if ($auth.isConnected) {
-    isAdmin($auth.account.owner).then((isAdmin) => {
-      isUserAdmin = isAdmin;
-    });
-  }
-
   onMount(async () => {
-    // Initialize market store
-    await marketStore.init();
+    const urlParams = $page.url.searchParams;
+    const statusFromUrl = urlParams.get("status");
+    const sortFromUrl = urlParams.get("sort");
+
+    let initialOverrides: {
+      statusFilter?: StatusFilter;
+      sortOption?: SortOption;
+    } = {};
+    if (isValidStatusFilter(statusFromUrl)) {
+      initialOverrides.statusFilter = statusFromUrl;
+    }
+    if (isValidSortOption(sortFromUrl)) {
+      initialOverrides.sortOption = sortFromUrl;
+    }
+
+    // Set the current user principal in the market store
+    if ($auth.isConnected && $auth.account?.owner) {
+      marketStore.setCurrentUserPrincipal($auth.account.owner);
+    }
+
+    // Initialize market store with overrides from URL
+    await marketStore.init(initialOverrides);
 
     tokens = await fetchTokensByCanisterId([KONG_LEDGER_CANISTER_ID]);
     kongToken = tokens[0];
@@ -130,12 +184,23 @@
       },
       30000,
     );
+
+    // Load layout preference from localStorage if available
+    const savedLayout = browser && localStorage.getItem('preferedLayout');
+    if (savedLayout !== null) {
+      selectedLayout = parseInt(savedLayout, 10);
+    }
   });
+
+  // Save layout preference when changed
+  $: if (browser && selectedLayout !== undefined) {
+    localStorage.setItem('preferedLayout', selectedLayout.toString());
+  }
 
   // Debounced market refresh to prevent too frequent updates
   const debouncedRefreshMarkets = debounce(() => {
     marketStore.refreshMarkets();
-  }, 10000);
+  }, 1000);
 
   function openBetModal(market: any, outcomeIndex?: number) {
     // Check if user is authenticated
@@ -226,10 +291,12 @@
   // Status display mapping
   const statusOptions = [
     { value: "all", label: "All" },
-    { value: "open", label: "Open" },
-    { value: "expired", label: "Pending" },
-    { value: "resolved", label: "Resolved" },
+    { value: "active", label: "Active" },
+    { value: "pending", label: "Pending" },
+    { value: "closed", label: "Closed" },
+    { value: "disputed", label: "Disputed" },
     { value: "voided", label: "Voided" },
+    { value: "myMarkets", label: "My Markets" },
   ];
 
   // Sort options mapping
@@ -237,6 +304,8 @@
     { value: "newest", label: "Newest" },
     { value: "pool_desc", label: "Pool Size (High to Low)" },
     { value: "pool_asc", label: "Pool Size (Low to High)" },
+    { value: "end_time_asc", label: "End Time (Soonest First)" },
+    { value: "end_time_desc", label: "End Time (Latest First)" },
   ];
 
   // Get current option label
@@ -253,6 +322,44 @@
         ?.label || "Pool Size (High to Low)"
     );
   }
+
+  // Reactive statement to update market store when auth state changes
+  $: if (browser) {
+    if ($auth.isConnected && $auth.account?.owner) {
+      marketStore.setCurrentUserPrincipal($auth.account.owner);
+    } else {
+      marketStore.setCurrentUserPrincipal(null);
+    }
+  }
+
+  // Reactive statement to update URL when filters change
+  $: if (
+    browser &&
+    $marketStore.statusFilter &&
+    $marketStore.sortOption &&
+    !$marketStore.loading
+  ) {
+    const newUrlParams = new URLSearchParams($page.url.searchParams.toString());
+    let changed = false;
+
+    if (newUrlParams.get("status") !== $marketStore.statusFilter) {
+      newUrlParams.set("status", $marketStore.statusFilter);
+      changed = true;
+    }
+    if (newUrlParams.get("sort") !== $marketStore.sortOption) {
+      newUrlParams.set("sort", $marketStore.sortOption);
+      changed = true;
+    }
+
+    if (changed) {
+      const currentPath = $page.url.pathname;
+      goto(`${currentPath}?${newUrlParams.toString()}`, {
+        replaceState: true,
+        noScroll: true,
+        keepFocus: true,
+      });
+    }
+  }
 </script>
 
 <svelte:head>
@@ -261,7 +368,7 @@
 </svelte:head>
 
 <div class="min-h-screen text-kong-text-primary px-4">
-  <div class="max-w-7xl mx-auto">
+  <div class="mx-auto">
     <div
       class="text-center mb-8 flex flex-col md:flex-row md:justify-between md:items-center gap-6"
     >
@@ -274,17 +381,15 @@
       </div>
 
       <div class="flex gap-3 w-full justify-center md:justify-end">
-        {#if isUserAdmin}
+        {#if $auth.isConnected}
           <ButtonV2
-            theme="accent-green"
+            theme="primary"
             variant="solid"
             size="md"
             onclick={() => goto("/predict/create")}
           >
             Create Market
           </ButtonV2>
-        {/if}
-        {#if $auth.isConnected}
           <ButtonV2
             theme="secondary"
             variant="solid"
@@ -313,7 +418,7 @@
                 size="sm"
                 pill={true}
                 icon="●"
-                class="border border-kong-accent-green font-medium"
+                class="border border-kong-success font-medium"
               >
                 {category}
               </Badge>
@@ -327,14 +432,57 @@
       </div>
 
       <!-- Filters Container -->
-      <div class="flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0">
+      <div
+        class="flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0"
+      >
+        <!-- Layout Toggle Dropdown -->
+        <div
+          class="relative layout-dropdown flex-1 md:flex-none max-w-[48%] md:max-w-none"
+          use:clickOutside={() => (layoutDropdownOpen = false)}
+        >
+          <button
+            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-bg-tertiary text-kong-text-primary hover:bg-kong-bg-secondary/30 transition-colors border border-kong-border/50"
+            onclick={(e) => {
+              e.stopPropagation();
+              layoutDropdownOpen = !layoutDropdownOpen;
+              statusDropdownOpen = false;
+              sortDropdownOpen = false;
+            }}
+          >
+            <span class="whitespace-nowrap overflow-hidden text-ellipsis">
+              Columns: {layoutOptions[selectedLayout].label}
+            </span>
+            <ChevronDown class="w-3 h-3 ml-1 flex-shrink-0" />
+          </button>
+
+          {#if layoutDropdownOpen}
+            <div
+              class="absolute top-full left-0 mt-1 z-50 bg-kong-bg-tertiary border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[120px] backdrop-blur-sm"
+            >
+              {#each layoutOptions as option, index}
+                <button
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-secondary/30 {selectedLayout === index
+                    ? 'bg-kong-success/20 text-kong-success font-medium'
+                    : 'text-kong-text-primary'}"
+                  onclick={() => {
+                    selectedLayout = index;
+                    layoutDropdownOpen = false;
+                  }}
+                >
+                  {option.label}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+
         <!-- Status Filter Dropdown -->
         <div
           class="relative status-dropdown flex-1 md:flex-none max-w-[48%] md:max-w-none"
           use:clickOutside={() => (statusDropdownOpen = false)}
         >
           <button
-            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-surface-dark text-kong-text-primary hover:bg-kong-bg-light/30 transition-colors border border-kong-border/50"
+            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-bg-tertiary text-kong-text-primary hover:bg-kong-bg-secondary/30 transition-colors border border-kong-border/50"
             onclick={(e) => {
               e.stopPropagation();
               statusDropdownOpen = !statusDropdownOpen;
@@ -349,21 +497,35 @@
 
           {#if statusDropdownOpen}
             <div
-              class="absolute top-full left-0 mt-1 z-50 bg-kong-surface-dark border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[120px] backdrop-blur-sm"
+              class="absolute top-full left-0 mt-1 z-50 bg-kong-bg-tertiary border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[120px] backdrop-blur-sm"
             >
               {#each statusOptions as option}
-                <button
-                  class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-light/30 {$marketStore.statusFilter ===
-                  option.value
-                    ? 'bg-kong-accent-green/20 text-kong-accent-green font-medium'
-                    : 'text-kong-text-primary'}"
-                  onclick={() => {
-                    marketStore.setStatusFilter(option.value as StatusFilter);
-                    statusDropdownOpen = false;
-                  }}
-                >
-                  {option.label}
-                </button>
+                {#if option.value === "myMarkets" && !$auth.isConnected}
+                  <!-- Disabled My Markets option when not authenticated -->
+                  <div
+                    class="w-full text-left px-3 py-2 text-xs text-kong-text-disabled cursor-not-allowed opacity-50"
+                    title="Please connect your wallet to view your markets"
+                  >
+                    {option.label}
+                  </div>
+                {:else}
+                  <button
+                    class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-secondary/30 {$marketStore.statusFilter ===
+                    option.value
+                      ? 'bg-kong-success/20 text-kong-success font-medium'
+                      : 'text-kong-text-primary'}"
+                    onclick={() => {
+                      if (option.value === "myMarkets" && !$auth.isConnected) {
+                        // This shouldn't happen due to the conditional above, but just in case
+                        return;
+                      }
+                      marketStore.setStatusFilter(option.value as StatusFilter);
+                      statusDropdownOpen = false;
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                {/if}
               {/each}
             </div>
           {/if}
@@ -375,7 +537,7 @@
           use:clickOutside={() => (sortDropdownOpen = false)}
         >
           <button
-            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-surface-dark text-kong-text-primary hover:bg-kong-bg-light/30 transition-colors border border-kong-border/50"
+            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-bg-tertiary text-kong-text-primary hover:bg-kong-bg-secondary/30 transition-colors border border-kong-border/50"
             onclick={(e) => {
               e.stopPropagation();
               sortDropdownOpen = !sortDropdownOpen;
@@ -390,13 +552,13 @@
 
           {#if sortDropdownOpen}
             <div
-              class="absolute top-full right-0 mt-1 z-30 bg-kong-surface-dark border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[180px] backdrop-blur-sm"
+              class="absolute top-full right-0 mt-1 z-30 bg-kong-bg-tertiary border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[180px] backdrop-blur-sm"
             >
               {#each sortOptions as option}
                 <button
-                  class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-light/30 {$marketStore.sortOption ===
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-secondary/30 {$marketStore.sortOption ===
                   option.value
-                    ? 'bg-kong-accent-green/20 text-kong-accent-green font-medium'
+                    ? 'bg-kong-success/20 text-kong-success font-medium'
                     : 'text-kong-text-primary'}"
                   onclick={() => {
                     marketStore.setSortOption(option.value as SortOption);
@@ -414,44 +576,33 @@
 
     <!-- New grid layout for markets and recent bets -->
     <div class="lg:grid lg:grid-cols-4 lg:gap-6">
-      <!-- Markets column - takes up 4/5 of the space -->
-      <div class="lg:col-span-4">
+      <!-- Markets column - takes up 3/4 of the space -->
+      <div class="lg:col-span-3">
         <!-- Market Sections -->
         {#if $marketStore.error}
-          <div class="text-center py-12 text-kong-accent-red">
+          <div class="text-center py-12 text-kong-error">
             <AlertTriangle class="w-12 h-12 mx-auto mb-4" />
             <p class="text-lg font-medium">{$marketStore.error}</p>
           </div>
         {:else}
           <div class="relative">
             <!-- Display markets based on status filter -->
-            {#if ($filteredMarkets.active && $filteredMarkets.active.length > 0) || ($marketStore.statusFilter !== "open" && (($filteredMarkets.expired_unresolved && $filteredMarkets.expired_unresolved.length > 0) || ($filteredMarkets.resolved && $filteredMarkets.resolved.length > 0)))}
+            {#if $marketStore.markets.length > 0}
               <MarketSection
-                markets={$marketStore.statusFilter === "resolved"
-                  ? $filteredMarkets.resolved.filter(
-                      (market) => "Closed" in market.status,
-                    )
-                  : $marketStore.statusFilter === "voided"
-                    ? $filteredMarkets.resolved.filter(
-                        (market) => "Voided" in market.status,
-                      )
-                    : $marketStore.statusFilter === "expired"
-                      ? $filteredMarkets.expired_unresolved
-                      : $marketStore.statusFilter === "all"
-                        ? [
-                            ...($filteredMarkets.active || []),
-                            ...($filteredMarkets.expired_unresolved || []),
-                            ...($filteredMarkets.resolved || []),
-                          ]
-                        : $filteredMarkets.active}
+                markets={$marketStore.markets}
                 {openBetModal}
                 onMarketResolved={async () =>
                   await marketStore.refreshMarkets()}
+                columns={{
+                  mobile: 1,
+                  tablet: layoutOptions[selectedLayout].value <= 2 ? layoutOptions[selectedLayout].value : 2,
+                  desktop: layoutOptions[selectedLayout].value
+                }}
               />
             {:else}
               <!-- No Markets Message -->
               <div class="text-center py-12">
-                <div class="max-w-md mx-auto text-kong-pm-text-secondary">
+                <div class="max-w-md mx-auto text-kong-text-secondary">
                   <div class="mb-4 text-2xl">📉</div>
                   <p class="text-lg">No markets available</p>
                   <p class="text-sm mt-2">
@@ -464,6 +615,96 @@
             {/if}
           </div>
         {/if}
+      </div>
+
+      <!-- Recent Bets column - takes up 1/4 of the space -->
+      <div class="mt-6 lg:mt-0">
+        <Panel variant="solid" type="main" className="overflow-hidden px-0 !bg-kong-bg-secondary">
+          <div
+            class="border-b border-kong-border/30 flex justify-between items-center px-4"
+          >
+            <h2 class="font-semibold">Recent Predictions</h2>
+            <span
+              class="text-kong-success flex items-center gap-1 text-sm px-2 py-1 rounded-full font-medium"
+              >
+              <div class="bg-kong-success w-2 h-2 animate-pulse rounded-full"></div>
+              Live</span
+            >
+          </div>
+
+          {#if loadingBets && isInitialLoad}
+            <div class="p-4 text-center">
+              <div
+                class="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-kong-success border-r-transparent"
+              ></div>
+              <p class="mt-2 text-kong-text-secondary">
+                Loading recent predictions...
+              </p>
+            </div>
+          {:else if recentBets.length === 0}
+            <div class="p-4 text-center text-kong-text-secondary">
+              <p>No recent predictions yet</p>
+            </div>
+          {:else}
+            <div
+              class="divide-y divide-kong-border/30 flex flex-col gap-2 pt-1"
+            >
+              {#each recentBets as bet}
+                <div
+                  class="items-center cursor-pointer py-1.5 px-4 transition-colors group"
+                >
+                  <div
+                    class="mb-1 font-medium text-kong-text-primary group-hover:text-kong-primary transition-colors"
+                    onclick={() => goto(`/predict/${bet.market.id}`)}
+
+                    >
+                    {bet.market.question}
+                  </div>
+                  <!-- User predicted outcome on market question -->
+                  <div class="text-kong-text-secondary break-all">
+                    <span
+                      class="font-medium text-kong-success inline-flex gap-1"
+                    >
+                      <TokenImages
+                        tokens={[
+                          $userTokens.tokens.find(
+                            (token) => token.address === bet.bet.token_id,
+                          ),
+                        ]}
+                        size={14}
+                      />
+                      {formatToNonZeroDecimal(Number(bet.bet.amount) / 10 ** 8)}
+                      {$userTokens.tokens.find(
+                        (token) => token.address === bet.bet.token_id,
+                      )?.symbol}
+                    </span>
+                    on
+
+                    <span
+                      class="font-medium bg-kong-primary inline-flex items-center text-kong-text-on-primary px-1.5 rounded"
+                    >
+                      {bet.market.outcomes[Number(bet.bet.outcome_index)]}
+                    </span>
+
+                    by
+                    <span class="hover:text-kong-primary transition-colors" onclick={() => goto(
+                      `/wallets/${bet.bet.user.toString()}`
+                    )}>
+                      {truncateAddress(bet.bet.user.toString())}
+                    </span>
+
+                    at {new Date(
+                      Number(bet.bet.timestamp) / 1_000_000,
+                    ).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </Panel>
       </div>
     </div>
   </div>
@@ -557,8 +798,8 @@
     background: linear-gradient(
       to right,
       var(--kong-accent-blue),
-      var(--kong-accent-green),
-      var(--kong-accent-purple)
+      var(--kong-success),
+      var(--kong-primary)
     );
     -webkit-background-clip: text;
     background-clip: text;
@@ -575,7 +816,7 @@
   }
 
   :global(.gradient-stroke) {
-    stroke: var(--kong-accent-green);
+    stroke: var(--kong-success);
     animation: strokeGradient 8s ease infinite;
   }
 

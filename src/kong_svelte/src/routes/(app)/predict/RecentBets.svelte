@@ -1,4 +1,4 @@
-<script lang="ts" runes>
+<script lang="ts">
   import Panel from "$lib/components/common/Panel.svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import { goto } from "$app/navigation";
@@ -14,6 +14,7 @@
     className?: string;
     panelVariant?: "transparent" | "solid";
     loading?: boolean;
+    tokenSymbol?: string;
   }>();
 
   // Set default values for props in non-reactive way
@@ -25,6 +26,7 @@
   let className = $state(props.className ?? "");
   let panelVariant = $state(props.panelVariant ?? "transparent");
   let loading = $state(props.loading ?? false);
+  let tokenSymbol = $state(props.tokenSymbol ?? "KONG");
 
   // Store visible bets to avoid animation flashes
   let visibleBets = $state<any[]>([]);
@@ -82,14 +84,14 @@
 </script>
 
 <Panel variant={panelVariant} {className} height={maxHeight} unpadded>
-  <h2 class="text-sm font-medium px-4 pt-4">{title}</h2>
+  <h2 class="text-sm text-kong-text-secondary font-medium px-4 pt-4">{title}</h2>
   <div class="max-h-[{maxHeight}] overflow-y-auto scrollbar-thin relative">
     {#if visibleBets.length > 0}
       {#each visibleBets as bet}
         {@const betData = getBetData(bet)}
         {@const betId = getBetId(bet)}
         <div
-          class="flex p-4 flex-col py-3 border-b border-kong-border/50 last:border-0 hover:bg-kong-bg-dark/30 transition-colors group rounded-md"
+          class="flex p-4 flex-col py-3 border-b border-kong-border/50 last:border-0 hover:bg-kong-bg-primary/30 transition-colors group rounded-md"
         >
           <div class="flex items-center justify-between">
             {#if showOutcomes && outcomes}
@@ -100,26 +102,26 @@
               <div class="flex flex-col flex-1 min-w-0">
                 <button
                   class="text-kong-text-primary font-medium line-clamp-2 text-left group-hover:text-kong-accent-blue transition-colors w-full relative p-0 m-0 appearance-none border-0 focus:outline-none bg-transparent"
-                  on:click={() => goto(`/predict/${betData.market.id}`)}
+                  onclick={() => goto(`/predict/${betData.market.id}`)}
                 >
                   <span class="block pr-6">{betData.market.question}</span>
                 </button>
                 <div class="flex items-center gap-1">
-                  <span class="text-kong-text-accent-green">
+                  <span class="text-kong-success">
                     {betData.market.outcomes[Number(betData.outcome_index)]}
                   </span>
                 </div>
               </div>
             {/if}
             <div class="flex items-center gap-1 ml-4 flex-shrink-0">
-              <span class="font-medium text-kong-text-accent-green">
+              <span class="font-medium text-kong-success">
                 {formatBalance(Number(betData.amount || 0), 8)}
               </span>
-              <span class="text-xs text-kong-pm-text-secondary">KONG</span>
+              <span class="text-xs text-kong-text-secondary">{tokenSymbol}</span>
             </div>
           </div>
           <div class="flex justify-between w-full items-center mt-2">
-            <span class="text-xs text-kong-pm-text-secondary">
+            <span class="text-xs text-kong-text-secondary">
               {new Date(Number(betData.timestamp) / 1_000_000).toLocaleString(
                 undefined,
                 {
@@ -130,8 +132,8 @@
                 },
               )}
             </span>
-            <span class="text-xs text-kong-pm-text-secondary/80">
-              by <span class="font-medium text-kong-text-accent-green"
+            <span class="text-xs text-kong-text-secondary/80">
+              by <span class="font-medium text-kong-success"
                 >{betData.user
                   ? betData.user.toString().slice(0, 10)
                   : "Unknown"}...</span
@@ -144,11 +146,11 @@
       <div transition:fade class="space-y-3 px-4">
         {#each Array(3) as _}
           <div class="animate-pulse">
-            <div class="h-5 bg-kong-bg-light/30 rounded w-3/4 mb-2"></div>
-            <div class="h-4 bg-kong-bg-light/30 rounded w-1/2"></div>
+            <div class="h-5 bg-kong-bg-secondary/30 rounded w-3/4 mb-2"></div>
+            <div class="h-4 bg-kong-bg-secondary/30 rounded w-1/2"></div>
             <div class="flex justify-between items-center mt-2">
-              <div class="h-3 bg-kong-bg-light/30 rounded w-24"></div>
-              <div class="h-3 bg-kong-bg-light/30 rounded w-20"></div>
+              <div class="h-3 bg-kong-bg-secondary/30 rounded w-24"></div>
+              <div class="h-3 bg-kong-bg-secondary/30 rounded w-20"></div>
             </div>
           </div>
         {/each}
@@ -158,7 +160,7 @@
         class="flex flex-col items-center justify-center py-8 px-4 text-center"
       >
         <div
-          class="w-16 h-16 mb-4 rounded-full bg-kong-bg-dark/50 flex items-center justify-center"
+          class="w-16 h-16 mb-4 rounded-full bg-kong-bg-primary/50 flex items-center justify-center"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

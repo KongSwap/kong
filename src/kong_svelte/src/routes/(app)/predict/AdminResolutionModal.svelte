@@ -1,7 +1,8 @@
 <script lang="ts">
-  import Modal from "$lib/components/common/Modal.svelte";
+  import Dialog from "$lib/components/common/Dialog.svelte";
   import { resolveMarketViaAdmin } from "$lib/api/predictionMarket";
   import { toastStore } from "$lib/stores/toastStore";
+  import { Quote } from "lucide-svelte";
 
   let { isOpen = false, market = null, onClose = () => {}, onResolved = () => {} } = $props<{
     isOpen: boolean;
@@ -40,37 +41,53 @@
   }
 </script>
 
-<Modal {isOpen} on:close={close} variant="transparent" title="Resolve Market">
-  <div class="p-4">
-    <p class="text-lg text-kong-text-secondary mb-4">{market?.question}</p>
-    
-    <div class="space-y-2">
-      <h3 class="text-sm font-medium mb-2">Select Winning Outcome:</h3>
+<Dialog
+  open={isOpen}
+  title="Resolve Market"
+  onClose={close}
+  showClose={false}
+>
+  <div class="flex flex-col gap-4">
+    <div class="text-kong-text-primary text-lg font-semibold">
+      Select the winning outcome for this market
+    </div>
+    <div class="text-kong-text-secondary text-sm">
+      Resolving a market is <span class="font-bold text-kong-error">irreversible</span> and will distribute winnings to users. This action cannot be undone.
+    </div>
+    <div class="text-kong-text-primary text-base font-medium">
+      {market?.question}
+    </div>
+    <div class="bg-kong-bg-secondary border border-kong-border rounded p-3 text-kong-text-secondary text-sm">
+      <span class="font-semibold">Market Rules:</span> {market?.rules}
+    </div>
+    <div class="flex flex-col gap-2">
       {#each market?.outcomes || [] as outcome, index}
         <button
-          class="w-full p-2 text-left rounded border {selectedOutcome === BigInt(index) ? 'border-kong-accent-green bg-kong-accent-green/10' : 'border-kong-border hover:border-kong-accent-green/50'} transition-colors"
-          on:click={() => selectedOutcome = BigInt(index)}
+          class="w-full p-2 rounded border transition-colors text-left
+            {selectedOutcome === BigInt(index)
+              ? 'border-kong-success bg-kong-success/10 font-semibold text-kong-success'
+              : 'border-kong-border hover:border-kong-success hover:bg-kong-success/5'}"
+          onclick={() => selectedOutcome = BigInt(index)}
         >
           {outcome}
         </button>
       {/each}
     </div>
-
-    <div class="mt-6 flex justify-end space-x-3">
+    <div class="flex gap-3 justify-end pt-2">
       <button
-        class="px-4 py-2 text-sm font-medium text-kong-text-secondary hover:text-kong-text-primary transition-colors"
-        on:click={close}
+        class="px-4 py-2 rounded bg-kong-bg-secondary text-kong-text-primary hover:bg-kong-bg-primary/40 transition-colors"
+        onclick={close}
         disabled={isSubmitting}
       >
         Cancel
       </button>
       <button
-        class="px-4 py-2 text-sm font-medium bg-kong-accent-green text-white rounded hover:bg-kong-accent-green/90 disabled:opacity-50 transition-colors"
-        on:click={handleResolve}
+        class="px-4 py-2 rounded bg-kong-success text-kong-text-on-primary font-bold hover:bg-kong-success/90 disabled:opacity-50 transition-colors"
+        onclick={handleResolve}
         disabled={isSubmitting}
       >
         {isSubmitting ? 'Resolving...' : 'Resolve Market'}
       </button>
     </div>
   </div>
-</Modal> 
+</Dialog> 

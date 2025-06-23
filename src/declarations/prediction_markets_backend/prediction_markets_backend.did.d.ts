@@ -265,7 +265,6 @@ export type MarketCategory = { 'AI' : null } |
 export type MarketEndTime = { 'SpecificDate' : bigint } |
   { 'Duration' : bigint };
 export interface MarketResolutionDetails {
-  'total_transfer_fees' : bigint,
   'total_winning_pool' : bigint,
   'total_market_pool' : bigint,
   'platform_fee_amount' : bigint,
@@ -306,12 +305,6 @@ export interface MarketsByStatus {
   'resolved' : Array<MarketResult>,
   'active' : Array<Market>,
   'expired_unresolved' : Array<Market>,
-}
-export interface PlaceBetArgs {
-  'token_id' : [] | [string],
-  'market_id' : bigint,
-  'amount' : bigint,
-  'outcome_index' : bigint,
 }
 export interface ProcessDetails {
   'transaction_id' : [] | [bigint],
@@ -402,10 +395,12 @@ export interface TimeWeightPoint {
   'relative_time' : number,
 }
 export interface TokenBalanceBreakdown {
+  'disputed_penalty_fees' : bigint,
   'platform_fees' : bigint,
   'pending_claims' : bigint,
   'voided_markets_unclaimed' : bigint,
   'pending_markets' : bigint,
+  'expired_markets' : bigint,
   'resolved_markets_unclaimed' : bigint,
   'active_markets' : bigint,
 }
@@ -539,7 +534,7 @@ export interface _SERVICE {
   'is_admin' : ActorMethod<[Principal], boolean>,
   'mark_claim_processed' : ActorMethod<[bigint], boolean>,
   'mark_transaction_resolved' : ActorMethod<[bigint], Result>,
-  'place_bet' : ActorMethod<[PlaceBetArgs], Result_6>,
+  'place_bet' : ActorMethod<[bigint, bigint, bigint, [] | [string]], Result_6>,
   'propose_resolution' : ActorMethod<[ResolutionArgs], ResolutionResult>,
   'resolve_via_admin' : ActorMethod<[ResolutionArgs], ResolutionResult>,
   'resolve_via_admin_legacy' : ActorMethod<

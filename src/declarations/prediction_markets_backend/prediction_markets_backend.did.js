@@ -11,10 +11,12 @@ export const idlFactory = ({ IDL }) => {
   });
   const Result = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text });
   const TokenBalanceBreakdown = IDL.Record({
+    'disputed_penalty_fees' : IDL.Nat,
     'platform_fees' : IDL.Nat,
     'pending_claims' : IDL.Nat,
     'voided_markets_unclaimed' : IDL.Nat,
     'pending_markets' : IDL.Nat,
+    'expired_markets' : IDL.Nat,
     'resolved_markets_unclaimed' : IDL.Nat,
     'active_markets' : IDL.Nat,
   });
@@ -287,7 +289,6 @@ export const idlFactory = ({ IDL }) => {
     'outcome_index' : IDL.Nat,
   });
   const MarketResolutionDetails = IDL.Record({
-    'total_transfer_fees' : IDL.Nat,
     'total_winning_pool' : IDL.Nat,
     'total_market_pool' : IDL.Nat,
     'platform_fee_amount' : IDL.Nat,
@@ -427,12 +428,6 @@ export const idlFactory = ({ IDL }) => {
     'targets' : IDL.Vec(IDL.Principal),
   });
   const Result_5 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : DelegationError });
-  const PlaceBetArgs = IDL.Record({
-    'token_id' : IDL.Opt(IDL.Text),
-    'market_id' : IDL.Nat,
-    'amount' : IDL.Nat,
-    'outcome_index' : IDL.Nat,
-  });
   const BetError = IDL.Variant({
     'MarketNotFound' : IDL.Null,
     'InsufficientActivationBet' : IDL.Null,
@@ -615,7 +610,11 @@ export const idlFactory = ({ IDL }) => {
     'is_admin' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
     'mark_claim_processed' : IDL.Func([IDL.Nat64], [IDL.Bool], []),
     'mark_transaction_resolved' : IDL.Func([IDL.Nat64], [Result], []),
-    'place_bet' : IDL.Func([PlaceBetArgs], [Result_6], []),
+    'place_bet' : IDL.Func(
+        [IDL.Nat, IDL.Nat, IDL.Nat, IDL.Opt(IDL.Text)],
+        [Result_6],
+        [],
+      ),
     'propose_resolution' : IDL.Func([ResolutionArgs], [ResolutionResult], []),
     'resolve_via_admin' : IDL.Func([ResolutionArgs], [ResolutionResult], []),
     'resolve_via_admin_legacy' : IDL.Func(
