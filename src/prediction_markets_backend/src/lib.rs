@@ -84,8 +84,8 @@ pub use types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, PoolAmount, BetC
 pub use claims::claims_types::{ClaimRecord, ClaimStatus, ClaimType, ClaimableSummary, BatchClaimResult, ClaimResult};
 
 // Constants
-// const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; ///Production KONG canister
-const KONG_LEDGER_ID: &str = "umunu-kh777-77774-qaaca-cai";
+const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; ///Production KONG canister
+// const KONG_LEDGER_ID: &str = "umunu-kh777-77774-qaaca-cai";
 /// Canister ID for KONG token ledger (local testing environment)
 
 // We don't need import the registry functions here

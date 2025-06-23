@@ -5,10 +5,10 @@
 
 # Set up variables
 PREDICTION_MARKETS_CANISTER="qqoq7-zaaaa-aaaan-qzzvq-cai"
-KONG_LEDGER="o7oak-iyaaa-aaaaq-aadzq-cai"
-KONG_TOKEN_ID="o7oak-iyaaa-aaaaq-aadzq-cai"
-KONG_FEE=$(dfx canister call ${KONG_LEDGER} icrc1_fee "()" --network ic | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
-KONG_FEE=${KONG_FEE//_/}
+DKP_LEDGER="zfcdd-tqaaa-aaaaq-aaaga-cai"
+DKP_TOKEN_ID="zfcdd-tqaaa-aaaaq-aaaga-cai"
+DKP_FEE=$(dfx canister call ${DKP_LEDGER} icrc1_fee "()" --network ic | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
+DKP_FEE=${DKP_FEE//_/}
 
 # Set up identities for different users
 ALICE_IDENTITY="alice"
@@ -16,19 +16,19 @@ BOB_IDENTITY="bob"
 CAROL_IDENTITY="carol"
 DAVE_IDENTITY="dave"
 
-echo "=== Testing KONG Admin Market with Multiple Users ==="
+echo "=== Testing DKP Admin Market with Multiple Users ==="
 echo "Prediction Markets Canister: ${PREDICTION_MARKETS_CANISTER}"
-echo "KONG Ledger: ${KONG_LEDGER}"
-echo "KONG Fee: ${KONG_FEE}"
+echo "DKP Ledger: ${DKP_LEDGER}"
+echo "DKP Fee: ${DKP_FEE}"
 
-# Step 1: Create a market using KONG token (as admin)
-echo "Creating a new market with KONG tokens as admin..."
+# Step 1: Create a market using DKP token (as admin)
+echo "Creating a new market with DKP tokens as admin..."
 RESULT=$(dfx canister call ${PREDICTION_MARKETS_CANISTER} create_market \
-  "(\"This is a test market?\", variant { Crypto }, \
-  \"this is some test and in 2 minutes it will be either yes or no.\", \
+  "(\"This is a test market for DKP?\", variant { Crypto }, \
+  \"this is some test and in 2 minutes it will be either yes or no and the resolution will be in DKP tokens.\", \
   vec { \"Yes\"; \"No\" }, variant { Admin }, \
   variant { Duration = 120 : nat }, null, null, null, \
-  opt \"o7oak-iyaaa-aaaaq-aadzq-cai\")" --network ic)
+  opt \"zfcdd-tqaaa-aaaaq-aaaga-cai\")" --network ic)
 
 # Extract market ID and check for success
 if [[ $RESULT == *"Ok"* ]]; then
@@ -88,38 +88,38 @@ place_bet() {
 }
 
 # Step 2: Place bets with different users
-# First, make sure all users have KONG tokens (this assumes you've already set up these identities)
+# First, make sure all users have DKP tokens (this assumes you've already set up these identities)
 
 # Set a standard bet amount for all users
-BET_AMOUNT=100000000  # 1 KONG
+BET_AMOUNT=10000000000  # 100 DKP
 
-# Alice bets 1 KONG on "Yes" (outcome 0)
+# Alice bets 100 DKP on "Yes" (outcome 0)
 echo "Alice placing bet..."
-place_bet "${ALICE_IDENTITY}" "${MARKET_ID}" 0 ${BET_AMOUNT} "${KONG_TOKEN_ID}" "${KONG_LEDGER}" "${KONG_FEE}"
+place_bet "${ALICE_IDENTITY}" "${MARKET_ID}" 0 ${BET_AMOUNT} "${DKP_TOKEN_ID}" "${DKP_LEDGER}" "${DKP_FEE}"
 
 # Wait 10 seconds before next bet
 echo "Waiting 10 seconds before next bet..."
 sleep 10
 
-# Bob bets 1 KONG on "No" (outcome 1)
+# Bob bets 100 DKP on "No" (outcome 1)
 echo "Bob placing bet..."
-place_bet "${BOB_IDENTITY}" "${MARKET_ID}" 1 ${BET_AMOUNT} "${KONG_TOKEN_ID}" "${KONG_LEDGER}" "${KONG_FEE}"
+place_bet "${BOB_IDENTITY}" "${MARKET_ID}" 1 ${BET_AMOUNT} "${DKP_TOKEN_ID}" "${DKP_LEDGER}" "${DKP_FEE}"
 
 # Wait 10 seconds before next bet
 echo "Waiting 10 seconds before next bet..."
 sleep 10
 
-# Carol bets 1 KONG on "Yes" (outcome 0)
+# Carol bets 100 DKP on "Yes" (outcome 0)
 echo "Carol placing bet..."
-place_bet "${CAROL_IDENTITY}" "${MARKET_ID}" 0 ${BET_AMOUNT} "${KONG_TOKEN_ID}" "${KONG_LEDGER}" "${KONG_FEE}"
+place_bet "${CAROL_IDENTITY}" "${MARKET_ID}" 0 ${BET_AMOUNT} "${DKP_TOKEN_ID}" "${DKP_LEDGER}" "${DKP_FEE}"
 
 # Wait 10 seconds before next bet
 echo "Waiting 10 seconds before next bet..."
 sleep 10
 
-# Dave bets 1 KONG on "No" (outcome 1)
+# Dave bets 100 DKP on "No" (outcome 1)
 echo "Dave placing bet..."
-place_bet "${DAVE_IDENTITY}" "${MARKET_ID}" 1 ${BET_AMOUNT} "${KONG_TOKEN_ID}" "${KONG_LEDGER}" "${KONG_FEE}"
+place_bet "${DAVE_IDENTITY}" "${MARKET_ID}" 1 ${BET_AMOUNT} "${DKP_TOKEN_ID}" "${DKP_LEDGER}" "${DKP_FEE}"
 
 # Switch back to default identity
 dfx identity use default
@@ -199,17 +199,17 @@ dfx identity use ${CAROL_IDENTITY}
 CAROL_HISTORY=$(dfx canister call ${PREDICTION_MARKETS_CANISTER} get_user_history "(principal \"${CAROL_PRINCIPAL}\")" --network ic)
 CAROL_WINNINGS=$(echo "$CAROL_HISTORY" | grep -o "winnings = opt [0-9]\+" | awk '{print $NF}' | head -1)
 
-# Convert to KONG units (divide by 10^8)
+# Convert to DKP units (divide by 10^8)
 if [ ! -z "$ALICE_WINNINGS" ]; then
-    ALICE_PAYOUT_KONG=$(echo "scale=2; $ALICE_WINNINGS / 100000000" | bc)
+    ALICE_PAYOUT_DKP=$(echo "scale=2; $ALICE_WINNINGS / 100000000" | bc)
 else
-    ALICE_PAYOUT_KONG="N/A"
+    ALICE_PAYOUT_DKP="N/A"
 fi
 
 if [ ! -z "$CAROL_WINNINGS" ]; then
-    CAROL_PAYOUT_KONG=$(echo "scale=2; $CAROL_WINNINGS / 100000000" | bc)
+    CAROL_PAYOUT_DKP=$(echo "scale=2; $CAROL_WINNINGS / 100000000" | bc)
 else
-    CAROL_PAYOUT_KONG="N/A"
+    CAROL_PAYOUT_DKP="N/A"
 fi
 
 # Get market details to check time-weighting
@@ -217,4 +217,4 @@ dfx identity use default
 MARKET_DETAILS=$(dfx canister call ${PREDICTION_MARKETS_CANISTER} get_market "(${MARKET_ID})" --network ic)
 USES_TIME_WEIGHTING=$(echo "$MARKET_DETAILS" | grep -o "uses_time_weighting = [a-z]\+" | awk -F '= ' '{print $2}')
 
-echo "=== KONG Admin Market Test Complete ==="
+echo "=== DKP Admin Market Test Complete ==="
