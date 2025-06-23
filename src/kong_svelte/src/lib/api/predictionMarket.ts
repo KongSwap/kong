@@ -3,7 +3,7 @@ import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { predictionActor } from "$lib/stores/auth";
 import { Principal } from "@dfinity/principal";
 import { notificationsStore } from "$lib/stores/notificationsStore";
-import type { MarketStatus, SortOption } from "../../../../declarations/prediction_markets_backend_legacy/prediction_markets_backend.did";
+import type { MarketStatus, SortOption } from "../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
 
 export async function getMarket(marketId: bigint) {
   const actor = predictionActor({anon: true});
@@ -17,7 +17,7 @@ export async function getAllMarkets(
     length?: number;
     statusFilter?: "Open" | "Closed" | "Disputed" | "Voided";
     sortOption?: {
-      type: "CreatedAt" | "TotalPool";
+      type: "CreatedAt" | "TotalPool" | "EndTime";
       direction: "Ascending" | "Descending";
     };
   } = {},
@@ -26,7 +26,7 @@ export async function getAllMarkets(
 
   const statusFilterValue: [] | [MarketStatus] = options.statusFilter
     ? [
-        options.statusFilter === "Open" ? { Open: null } as MarketStatus :
+        options.statusFilter === "Open" ? { Active: null } as MarketStatus :
         options.statusFilter === "Closed" ? { Closed: [] } as MarketStatus :
         options.statusFilter === "Disputed" ? { Disputed: null } as MarketStatus :
         options.statusFilter === "Voided" ? { Voided: null } as MarketStatus :
@@ -37,8 +37,10 @@ export async function getAllMarkets(
   const sortOptionValue: [] | [SortOption] = options.sortOption
     ? [
         options.sortOption.type === "TotalPool"
-          ? { TotalPool: options.sortOption.direction === "Ascending" ? { Ascending: null } : { Descending: null } }
-          : { CreatedAt: options.sortOption.direction === "Ascending" ? { Ascending: null } : { Descending: null } }
+          ? { TotalPool: { [options.sortOption.direction]: null } } as SortOption
+          : options.sortOption.type === "EndTime"
+          ? { EndTime: { [options.sortOption.direction]: null } } as SortOption
+          : { CreatedAt: { [options.sortOption.direction]: null } } as SortOption
       ]
     : [];
 

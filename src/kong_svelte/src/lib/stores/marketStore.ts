@@ -1,5 +1,5 @@
 import { writable, derived } from 'svelte/store';
-import type { Market } from '../../declarations/prediction_markets_backend_legacy/prediction_markets_backend.did';
+import type { Market } from '../../../../declarations/prediction_markets_backend/prediction_markets_backend.did';
 import { getAllMarkets, getAllCategories, getMarketsByCreator } from '$lib/api/predictionMarket';
 import { toastStore } from './toastStore';
 
@@ -161,9 +161,8 @@ function createMarketStore() {
             direction: 'Descending'
           };
         } else if (sortOption === 'end_time_asc' || sortOption === 'end_time_desc') {
-          // Backend doesn't support EndTime sorting, use CreatedAt as fallback
           backendSortOption = {
-            type: 'CreatedAt',
+            type: 'EndTime',
             direction: sortOption === 'end_time_asc' ? 'Ascending' : 'Descending'
           };
         }
@@ -171,7 +170,7 @@ function createMarketStore() {
         // Determine status filter for API
         let apiStatusFilter = undefined;
         if (statusFilter === 'open') {
-          apiStatusFilter = "Open";
+          apiStatusFilter = "Active";
         } else if (statusFilter === 'resolved') {
           apiStatusFilter = "Closed";
         } else if (statusFilter === 'voided') {
