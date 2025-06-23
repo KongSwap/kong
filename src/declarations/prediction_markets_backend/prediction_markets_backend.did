@@ -255,7 +255,6 @@ type MarketCategory = variant {
 };
 type MarketEndTime = variant { SpecificDate : nat; Duration : nat };
 type MarketResolutionDetails = record {
-  total_transfer_fees : nat;
   total_winning_pool : nat;
   total_market_pool : nat;
   platform_fee_amount : nat;
@@ -298,12 +297,6 @@ type MarketsByStatus = record {
   resolved : vec MarketResult;
   active : vec Market;
   expired_unresolved : vec Market;
-};
-type PlaceBetArgs = record {
-  token_id : opt text;
-  market_id : nat;
-  amount : nat;
-  outcome_index : nat;
 };
 type ProcessDetails = record { transaction_id : opt nat; timestamp : nat };
 type RefundReason = variant {
@@ -382,10 +375,12 @@ type TimeWeightPoint = record {
   relative_time : float64;
 };
 type TokenBalanceBreakdown = record {
+  disputed_penalty_fees : nat;
   platform_fees : nat;
   pending_claims : nat;
   voided_markets_unclaimed : nat;
   pending_markets : nat;
+  expired_markets : nat;
   resolved_markets_unclaimed : nat;
   active_markets : nat;
 };
@@ -495,7 +490,7 @@ service : () -> {
   is_admin : (principal) -> (bool) query;
   mark_claim_processed : (nat64) -> (bool);
   mark_transaction_resolved : (nat64) -> (Result);
-  place_bet : (PlaceBetArgs) -> (Result_6);
+  place_bet : (nat, nat, nat, opt text) -> (Result_6);
   propose_resolution : (ResolutionArgs) -> (ResolutionResult);
   resolve_via_admin : (ResolutionArgs) -> (ResolutionResult);
   resolve_via_admin_legacy : (nat, vec nat) -> (ResolutionResult);
