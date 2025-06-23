@@ -100,9 +100,9 @@ export function hasInsufficientBalance(
         if (!balance0 || !balance1) return true;
 
         // Convert balances to tokens
-        const balance0Tokens = new BigNumber(balance0.in_tokens.toString() ?? '0')
+        const balance0Tokens = new BigNumber(balance0.in_tokens ?? '0')
             .dividedBy(new BigNumber(10).pow(token0.decimals));
-        const balance1Tokens = new BigNumber(balance1.in_tokens.toString() ?? '0')
+        const balance1Tokens = new BigNumber(balance1.in_tokens ?? '0')
             .dividedBy(new BigNumber(10).pow(token1.decimals));
 
         // Convert fee_fixed (microtokens) to tokens

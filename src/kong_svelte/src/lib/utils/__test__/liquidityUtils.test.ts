@@ -22,27 +22,14 @@ import {
 } from '$lib/utils/liquidityUtils';
 import { calculateTokenUsdValue } from '../numberFormatUtils';
 
-// Updated mock tokenStore with bigger balances in microtokens
-vi.mock('$lib/stores/tokenStore', () => {
-  const storeValue = {
-    balances: {
-      'token0-id': { in_tokens: '200000000000' },
-      'token1-id': { in_tokens: '200000000000' }
-    }
-  };
-
+// Mock balancesStore with bigger balances in microtokens
+vi.mock('$lib/stores/balancesStore', () => {
   const balancesStoreValue = {
     'token0-id': { in_tokens: '200000000000' },
     'token1-id': { in_tokens: '200000000000' }
   };
 
   return {
-    tokenStore: {
-      subscribe: vi.fn((callback) => {
-        callback(storeValue);
-        return { unsubscribe: vi.fn() };
-      })
-    },
     currentUserBalancesStore: {
       subscribe: vi.fn((callback) => {
         callback(balancesStoreValue);
