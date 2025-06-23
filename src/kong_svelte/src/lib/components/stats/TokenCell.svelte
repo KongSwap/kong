@@ -3,32 +3,39 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { tooltip } from "$lib/actions/tooltip";
   import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { app } from "$lib/state/app.state.svelte";
 
-  export let row: FE.StatsToken;
-  export let isHovered = false;
-  export let topTokens: { gainers: Kong.Token[], losers: Kong.Token[], hottest: Kong.Token[], top_volume: Kong.Token[] } = { gainers: [], losers: [], hottest: [], top_volume: [] };
+  let { row, isHovered = false, topTokens = { gainers: [], losers: [], hottest: [], top_volume: [] } } = $props<{
+    row: FE.StatsToken;
+    isHovered?: boolean;
+    topTokens?: { gainers: Kong.Token[], losers: Kong.Token[], hottest: Kong.Token[], top_volume: Kong.Token[] };
+  }>();
+  
+  let isMobile = $derived(app.isMobile);
   
 
-  $: isExcludedToken = row.address === CKUSDT_CANISTER_ID || row.address === ICP_CANISTER_ID;
-  $: isTopVolume = !isExcludedToken && topTokens.top_volume.some(token => token.address === row.address) && Number(row.metrics?.volume_24h || 0) > 0;
-  $: isTopGainer = !isExcludedToken && topTokens.gainers.some(token => token.address === row.address) && Number(row.metrics?.price_change_24h || 0) > 0;
-  $: isTopLoser = !isExcludedToken && topTokens.losers.some(token => token.address === row.address) && Number(row.metrics?.price_change_24h || 0) < 0;
-  $: isLowTVL = Number(row.metrics?.tvl || 0) < 1000;
+  let isExcludedToken = $derived(row.address === CKUSDT_CANISTER_ID || row.address === ICP_CANISTER_ID);
+  let isTopVolume = $derived(!isExcludedToken && topTokens.top_volume.some(token => token.address === row.address) && Number(row.metrics?.volume_24h || 0) > 0);
+  let isTopGainer = $derived(!isExcludedToken && topTokens.gainers.some(token => token.address === row.address) && Number(row.metrics?.price_change_24h || 0) > 0);
+  let isTopLoser = $derived(!isExcludedToken && topTokens.losers.some(token => token.address === row.address) && Number(row.metrics?.price_change_24h || 0) < 0);
+  let isLowTVL = $derived(Number(row.metrics?.tvl || 0) < 1000);
   
   // For TVL, we'll calculate from the current tokens since it's not in topTokens
   // This is a simplified approach - you might want to add a top_tvl array to your API response
-  $: isTopTVL = false; // Disabled for now since we don't have top TVL data from fetchTopTokens
+  let isTopTVL = $state(false); // Disabled for now since we don't have top TVL data from fetchTopTokens
   
   // Get the rank for display in tooltips
-  $: volumeRank = isTopVolume ? topTokens.top_volume.findIndex(token => token.address === row.address) + 1 : undefined;
-  $: gainerRank = isTopGainer ? topTokens.gainers.findIndex(token => token.address === row.address) + 1 : undefined;
-  $: loserRank = isTopLoser ? topTokens.losers.findIndex(token => token.address === row.address) + 1 : undefined;
+  let volumeRank = $derived(isTopVolume ? topTokens.top_volume.findIndex(token => token.address === row.address) + 1 : undefined);
+  let gainerRank = $derived(isTopGainer ? topTokens.gainers.findIndex(token => token.address === row.address) + 1 : undefined);
+  let loserRank = $derived(isTopLoser ? topTokens.losers.findIndex(token => token.address === row.address) + 1 : undefined);
 </script>
 
 <div class="flex items-center gap-1">
   <TokenImages tokens={[row]} containerClass="self-center" size={28} showNetworkIcon />
-  <span class="token-name ml-2 {isHovered ? '!text-kong-primary' : ''}">{row.name}</span>
-  <span class="token-symbol {isHovered ? '!text-kong-primary' : ''}">({row.symbol})</span>
+  {#if !isMobile}
+    <!-- <span class="token-name ml-2 {isHovered ? '!text-kong-primary' : ''}">{row.name}</span> -->
+    <span class="token-name ml-2 {isHovered ? '!text-kong-primary' : ''}">{row.symbol}</span>
+  {/if}
   <div class="flex gap-1 items-center">
     {#if isLowTVL}
       <div use:tooltip={{ text: "Low TVL (<$1,000) - Limited liquidity", direction: "top" }}>
@@ -60,7 +67,7 @@
 
 <style lang="postcss">
   .token-name {
-    @apply text-kong-text-primary font-medium truncate max-w-[120px] text-base md:max-w-none;
+    @apply text-kong-text-primary font-medium truncate max-w-[120px] text-base md:max-w-none text-ellipsis;
   }
 
   .token-symbol {

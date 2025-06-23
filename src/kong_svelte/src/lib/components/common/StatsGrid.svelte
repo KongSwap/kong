@@ -1,21 +1,23 @@
 <script lang="ts">
     import { panelRoundness } from "$lib/stores/derivedThemeStore";
-  import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-svelte";
-  import { onMount } from "svelte";
+    import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-svelte";
+    import { app } from "$lib/state/app.state.svelte"
 
   const {
     data = [],
     columns = [],
     itemsPerPage = 50,
     pageSizeOptions = [25, 50, 100, 200],
-    defaultSort = { column: '', direction: 'desc' as 'asc' | 'desc' },
     onRowClick = null,
     rowKey = 'id',
     totalItems = 0,
     currentPage = 1,
     onPageChange = null,
     onPageSizeChange = null,
-    isLoading = false
+    isLoading = false,
+    sortColumn = '',
+    sortDirection = 'desc',
+    onSortChange = null
   } = $props<{
     data: any[];
     columns: {
@@ -24,7 +26,7 @@
       sortable?: boolean;
       align?: 'left' | 'center' | 'right';
       width?: string;
-      formatter?: (value: any) => string | number;
+      formatter?: (value: any, index?: number) => string | number;
       component?: any;
       componentProps?: any;
       sortValue?: (row: any) => string | number;
@@ -32,7 +34,6 @@
     }[];
     itemsPerPage?: number;
     pageSizeOptions?: number[];
-    defaultSort?: { column: string; direction: 'asc' | 'desc' };
     onRowClick?: ((row: any) => void) | null;
     rowKey?: string;
     totalItems?: number;
@@ -40,15 +41,18 @@
     onPageChange?: ((page: number) => void) | null;
     onPageSizeChange?: ((pageSize: number) => void) | null;
     isLoading?: boolean;
+    sortColumn?: string;
+    sortDirection?: 'asc' | 'desc';
+    onSortChange?: ((column: string, direction: 'asc' | 'desc') => void) | null;
   }>();
 
-  let sortColumn = $state(defaultSort.column || '');
-  let sortDirection = $state<'asc' | 'desc'>(defaultSort.direction || 'desc');
   let totalPages = $derived(Math.max(1, Math.ceil(totalItems / itemsPerPage)));
   let hoveredRowIndex = $state<number | null>(null);
+  let isMobile = $derived(app.isMobile);
 
-  // Reference to the scrollable container
+  // Reference to the scrollable container and frozen content
   let scrollContainer: HTMLDivElement;
+  let frozenBody: HTMLDivElement;
   let previousPageValue = $state(currentPage); // Track previous page
 
   // Column map for optimized lookups
@@ -85,52 +89,53 @@
     return Number(row.metrics?.tvl || 0) < 1000;
   }
 
-  let sortedData = $derived(() => {
-    if (!data || !Array.isArray(data)) return [];
-    
-    return [...data].sort((a, b) => {
-      let aValue = getValue(a, sortColumn) ?? 0;
-      let bValue = getValue(b, sortColumn) ?? 0;
-
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortDirection === 'asc' 
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      }
-
-      aValue = Number(aValue || 0);
-      bValue = Number(bValue || 0);
-
-      if (isNaN(aValue)) aValue = 0;
-      if (isNaN(bValue)) bValue = 0;
-
-      return sortDirection === 'asc' 
-        ? aValue - bValue 
-        : bValue - aValue;
-    });
-  });
-
-  let displayData = $state([]);
-
-  $effect(() => {
-    displayData = sortedData();
-  });
+  // Use the provided data directly (already sorted by parent)
+  let displayData = $derived(data);
 
   $effect(() => {
     // Scroll to top when currentPage changes
     if (scrollContainer && currentPage !== previousPageValue) {
       scrollContainer.scrollTop = 0;
+      if (frozenBody) {
+        frozenBody.scrollTop = 0;
+      }
     }
     previousPageValue = currentPage; // Update after check
   });
 
+  // Bidirectional scroll sync between frozen and scrollable sections
+  $effect(() => {
+    if (!scrollContainer || !frozenBody) return;
+
+    frozenBody.scrollTop = scrollContainer.scrollTop;
+    scrollContainer.scrollTop = frozenBody.scrollTop;
+
+    scrollContainer.addEventListener('scroll', () => {
+      frozenBody.scrollTop = scrollContainer.scrollTop;
+    });
+    frozenBody.addEventListener('scroll', () => {
+      scrollContainer.scrollTop = frozenBody.scrollTop;
+    });
+    
+    return () => {
+      scrollContainer.removeEventListener('scroll', () => {
+        frozenBody.scrollTop = scrollContainer.scrollTop;
+      });
+      frozenBody.removeEventListener('scroll', () => {
+        scrollContainer.scrollTop = frozenBody.scrollTop;
+      });
+    };
+  });
+
   function toggleSort(column: string) {
+    if (!onSortChange) return;
+    
+    let newDirection: 'asc' | 'desc' = 'desc';
     if (sortColumn === column) {
-      sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-    } else {
-      sortColumn = column;
-      sortDirection = 'desc';
+      newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
     }
+    
+    onSortChange(column, newDirection);
   }
 
   function getSortIcon(column: string) {
@@ -176,91 +181,164 @@
     onPageSizeChange?.(newPageSize);
   }
 
-  onMount(() => {
-    if (defaultSort.column) {
-      sortColumn = defaultSort.column;
-      sortDirection = defaultSort.direction;
-    }
-  });
-
-  // Generate column templates for grid based on provided width or auto-sizing
-  let gridTemplateColumns = $derived(columns.map(col => {
-    if (col.key === '#') return 'minmax(50px, 0.5fr)';
-    if (col.key === 'token') return 'minmax(200px, 2fr)';
-    if (col.key === 'price_change_24h') return 'minmax(80px, 1fr)';
-    return col.width || 'minmax(100px, 1fr)';
+  // Split columns into frozen and scrollable
+  let frozenColumns = $derived(columns.slice(0, 2)); // First two columns (# and token)
+  let scrollableColumns = $derived(columns.slice(2)); // Rest of the columns
+  
+  // Generate column templates for frozen columns
+  let frozenGridTemplateColumns = $derived(frozenColumns.map(col => {
+    if (col.key === '#') return isMobile ? '35px' : '50px';
+    if (col.key === 'token') return isMobile ? '80px' : '250px';
+    return col.width || '120px';
   }).join(' '));
+  
+  // Generate column templates for scrollable columns
+  let scrollableGridTemplateColumns = $derived(scrollableColumns.map(col => {
+    if (col.key === 'price_change_24h') return isMobile ? '100px' : '120px';
+    if (col.key === 'price') return isMobile ? '100px' : '120px';
+    if (col.key === 'volume_24h') return isMobile ? '100px' : '140px';
+    if (col.key === 'market_cap') return isMobile ? '100px' : '140px';
+    if (col.key === 'tvl') return isMobile ? '100px' : '140px';
+    return col.width || '120px';
+  }).join(' '));
+
 </script>
 
 <div class="stats-grid-container">
-  <!-- Fixed Header -->
-  <div class="grid-header-container">
-    <div class="grid-header" style="grid-template-columns: {gridTemplateColumns}">
-      {#each columns as column (column.key)}
-        <div 
-          class="header-cell {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'} {column.sortable ? 'sortable' : ''}"
-          onclick={() => column.sortable && toggleSort(column.key)}
-        >
-          <span>{column.title}</span>
-          {#if column.sortable}
-            <svelte:component
-              this={getSortIcon(column.key)}
-              class="sort-icon {sortColumn === column.key ? 'active' : ''}"
-            />
-          {/if}
+  <!-- Frozen Columns + Scrollable Container -->
+  <div class="grid-scroll-container">
+    <div class="grid-content-wrapper">
+      <!-- Frozen Columns Section -->
+      <div class="frozen-columns-section">
+        <div class="frozen-content" bind:this={frozenBody}>
+          <!-- Frozen Header -->
+          <div class="grid-header frozen-header bg-kong-bg-secondary" style="grid-template-columns: {frozenGridTemplateColumns}">
+            {#each frozenColumns as column (column.key)}
+              <div 
+                class="header-cell {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'} {column.sortable ? 'sortable' : ''} {column.sortable && sortColumn === column.key ? 'active' : ''}"
+                onclick={() => column.sortable && toggleSort(column.key)}
+              >
+                <span>{column.title}</span>
+              </div>
+            {/each}
+          </div>
+          
+          <!-- Frozen Body -->
+          <div class="grid-body frozen-body">
+            {#each displayData as row, idx (row[rowKey] || idx)}
+              <div
+                class="grid-row frozen-row {$panelRoundness} {onRowClick ? 'clickable' : ''} {hoveredRowIndex === idx ? 'hovered' : ''} {isLowTVL(row) ? 'low-tvl' : ''}"
+                style="grid-template-columns: {frozenGridTemplateColumns}"
+                onclick={() => onRowClick?.(row)}
+                onmouseenter={() => onRowMouseEnter(idx)}
+                onmouseleave={onRowMouseLeave}
+              >
+                {#each frozenColumns as column (column.key)}
+                  {@const value = getValue(row, column.key)}
+                  {@const formattedValue = column.formatter ? column.formatter(row, idx) : value}
+                  
+                  <div class="grid-cell {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'}">
+                    {#if column.component}
+                      <svelte:component 
+                        this={column.component} 
+                        row={row} 
+                        isHovered={hoveredRowIndex === idx} 
+                        {...(column.componentProps || {})} 
+                      />
+                    {:else if column.isHtml}
+                      <div class="cell-content {column.key === 'price_change_24h' ? getTrendClass(value) : ''}">
+                        {@html formattedValue}
+                      </div>
+                    {:else}
+                      <div class="cell-content {column.key === 'price_change_24h' ? getTrendClass(value) : ''}">
+                        {formattedValue}
+                      </div>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            {/each}
+          </div>
         </div>
-      {/each}
-    </div>
-  </div>
-  
-  <!-- Scrollable Content Area -->
-  <div class="grid-body-container" bind:this={scrollContainer}>
-    <div class="grid-body">
-      {#each displayData as row, idx (row[rowKey] || idx)}
-        <div
-          class="grid-row {$panelRoundness} {onRowClick ? 'clickable' : ''} {hoveredRowIndex === idx ? 'hovered' : ''} {isLowTVL(row) ? 'low-tvl' : ''}"
-          style="grid-template-columns: {gridTemplateColumns}"
-          onclick={() => onRowClick?.(row)}
-          onmouseenter={() => onRowMouseEnter(idx)}
-          onmouseleave={onRowMouseLeave}
-        >
-          {#each columns as column (column.key)}
-            {@const value = getValue(row, column.key)}
-            {@const formattedValue = column.formatter ? column.formatter(row) : value}
-            
-            <div class="grid-cell {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'}">
-              {#if column.component}
-                <svelte:component 
-                  this={column.component} 
-                  row={row} 
-                  isHovered={hoveredRowIndex === idx} 
-                  {...(column.componentProps || {})} 
-                />
-              {:else if column.isHtml}
-                <div class="cell-content {column.key === 'price_change_24h' ? getTrendClass(value) : ''}">
-                  {@html formattedValue}
-                </div>
-              {:else}
-                <div class="cell-content {column.key === 'price_change_24h' ? getTrendClass(value) : ''}">
-                  {formattedValue}
-                </div>
-              {/if}
-            </div>
-          {/each}
-        </div>
-      {/each}
+      </div>
       
-      {#if displayData.length === 0 && !isLoading}
-        <div class="empty-state">
-          No data available
+      <!-- Scrollable Columns Section -->
+      <div class="scrollable-columns-section">
+        <div class="scrollable-content" bind:this={scrollContainer}>
+          <!-- Scrollable Header -->
+          <div class="grid-header scrollable-header bg-kong-bg-secondary justify-between" style="grid-template-columns: {scrollableGridTemplateColumns}">
+            {#each scrollableColumns as column (column.key)}
+              <div 
+                class="header-cell {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'} {column.sortable ? 'sortable' : ''} {column.sortable && sortColumn === column.key ? 'active' : ''}"
+                onclick={() => column.sortable && toggleSort(column.key)}
+              >
+                <span>{column.title}</span>
+                {#if column.sortable}
+                  <div class="sort-icon-container">
+                    {#if sortColumn !== column.key}
+                      <ArrowUpDown size={12} />
+                    {:else if sortDirection === 'asc'}
+                      <ArrowUp size={12} />
+                    {:else}
+                      <ArrowDown size={12} />
+                    {/if}
+                  </div>
+                {/if}
+              </div>
+            {/each}
+          </div>
+          
+          <!-- Scrollable Body -->
+          <div class="grid-body scrollable-body">
+            {#each displayData as row, idx (row[rowKey] || idx)}
+              <div
+                class="grid-row scrollable-row justify-between {$panelRoundness} {onRowClick ? 'clickable' : ''} {hoveredRowIndex === idx ? 'hovered' : ''} {isLowTVL(row) ? 'low-tvl' : ''}"
+                style="grid-template-columns: {scrollableGridTemplateColumns}"
+                onclick={() => onRowClick?.(row)}
+                onmouseenter={() => onRowMouseEnter(idx)}
+                onmouseleave={onRowMouseLeave}
+              >
+                {#each scrollableColumns as column (column.key)}
+                  {@const value = getValue(row, column.key)}
+                  {@const formattedValue = column.formatter ? column.formatter(row, idx) : value}
+                  
+                  <div class="grid-cell {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'}">
+                    {#if column.component}
+                      <svelte:component 
+                        this={column.component} 
+                        row={row} 
+                        isHovered={hoveredRowIndex === idx} 
+                        {...(column.componentProps || {})} 
+                      />
+                    {:else if column.isHtml}
+                      <div class="cell-content {column.key === 'price_change_24h' ? getTrendClass(value) : ''}">
+                        {@html formattedValue}
+                      </div>
+                    {:else}
+                      <div class="cell-content {column.key === 'price_change_24h' ? getTrendClass(value) : ''}">
+                        {formattedValue}
+                      </div>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            {/each}
+          </div>
         </div>
-      {/if}
+      </div>
     </div>
+    
+    {#if displayData.length === 0 && !isLoading}
+      <div class="empty-state">
+        No data available
+      </div>
+    {/if}
   </div>
 
   <!-- Fixed Footer/Pagination -->
-  <div class="grid-footer-container">
+  <div class="footer-container">
     <div class="pagination-container">
+      {#if !isMobile}
       <div class="pagination-left">
         {#if onPageSizeChange}
           <div class="page-size-selector">
@@ -278,52 +356,54 @@
           </div>
         {/if}
       </div>
-      <div class="pagination-info">
-        {#if totalItems > 0}
-          Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} items
-        {:else}
-          No items to display
-        {/if}
-      </div>
-      <div class="pagination-controls">
-        <button
-          class="pagination-pill {currentPage === 1 ? 'disabled' : 'active'}"
-          onclick={previousPage}
-          disabled={currentPage === 1 || totalItems === 0}
-        >
-          Previous
-        </button>
-        {#if totalItems > 0}
-          {#each Array(totalPages) as _, i}
-            {@const pageNum = i + 1}
-            {@const showPage = 
-              pageNum === 1 || 
-              pageNum === totalPages || 
-              (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)}
-            {#if showPage}
-              <button
-                class="pagination-pill {currentPage === pageNum ? 'current' : 'active'}"
-                onclick={() => goToPage(pageNum)}
-              >
-                {pageNum}
-              </button>
-            {:else if pageNum === currentPage - 2 || pageNum === currentPage + 2}
-              <span class="pagination-ellipsis">...</span>
-            {/if}
-          {/each}
-        {/if}
-        <button
-          class="pagination-pill {currentPage === totalPages || totalItems === 0 ? 'disabled' : 'active'}"
-          onclick={nextPage}
-          disabled={currentPage === totalPages || totalItems === 0}
-        >
-          Next
-        </button>
+      {/if}
+      <div class="flex gap-2 w-full justify-end">
+        <!-- <div class="pagination-info">
+          {#if totalItems > 0}
+            Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} items
+          {:else}
+            No items to display
+          {/if}
+        </div> -->
+        <div class="pagination-controls">
+          <button
+            class="pagination-pill {currentPage === 1 ? 'disabled' : 'active'}"
+            onclick={previousPage}
+            disabled={currentPage === 1 || totalItems === 0}
+          >
+            Previous
+          </button>
+          {#if totalItems > 0}
+            {#each Array(totalPages) as _, i}
+              {@const pageNum = i + 1}
+              {@const showPage = 
+                pageNum === 1 || 
+                pageNum === totalPages || 
+                (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)}
+              {#if showPage}
+                <button
+                  class="pagination-pill {currentPage === pageNum ? 'current' : 'active'}"
+                  onclick={() => goToPage(pageNum)}
+                >
+                  {pageNum}
+                </button>
+              {:else if pageNum === currentPage - 2 || pageNum === currentPage + 2}
+                <span class="pagination-ellipsis">...</span>
+              {/if}
+            {/each}
+          {/if}
+          <button
+            class="pagination-pill {currentPage === totalPages || totalItems === 0 ? 'disabled' : 'active'}"
+            onclick={nextPage}
+            disabled={currentPage === totalPages || totalItems === 0}
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Loading Overlay -->
   {#if isLoading}
     <div class="loading-overlay">
       <div class="loading-spinner"></div>
@@ -335,34 +415,78 @@
   .stats-grid-container {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 100px); /* Adjust height to fit within viewport with some spacing */
-    max-height: calc(100vh - 180px); /* Prevent overflow */
+    height: 100%;
     width: 100%;
     position: relative;
     overflow: hidden;
     border-radius: 0.5rem;
   }
   
-  .grid-header-container {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    background-color: var(--bg-dark);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    flex-shrink: 0; /* Prevent header from shrinking */
-  }
-  
-  .grid-body-container {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
+  .grid-scroll-container {
+    flex: 1; /* Take all remaining space */
     position: relative;
     min-height: 0; /* Critical for flex child to scroll properly */
+    overflow: hidden; /* Container doesn't scroll, children handle scrolling */
   }
   
-  .grid-footer-container {
-    position: sticky;
-    bottom: 0;
+  .grid-content-wrapper {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+  
+  .frozen-columns-section {
+    display: flex;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    border-right: 2px solid var(--kong-border);
+    background-color: var(--bg-dark);
+    z-index: 15;
+  }
+  
+  .frozen-content {
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    /* Hide scrollbars */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* Internet Explorer 10+ */
+  }
+  
+  /* Hide scrollbars for WebKit browsers */
+  .frozen-content::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .scrollable-columns-section {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .scrollable-content {
+    height: 100%; /* Match frozen content height */
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: auto;
+    /* Hide scrollbars */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* Internet Explorer 10+ */
+  }
+  
+  /* Hide scrollbars for WebKit browsers */
+  .scrollable-content::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .footer-container {
+    display: flex;
+    height: 60px; /* Fixed height for footer - increased to accommodate content */
+    position: relative;
     z-index: 20;
     background-color: var(--bg-dark);
     box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.1);
@@ -371,8 +495,49 @@
   
   .grid-header {
     display: grid;
+    min-width: max-content; /* Ensure header doesn't compress */
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     border-bottom: 1px solid var(--kong-border);
-    background-color: var(--bg-dark);
+  }
+  
+  .frozen-header {
+    border-right: none; /* Remove right border since we have section border */
+    position: sticky;
+    top: 0;
+    z-index: 11; /* Higher than scrollable header */
+  }
+  
+  .scrollable-header {
+    border-left: none; /* Remove left border since frozen section has right border */
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  
+  .grid-body {
+    min-width: max-content; /* Ensure body doesn't compress */
+  }
+  
+  .frozen-body {
+    min-width: max-content;
+  }
+  
+  .scrollable-body {
+    min-width: max-content;
+  }
+  
+  .frozen-row,
+  .scrollable-row {
+    height: 48px; /* Ensure consistent row height */
+  }
+  
+  /* Synchronize row hover effects between frozen and scrollable sections */
+  .grid-row.frozen-row.hovered ~ .grid-content-wrapper .scrollable-row.hovered,
+  .grid-row.scrollable-row.hovered ~ .grid-content-wrapper .frozen-row.hovered {
+    background-color: rgba(var(--bg-light) / 0.8);
   }
   
   .header-cell {
@@ -384,21 +549,44 @@
     white-space: nowrap;
     display: flex;
     align-items: center;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, color 0.2s, transform 0.1s;
+    background-color: var(--bg-dark); /* Ensure solid background */
+    border-right: 1px solid transparent; /* Match cell border structure */
+    gap: 0.25rem;
   }
   
-  /* First column with reduced horizontal padding */
+  .grid-row {
+    display: grid;
+    align-items: center;
+    height: 48px;
+    border-bottom: 1px solid rgba(var(--border) / 0.1);
+    transition: background-color 0.2s;
+    background-color: var(--bg-dark); /* Ensure rows have solid background */
+  }
+  
+  .grid-cell {
+    padding: 0.75rem 1rem; /* Match header cell padding exactly */
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    white-space: nowrap; /* Prevent text wrapping */
+    border-right: 1px solid transparent; /* Match header cell border structure */
+  }
+  
+  /* First column with reduced horizontal padding - apply to both header and body */
   .grid-row > .grid-cell:first-child,
   .grid-header > .header-cell:first-child {
     padding-left: 0.5rem;
     padding-right: 0.5rem;
   }
   
-  .header-cell.text-right {
+  .header-cell.text-right,
+  .grid-cell.text-right {
     justify-content: flex-end;
   }
   
-  .header-cell.text-center {
+  .header-cell.text-center,
+  .grid-cell.text-center {
     justify-content: center;
   }
   
@@ -408,29 +596,53 @@
   
   .header-cell.sortable:hover {
     background-color: rgba(255, 255, 255, 0.05);
+    transform: translateY(-1px);
   }
   
-  .sort-icon {
-    width: 1rem;
-    height: 1rem;
-    margin-left: 0.25rem;
-    opacity: 0.5;
+  .header-cell.sortable:active {
+    transform: translateY(0);
+  }
+  
+  .header-cell.sortable.active {
+    background-color: rgba(var(--primary) / 0.1);
+    color: rgb(var(--primary));
+    position: relative;
+    box-shadow: 0 0 0 1px rgba(var(--primary) / 0.3);
+    animation: sortPulse 0.3s ease-out;
+  }
+  
+  .header-cell.sortable.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgb(var(--primary)), transparent);
+    animation: sortSlide 0.4s ease-out;
   }
   
   .sort-icon.active {
     opacity: 1;
   }
   
-  .grid-body {
-    width: 100%;
+  .sort-icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
+    opacity: 0.6;
   }
   
-  .grid-row {
-    display: grid;
-    align-items: center;
-    min-height: 48px;
-    border-bottom: 1px solid rgba(var(--border) / 0.1);
-    transition: background-color 0.2s;
+  .header-cell.sortable:hover .sort-icon-container {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  
+  .header-cell.sortable.active .sort-icon-container {
+    opacity: 1;
+    transform: scale(1.15);
+    animation: iconBounce 0.3s ease-out;
   }
   
   .grid-row.clickable {
@@ -450,25 +662,11 @@
     opacity: 0.7;
   }
   
-  .grid-cell {
-    padding: 0.3rem 1rem;
-    display: flex;
-    align-items: center;
-    overflow: hidden;
-  }
-  
-  .grid-cell.text-right {
-    justify-content: flex-end;
-  }
-  
-  .grid-cell.text-center {
-    justify-content: center;
-  }
-  
   .cell-content {
     width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap; /* Prevent text wrapping */
   }
   
   .loading-overlay {
@@ -494,12 +692,18 @@
   }
   
   .pagination-container {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    display: flex;
+    height: 100%;
+    width: 100%;
+    justify-content: space-between;
     align-items: center;
-    padding: 0.75rem 1rem;
+    padding: 0 1rem;
     background-color: var(--bg-dark);
     border-top: 1px solid var(--kong-border);
+
+    @media (max-width: 768px) {
+      justify-content: center;
+    }
   }
 
   .pagination-left {
@@ -509,6 +713,9 @@
   }
   
   .pagination-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 0.875rem;
     color: var(--text-secondary);
     text-align: center;
@@ -520,6 +727,7 @@
     align-items: center;
     justify-content: flex-end;
     gap: 0.5rem;
+    flex-wrap: wrap; /* Allow pagination to wrap on very small screens */
   }
 
   .page-size-selector {
@@ -531,6 +739,7 @@
   .page-size-label {
     font-size: 0.875rem;
     color: var(--text-secondary);
+    white-space: nowrap;
   }
 
   .page-size-select {
@@ -542,6 +751,7 @@
     font-size: 0.875rem;
     cursor: pointer;
     transition: all 0.2s;
+    min-width: 60px; /* Prevent select from being too small */
   }
 
   .page-size-select:hover {
@@ -563,6 +773,8 @@
     border: none;
     outline: none;
     cursor: pointer;
+    white-space: nowrap; /* Prevent text wrapping */
+    min-width: 0; /* Allow shrinking if needed */
   }
   
   .pagination-pill.active {
@@ -588,16 +800,119 @@
   }
   
   .empty-state {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 200px;
     color: rgb(var(--text-secondary));
+    background-color: var(--bg-dark); /* Ensure empty state has solid background */
+    padding: 2rem;
+    border-radius: 0.5rem;
+  }
+
+  /* Mobile-specific improvements */
+  @media (max-width: 768px) {
+    
+    .frozen-columns-section {
+      min-width: 100px;
+    }
+    
+    .scrollable-columns-section {
+      /* Enable smooth scrolling on mobile */
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* .header-cell {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.75rem; 
+    } */
+    
+    .grid-cell {
+      padding: 0.5rem 0.75rem; 
+      font-size: 0.875rem;
+    }
+    
+    /* First column with reduced horizontal padding - apply to both header and body */
+    .frozen-row > .grid-cell:first-child,
+    .frozen-header > .header-cell:first-child {
+      padding-left: 0.25rem;
+      padding-right: 0.25rem;
+    }
+  
+    
+    .pagination-left {
+      justify-content: center;
+      order: 3;
+    }
+    
+    .pagination-info {
+      order: 1;
+      font-size: 0.75rem;
+    }
+    
+    .pagination-controls {
+      order: 2;
+      justify-content: center;
+      gap: 0.25rem;
+    }
+    
+    .pagination-pill {
+      padding: 0.2rem 0.5rem;
+      font-size: 0.75rem;
+    }
   }
   
   @keyframes spin {
     to {
       transform: rotate(360deg);
+    }
+  }
+  
+  @keyframes sortPulse {
+    0% {
+      transform: scale(1);
+      box-shadow: 0 0 0 1px rgba(var(--primary) / 0.3);
+    }
+    50% {
+      transform: scale(1.02);
+      box-shadow: 0 0 0 3px rgba(var(--primary) / 0.2);
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 1px rgba(var(--primary) / 0.3);
+    }
+  }
+  
+  @keyframes sortSlide {
+    0% {
+      opacity: 0;
+      transform: scaleX(0);
+    }
+    50% {
+      opacity: 1;
+      transform: scaleX(0.8);
+    }
+    100% {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+  }
+  
+  @keyframes iconBounce {
+    0% {
+      transform: scale(1.15);
+    }
+    30% {
+      transform: scale(1.3);
+    }
+    60% {
+      transform: scale(1.1);
+    }
+    100% {
+      transform: scale(1.15);
     }
   }
 </style> 
