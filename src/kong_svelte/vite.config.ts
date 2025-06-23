@@ -4,7 +4,7 @@ import { defineConfig, loadEnv, type ConfigEnv } from 'vite';
 import environment from 'vite-plugin-environment';
 import * as dotenv from 'dotenv';
 import * as path from "path";
-import { VitePWA } from 'vite-plugin-pwa';
+import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import viteCompression from 'vite-plugin-compression';
 import type { UserConfig } from 'vite';
 import { execSync } from 'child_process';
@@ -45,7 +45,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
     sveltekit(),
     environment("all", { prefix: "CANISTER_" }),
     environment("all", { prefix: "DFX_" }),
-    VitePWA({
+    SvelteKitPWA({
       registerType: 'autoUpdate',
       manifest: {
         name: 'KongSwap',

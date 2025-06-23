@@ -49,6 +49,7 @@
     "@types/node": "^22.13.4",
     "@types/pouchdb-core": "7.0.15",
     "@types/qrcode": "1.5.5",
+    "@vite-pwa/sveltekit": "^1.0.0",
     "@windoge98/plug-n-play": "0.0.61-siws-8",
     "autoprefixer": "10.4.20",
     "dotenv": "16.4.7",
@@ -70,7 +71,6 @@
     "vite": "6.3.5",
     "vite-plugin-compression": "0.5.1",
     "vite-plugin-environment": "1.1.3",
-    "vite-plugin-pwa": "1.0.0",
     "vitest": "3.0.6"
   }
 }
