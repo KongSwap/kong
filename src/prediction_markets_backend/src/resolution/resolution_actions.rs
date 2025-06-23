@@ -11,7 +11,7 @@ use crate::resolution::resolution::{*, ResolutionResult};
 use crate::controllers::admin::*;
 use crate::market::market::*;
 use crate::storage::{MARKETS, RESOLUTION_PROPOSALS};
-use crate::types::{MarketId, OutcomeIndex, ResolutionArgs};
+use crate::types::{MarketId, ResolutionArgs};
 
 /// Resolves a market directly (for admin created markets)
 ///

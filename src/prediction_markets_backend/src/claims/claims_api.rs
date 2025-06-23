@@ -80,8 +80,9 @@ pub async fn retry_claim(claim_id: u64) -> ClaimResult {
         }
     };
     
+    let is_caller = claim.user == ic_cdk::caller();
     // Check permissions - only claim owner or admin can retry
-    if claim.user != ic_cdk::caller() && !is_admin(ic_cdk::caller()) {
+    if !is_caller && !is_admin(ic_cdk::caller()) {
         return ClaimResult {
             claim_id,
             success: false,
@@ -90,7 +91,10 @@ pub async fn retry_claim(claim_id: u64) -> ClaimResult {
         };
     }
     
-    retry_failed_claim(claim_id).await
+    // Make different amount of maximum calls for regular user and admin
+    let max_claim_attempts = if is_caller {5} else {99};
+
+    retry_failed_claim(claim_id, max_claim_attempts).await
 }
 
 /// Create a claim for testing purposes (admin only)

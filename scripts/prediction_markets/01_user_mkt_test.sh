@@ -1,7 +1,7 @@
 #!/bin/bash
 # Enhanced prediction markets test script with colorized output
 # This script clearly distinguishes between commands and canister responses
-
+set -e
 # Color definitions using tput (more reliable across different terminals)
 TITLE_COLOR=$(tput bold; tput setaf 6)   # Bold Cyan for section titles
 CMD_COLOR=$(tput setaf 2)                # Green for commands/descriptions
@@ -53,8 +53,8 @@ section "Testing User-Created Markets with Enhanced Output"
 run_dfx "PREDICTION_MARKETS_CANISTER=\$(dfx canister id prediction_markets_backend)" "Getting prediction markets canister ID"
 PREDICTION_MARKETS_CANISTER=$(dfx canister id prediction_markets_backend)
 
-run_dfx "KONG_LEDGER=\$(dfx canister id kskong_ledger)" "Getting KONG ledger canister ID"
-KONG_LEDGER=$(dfx canister id kskong_ledger)
+run_dfx "KONG_LEDGER=\$(dfx canister id kong_ledger)" "Getting KONG ledger canister ID"
+KONG_LEDGER=$(dfx canister id kong_ledger)
 
 run_dfx "KONG_FEE=\$(dfx canister call \${KONG_LEDGER} icrc1_fee \"()\" | awk -F'[:]+' '{print \$1}' | awk '{gsub(/\(/, \"\"); print}')" "Getting KONG transaction fee"
 KONG_FEE=$(dfx canister call ${KONG_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
@@ -189,7 +189,7 @@ run_dfx "dfx identity use dave" "Switching to Dave identity"
 run_dfx "DAVE_PRINCIPAL=\$(dfx identity get-principal)" "Getting Dave's principal"
 DAVE_PRINCIPAL=$(dfx identity get-principal)
 
-BET_AMOUNT=100000000000 # 10'000 KONG
+BET_AMOUNT=100000000000 # 1'000 KONG
 EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 60000000000" | bc)  # approval expires 60 seconds from now
 
 # Approve tokens for transfer
@@ -232,7 +232,8 @@ section "Step 8: Alice (creator) proposing resolution with 'Yes' as winner"
 
 run_dfx "dfx identity use alice" "Switching back to Alice identity (market creator)"
 echo -e "${CMD_COLOR}Alice proposing resolution...${RESET}"
-run_dfx "dfx canister call prediction_markets_backend propose_resolution \"(\$MARKET_ID, vec { 0 : nat })\"" "Proposing market resolution with Yes as winner"
+
+run_dfx "dfx canister call prediction_markets_backend propose_resolution \"record {market_id = \$MARKET_ID; winning_outcomes = vec {0: nat}}\"" "Proposing market resolution with Yes as winner"
 
 # Step 9: Admin approving resolution
 section "Step 9: Admin approving resolution"
@@ -241,7 +242,7 @@ run_dfx "dfx identity use default" "Switching to default (admin) identity"
 run_dfx "DEFAULT_PRINCIPAL=\$(dfx identity get-principal)" "Getting Admin's principal"
 DEFAULT_PRINCIPAL=$(dfx identity get-principal)
 echo -e "${CMD_COLOR}Admin approving resolution...${RESET}"
-run_dfx "dfx canister call prediction_markets_backend resolve_via_admin \"(\$MARKET_ID, vec { 0 : nat })\"" "Admin confirming resolution"
+run_dfx "dfx canister call prediction_markets_backend resolve_via_admin \"record {market_id = \$MARKET_ID; winning_outcomes = vec {0: nat}}\"" "Admin confirming resolution"
 
 # Step 10: Checking market status after resolution
 section "Step 10: Checking market status after resolution"
@@ -263,19 +264,19 @@ section "Step 13: Checking for pending claims"
 
 # Alice's pending claims
 run_dfx "dfx identity use alice" "Switching to Alice identity"
-run_dfx "dfx canister call prediction_markets_backend get_user_pending_claims \"()\"" "Checking Alice's pending claims"
+run_dfx "dfx canister call prediction_markets_backend get_user_pending_claims \"(\\\"$ALICE_PRINCIPAL\\\")\"" "Checking Alice's pending claims"
 
 # Bob's pending claims
 run_dfx "dfx identity use bob" "Switching to Bob identity"
-run_dfx "dfx canister call prediction_markets_backend get_user_pending_claims \"()\"" "Checking Bob's pending claims"
+run_dfx "dfx canister call prediction_markets_backend get_user_pending_claims \"(\\\"$BOB_PRINCIPAL\\\")\"" "Checking Bob's pending claims"
 
 # Carol's pending claims
 run_dfx "dfx identity use carol" "Switching to Carol identity"
-run_dfx "dfx canister call prediction_markets_backend get_user_pending_claims \"()\"" "Checking Carol's pending claims"
+run_dfx "dfx canister call prediction_markets_backend get_user_pending_claims \"(\\\"$CAROL_PRINCIPAL\\\")\"" "Checking Carol's pending claims"
 
 # Dave's pending claims
 run_dfx "dfx identity use dave" "Switching to Dave identity"
-run_dfx "dfx canister call prediction_markets_backend get_user_pending_claims \"()\"" "Checking Dave's pending claims"
+run_dfx "dfx canister call prediction_markets_backend get_user_pending_claims \"(\\\"$DAVE_PRINCIPAL\\\")\"" "Checking Dave's pending claims"
 
 # Step 14: Claiming winnings for users with pending claims
 section "Step 14: Claiming winnings"
@@ -285,9 +286,10 @@ claim_winnings() {
     local user=$1
     echo -e "${CMD_COLOR}Switching to $user identity${RESET}"
     dfx identity use $user
+    local user_principal=$(dfx identity get-principal)
     
     echo -e "${CMD_COLOR}Checking pending claims for $user...${RESET}"
-    local claims=$(dfx canister call prediction_markets_backend get_user_pending_claims "()")
+    local claims=$(dfx canister call prediction_markets_backend get_user_pending_claims "(\"$user_principal\")")
     echo -e "${RESULT_COLOR}${claims}${RESET}"
     
     # Extract claim IDs - this is a simple extraction that may need to be adjusted based on actual output format
@@ -317,7 +319,7 @@ claim_winnings "carol"
 section "Step 14: Verifying claims were processed"
 
 run_dfx "dfx identity use alice" "Switching to Alice identity"
-run_dfx "dfx canister call prediction_markets_backend get_user_pending_claims \"()\"" "Checking if Alice has any remaining pending claims"
+run_dfx "dfx canister call prediction_markets_backend get_user_pending_claims \"(\\\"$ALICE_PRINCIPAL\\\")\"" "Checking if Alice has any remaining pending claims"
 
 echo -e "${TITLE_COLOR}==== Test Complete ====${RESET}"
 echo -e "${CMD_COLOR}The dual resolution market test has completed successfully!${RESET}"

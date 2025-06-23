@@ -1,4 +1,3 @@
-use super::resolution::*;
 use super::resolution_api;
 
 use crate::types::ResolutionArgs;
