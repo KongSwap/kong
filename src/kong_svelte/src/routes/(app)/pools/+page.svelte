@@ -1,4 +1,17 @@
 <script lang="ts">
+  /**
+   * Pools Page Component
+   * 
+   * Displays all liquidity pools with filtering, sorting, and pagination.
+   * Features:
+   * - All pools view with real-time data
+   * - User pools view showing connected wallet's positions
+   * - Search functionality
+   * - Sorting by TVL, volume, APY, price
+   * - Mobile infinite scroll / Desktop pagination
+   * - URL state synchronization
+   */
+  
   import { writable, derived } from "svelte/store";
   import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
@@ -15,7 +28,7 @@
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
   import { app } from "$lib/state/app.state.svelte";
   
-  // Import extracted components
+  // Components
   import PoolCard from "$lib/components/liquidity/pools/PoolCard.svelte";
   import PoolsHeader from "$lib/components/liquidity/pools/PoolsHeader.svelte";
   import PoolsToolbar from "$lib/components/liquidity/pools/PoolsToolbar.svelte";
@@ -24,12 +37,15 @@
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { getPoolPriceUsd } from "$lib/utils/statsUtils";
 
-  // State management
+  // ===== State Management =====
+  // UI State
   const activePoolView = writable("all");
-  let isMobile = $state(app.isMobile);
   const sortColumn = writable("tvl");
   const sortDirection = writable<"asc" | "desc">("desc");
   const isLoading = writable(false);
+  let isMobile = $state(app.isMobile);
+  
+  // Data State
   const livePools = writable<BE.Pool[]>([]);
   const allTokens = writable([]);
   const poolTotals = writable({
@@ -38,21 +54,28 @@
     total_fees_24h: 0,
   });
 
-  // Pagination
+  // Pagination State
   const totalPages = writable(0);
   const currentPage = writable(1);
   const itemsPerPage = 48;
   let mobilePage = 1;
   let isMobileFetching = $state(false);
 
-  // Search
+  // Search State
   let searchInput = $state("");
   let searchDebounceTimer: NodeJS.Timeout;
 
-  // User pools
+  // User Pools State
   let hasCompletedInitialLoad = $state(false);
+  let isLoadingUserPools = false;
+  
+  // URL Sync State
+  let lastSearch = "";
+  let lastPage = 0;
+  let isFirstLoad = true;
+  let isLoadingData = false;
 
-  // Derived stores
+  // ===== Derived Stores =====
   const tokenMap = derived(
     allTokens,
     ($tokens) => new Map($tokens?.map((token) => [token.address, token]) || []),
@@ -122,51 +145,83 @@
       }),
   );
 
-  // Initialize data
+  // ===== Lifecycle =====
   onMount(() => {
     if (!browser) return;
-
-    const urlParams = new URLSearchParams($page.url.search);
-    searchInput = urlParams.get("search") || "";
-    currentPage.set(parseInt(urlParams.get("page") || "1"));
-
-    loadInitialData();
+    // Initial data loading is handled by the URL effect
   });
 
   onDestroy(() => {
     clearTimeout(searchDebounceTimer);
   });
 
-  // Effects
+  // ===== Effects =====
+  // User pools loading effect
   $effect(() => {
-    if ($auth.isConnected && browser) fetchUserPools();
+    if ($auth.isConnected && browser && !isLoadingUserPools) {
+      isLoadingUserPools = true;
+      fetchUserPools().finally(() => {
+        isLoadingUserPools = false;
+      });
+    }
   });
 
+  // Mobile state sync
   $effect(() => {
     isMobile = app.isMobile;
   });
 
-  // URL-driven data loading - always load when URL changes
+  // URL-driven data loading
+  
   $effect(() => {
-    if (!browser) return;
+    if (!browser || isLoadingData) return;
     
     const urlParams = new URLSearchParams($page.url.search);
     const urlSearch = urlParams.get("search") || "";
     const urlPage = parseInt(urlParams.get("page") || "1");
+    
+    // Check if search or page actually changed
+    const hasSearchChanged = urlSearch !== lastSearch;
+    const hasPageChanged = urlPage !== lastPage;
+    
+    if (!hasSearchChanged && !hasPageChanged && !isFirstLoad) {
+      return;
+    }
+    
+    // Update tracking variables
+    lastSearch = urlSearch;
+    lastPage = urlPage;
 
-    // Sync local state with URL and always load (URL is source of truth)
-    searchInput = urlSearch;
-    currentPage.set(urlPage);
-    loadPools(urlPage, urlSearch);
+    // Only update reactive state if values actually changed
+    if (hasSearchChanged) {
+      searchInput = urlSearch;
+    }
+    
+    if (hasPageChanged) {
+      currentPage.set(urlPage);
+    }
+    
+    // Load data
+    isLoadingData = true;
+    const loadPromise = isFirstLoad 
+      ? (isFirstLoad = false, loadInitialData())
+      : loadPools(urlPage, urlSearch);
+      
+    loadPromise.finally(() => {
+      isLoadingData = false;
+    });
   });
 
-  // Functions
+  // ===== Data Loading Functions =====
   async function loadInitialData() {
     isLoading.set(true);
     try {
+      const urlParams = new URLSearchParams($page.url.search);
+      const urlPage = parseInt(urlParams.get("page") || "1");
+      
       const [poolsResult, totalsResult, tokensResult] = await Promise.all([
         fetchPools({
-          page: $currentPage,
+          page: urlPage,
           limit: itemsPerPage,
           search: searchInput,
         }),
@@ -193,7 +248,8 @@
       const result = await fetchPools({ page, limit: itemsPerPage, search });
       livePools.set(result.pools || []);
       totalPages.set(result.total_pages);
-      currentPage.set(result.page);
+      // Don't update currentPage here as it can cause reactive loops
+      // currentPage.set(result.page);
       mobilePage = 1;
     } catch (error) {
       console.error("Error fetching pools:", error);
@@ -229,6 +285,7 @@
     }
   }
 
+  // ===== Navigation Functions =====
   function handleSearch() {
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
@@ -241,6 +298,15 @@
     }, 300);
   }
 
+  function handlePageChange(page: number) {
+    goto(`/pools?search=${encodeURIComponent(searchInput)}&page=${page}`, {
+      keepFocus: true,
+      noScroll: true,
+      replaceState: true,
+    });
+  }
+
+  // ===== Mobile Specific Functions =====
   async function handleMobileScroll(event) {
     if (
       !isMobile ||
@@ -267,28 +333,20 @@
     }
   }
 
-  function handlePageChange(page: number) {
-    goto(`/pools?search=${encodeURIComponent(searchInput)}&page=${page}`, {
-      keepFocus: true,
-      noScroll: true,
-      replaceState: true,
-    });
-  }
-
-  // Component helpers
+  // ===== UI Helper Functions =====
   const getHighestAPY = () =>
     Math.max(...($livePools || []).map((p) => Number(p.rolling_24h_apy)), 0);
+    
   const isKongPool = (pool) =>
     pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID;
 
-  // Helper to check if a pool is a user pool
   const getUserPoolData = (pool) => {
     return $userPoolsWithDetails.find(
       (p) => p.address_0 === pool.address_0 && p.address_1 === pool.address_1
     );
   };
 
-  // Toolbar handlers
+  // ===== Event Handlers =====
   const handleSortDirectionToggle = () => {
     sortDirection.update((d) => (d === "asc" ? "desc" : "asc"));
   };
@@ -296,9 +354,7 @@
   const handleViewChange = (view: string) => {
     activePoolView.set(view);
     
-    // Clear search when switching views
     if (view === "user") {
-      // Apply current search to user pools
       currentUserPoolsStore.setSearchQuery(searchInput);
       currentUserPoolsStore.updateFilteredPools();
     }
@@ -306,7 +362,7 @@
 
   const handleSearchInputChange = (value: string) => {
     searchInput = value;
-        // If viewing user pools, update the store's search query
+    
     if ($activePoolView === "user") {
       currentUserPoolsStore.setSearchQuery(value);
       currentUserPoolsStore.updateFilteredPools();

@@ -38,6 +38,8 @@ function createCurrentUserPoolsStore() {
   const SEARCH_DEBOUNCE = 150;
   let initializationPromise: Promise<void> | null = null;
   let lastInitializationPrincipal: string | null = null;
+  let activeTokenFetch: Promise<Kong.Token[]> | null = null;
+  let lastFetchedTokenIds: string[] = [];
   
   return {
     subscribe,
@@ -45,6 +47,8 @@ function createCurrentUserPoolsStore() {
     // Actions
     reset: () => {
       set(initialState);
+      activeTokenFetch = null;
+      lastFetchedTokenIds = [];
     },
 
     initialize: async () => {
@@ -150,8 +154,42 @@ function createCurrentUserPoolsStore() {
       [pool.address_0, pool.address_1]
     ))];
     
+    // Check if we're already fetching the same tokens
+    const isSameTokens = tokenIds.length === lastFetchedTokenIds.length && 
+      tokenIds.every(id => lastFetchedTokenIds.includes(id));
+    
+    if (isSameTokens && activeTokenFetch) {
+      // Reuse the existing fetch promise
+      try {
+        const fetchedTokens = await activeTokenFetch;
+        const tokenMap = fetchedTokens.reduce((acc, token) => {
+          acc[token.address] = token;
+          return acc;
+        }, {} as Record<string, Kong.Token>);
+        
+        // Process the new pools with the fetched tokens
+        const newProcessedPools = await processPoolsWithTokens(pools, tokenMap);
+        
+        // Update the state with the new processed pools and apply current filter/sort
+        update(s => ({
+          ...s,
+          processedPools: newProcessedPools,
+          filteredPools: sortPools(filterPools(newProcessedPools, currentSearchQuery), currentSortDirection)
+        }));
+      } catch (error) {
+        handleError("Failed to load token information", error);
+      }
+      return;
+    }
+    
     try {
-      const fetchedTokens = await fetchTokensByCanisterId(tokenIds);
+      // Store the token IDs we're fetching
+      lastFetchedTokenIds = [...tokenIds];
+      
+      // Create and store the fetch promise
+      activeTokenFetch = fetchTokensByCanisterId(tokenIds);
+      const fetchedTokens = await activeTokenFetch;
+      
       const tokenMap = fetchedTokens.reduce((acc, token) => {
         acc[token.address] = token;
         return acc;
@@ -169,6 +207,9 @@ function createCurrentUserPoolsStore() {
       }));
     } catch (error) {
       handleError("Failed to load token information", error);
+    } finally {
+      // Clear the active fetch after completion
+      activeTokenFetch = null;
     }
   }
 
