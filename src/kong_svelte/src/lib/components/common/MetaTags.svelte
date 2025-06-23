@@ -1,6 +1,6 @@
 <script lang="ts">
   // Accept metadata including url as props
-  let { title, description, image, url, logo = 'https://www.kongswap.io/favicon/favicon-128x128.png' }: { 
+  let { title, description, image, url, logo = 'https://kongswap.io/favicon/favicon-128x128.png' }: { 
     title: string, 
     description: string, 
     image: string, 
@@ -16,6 +16,7 @@
   <meta name="description" content={description} />
   
   <!-- Open Graph Tags -->
+  <meta property="og:locale" content="en" />
   <meta property="og:title" content={title} />
   <meta property="og:description" content={description} />
   <meta property="og:image" content={image} />

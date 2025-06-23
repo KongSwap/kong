@@ -1,5 +1,5 @@
 
-const SITEMAP_URL = 'https://kongswap.io/sitemap.xml'; // Base URL for the sitemap
+const SITEMAP_URL = 'https://kongswap.io'; // Base URL for the site
 // Define static pages
 // Exclude pages that rely heavily on client-side rendering or are dynamic by nature
 // (e.g., /swap, /pools, /stats, /predict based on svelte.config.js)
