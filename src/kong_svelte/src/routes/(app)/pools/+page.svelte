@@ -125,12 +125,7 @@
   // Initialize data
   onMount(() => {
     if (!browser) return;
-
-    const urlParams = new URLSearchParams($page.url.search);
-    searchInput = urlParams.get("search") || "";
-    currentPage.set(parseInt(urlParams.get("page") || "1"));
-
-    loadInitialData();
+    // Initial data loading is handled by the URL effect
   });
 
   onDestroy(() => {
@@ -138,35 +133,96 @@
   });
 
   // Effects
+  let isLoadingUserPools = false;
   $effect(() => {
-    if ($auth.isConnected && browser) fetchUserPools();
+    if ($auth.isConnected && browser && !isLoadingUserPools) {
+      isLoadingUserPools = true;
+      fetchUserPools().finally(() => {
+        isLoadingUserPools = false;
+      });
+    }
   });
 
   $effect(() => {
     isMobile = app.isMobile;
   });
 
-  // URL-driven data loading - always load when URL changes
+  // URL-driven data loading - only load when URL actually changes
+  let lastSearch = "";
+  let lastPage = 0;
+  let isFirstLoad = true;
+  let isLoadingData = false;
+  
   $effect(() => {
     if (!browser) return;
+    
+    console.log('[Pools Page] Effect triggered, isLoadingData:', isLoadingData);
+    
+    if (isLoadingData) {
+      console.log('[Pools Page] Already loading, skipping...');
+      return;
+    }
     
     const urlParams = new URLSearchParams($page.url.search);
     const urlSearch = urlParams.get("search") || "";
     const urlPage = parseInt(urlParams.get("page") || "1");
+    
+    console.log('[Pools Page] URL params - search:', urlSearch, 'page:', urlPage);
+    console.log('[Pools Page] Last values - search:', lastSearch, 'page:', lastPage);
+    
+    // Check if search or page actually changed
+    const hasSearchChanged = urlSearch !== lastSearch;
+    const hasPageChanged = urlPage !== lastPage;
+    
+    if (!hasSearchChanged && !hasPageChanged && !isFirstLoad) {
+      console.log('[Pools Page] No changes detected, skipping load');
+      return;
+    }
+    
+    console.log('[Pools Page] Changes detected - search:', hasSearchChanged, 'page:', hasPageChanged, 'firstLoad:', isFirstLoad);
+    
+    // Update tracking variables
+    lastSearch = urlSearch;
+    lastPage = urlPage;
 
-    // Sync local state with URL and always load (URL is source of truth)
-    searchInput = urlSearch;
-    currentPage.set(urlPage);
-    loadPools(urlPage, urlSearch);
+    // Only update searchInput if it actually changed
+    if (hasSearchChanged) {
+      searchInput = urlSearch;
+    }
+    
+    // Only update currentPage if it actually changed
+    if (hasPageChanged) {
+      currentPage.set(urlPage);
+    }
+    
+    if (isFirstLoad) {
+      console.log('[Pools Page] First load - calling loadInitialData');
+      isFirstLoad = false;
+      isLoadingData = true;
+      loadInitialData().finally(() => {
+        console.log('[Pools Page] Initial data loaded');
+        isLoadingData = false;
+      });
+    } else if (hasSearchChanged || hasPageChanged) {
+      console.log('[Pools Page] Subsequent load - calling loadPools');
+      isLoadingData = true;
+      loadPools(urlPage, urlSearch).finally(() => {
+        console.log('[Pools Page] Pools loaded');
+        isLoadingData = false;
+      });
+    }
   });
 
   // Functions
   async function loadInitialData() {
     isLoading.set(true);
     try {
+      const urlParams = new URLSearchParams($page.url.search);
+      const urlPage = parseInt(urlParams.get("page") || "1");
+      
       const [poolsResult, totalsResult, tokensResult] = await Promise.all([
         fetchPools({
-          page: $currentPage,
+          page: urlPage,
           limit: itemsPerPage,
           search: searchInput,
         }),
@@ -193,7 +249,8 @@
       const result = await fetchPools({ page, limit: itemsPerPage, search });
       livePools.set(result.pools || []);
       totalPages.set(result.total_pages);
-      currentPage.set(result.page);
+      // Don't update currentPage here as it can cause reactive loops
+      // currentPage.set(result.page);
       mobilePage = 1;
     } catch (error) {
       console.error("Error fetching pools:", error);

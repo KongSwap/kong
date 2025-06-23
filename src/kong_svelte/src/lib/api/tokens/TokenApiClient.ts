@@ -133,6 +133,10 @@ export const fetchAllTokens = async (params?: Omit<TokensParams, 'page' | 'limit
   }
 };
 
+// Cache for token fetches to prevent duplicate requests
+const tokenFetchCache = new Map<string, { promise: Promise<Kong.Token[]>, timestamp: number }>();
+const CACHE_TTL = 30000; // 30 seconds cache
+
 /**
  * Fetches tokens by canister IDs
  */
@@ -152,24 +156,47 @@ export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<Ko
       return [];
     }
     
+    // Create a cache key from sorted canister IDs
+    const cacheKey = validCanisterIds.slice().sort().join(',');
+    const now = Date.now();
+    
+    // Check cache
+    const cached = tokenFetchCache.get(cacheKey);
+    if (cached && (now - cached.timestamp) < CACHE_TTL) {
+      console.log('Using cached tokens for canister IDs:', validCanisterIds);
+      return cached.promise;
+    }
+    
     // Prepare request body
     const requestBody: TokensByCanisterRequest = {
       canister_ids: validCanisterIds
-    };
+    };    
+    // Create the promise for the API request
+    const promise = (async () => {
+      // Make the API request using the base client
+      const data = await apiClient.post<TokensByCanisterResponse | RawTokenData[]>(
+        '/api/tokens/by_canister', 
+        requestBody
+      );
+      
+      // Handle different response formats
+      const tokens = Array.isArray(data) ? data : data.items || [];
+      
+      // Serialize the tokens
+      return IcrcToken.serializeTokens(tokens);
+    })();
     
-    console.log('Fetching tokens by canister IDs:', validCanisterIds);
+    // Store in cache
+    tokenFetchCache.set(cacheKey, { promise, timestamp: now });
     
-    // Make the API request using the base client
-    const data = await apiClient.post<TokensByCanisterResponse | RawTokenData[]>(
-      '/api/tokens/by_canister', 
-      requestBody
-    );
+    // Clean up old cache entries
+    for (const [key, value] of tokenFetchCache.entries()) {
+      if (now - value.timestamp > CACHE_TTL) {
+        tokenFetchCache.delete(key);
+      }
+    }
     
-    // Handle different response formats
-    const tokens = Array.isArray(data) ? data : data.items || [];
-    
-    // Serialize the tokens
-    return IcrcToken.serializeTokens(tokens);
+    return promise;
   } catch (error) {
     console.error('Error fetching tokens by canister ID:', error);
     
