@@ -146,7 +146,7 @@ export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<Ko
     const apiClient = getApiClient();
     
     // Validate input
-    const validCanisterIds = canisterIds.filter(id => typeof id === 'string');
+    const validCanisterIds = canisterIds.filter(id => typeof id === 'string' && id.trim().length > 0);
     
     if (validCanisterIds.length === 0) {
       return [];
@@ -156,6 +156,8 @@ export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<Ko
     const requestBody: TokensByCanisterRequest = {
       canister_ids: validCanisterIds
     };
+    
+    console.log('Fetching tokens by canister IDs:', validCanisterIds);
     
     // Make the API request using the base client
     const data = await apiClient.post<TokensByCanisterResponse | RawTokenData[]>(
@@ -170,7 +172,18 @@ export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<Ko
     return IcrcToken.serializeTokens(tokens);
   } catch (error) {
     console.error('Error fetching tokens by canister ID:', error);
-    throw error;
+    
+    // Log more details about the error
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        canisterIds: canisterIds
+      });
+    }
+    
+    // Return empty array instead of throwing to prevent page crashes
+    return [];
   }
 };
 

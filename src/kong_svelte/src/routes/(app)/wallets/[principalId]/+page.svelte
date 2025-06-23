@@ -326,7 +326,7 @@
     </div>
 
     {#if isLoading}
-      <LoadingIndicator message="Loading portfolio data..." size={24} />
+      <LoadingIndicator message="Loading portfolio data..." />
     {:else if loadingError}
       <div class="text-kong-error mb-4">{loadingError}</div>
     {:else if Object.keys($walletDataStore.balances).length === 0 || $walletDataStore.currentWallet !== page.params.principalId}
@@ -550,7 +550,7 @@
     </div>
 
     {#if isLoading}
-      <LoadingIndicator message="Loading assets..." size={24} />
+      <LoadingIndicator message="Loading assets..." />
     {:else if loadingError}
       <div class="text-kong-error mb-4">{loadingError}</div>
     {:else}

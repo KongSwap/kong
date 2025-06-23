@@ -161,11 +161,19 @@ export const fetchPoolBalanceHistory = async (poolId: string | number): Promise<
 export const fetchPoolTotals = async (): Promise<{total_volume_24h: number, total_tvl: number, total_fees_24h: number}> => {
   try {
     const response = await fetch(`${API_URL}/api/pools/totals`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`API error response: ${errorText}`);
+      throw new Error(`Failed to fetch pool totals: ${response.status} ${response.statusText}`);
+    }
+    
     const data = await response.json();
     return data;
   } catch (error) {
     console.error('Error fetching pool totals:', error);
-    throw error;
+    // Return default values to prevent UI breakage
+    return { total_volume_24h: 0, total_tvl: 0, total_fees_24h: 0 };
   }
 }
 

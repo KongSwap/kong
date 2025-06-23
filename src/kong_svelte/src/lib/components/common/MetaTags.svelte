@@ -1,10 +1,11 @@
 <script lang="ts">
   // Accept metadata including url as props
-  let { title, description, image, url }: { 
+  let { title, description, image, url, logo = 'https://kongswap.io/favicon/favicon-128x128.png' }: { 
     title: string, 
     description: string, 
     image: string, 
-    url: string 
+    url: string,
+    logo?: string 
   } = $props();
 </script>
 
@@ -15,11 +16,13 @@
   <meta name="description" content={description} />
   
   <!-- Open Graph Tags -->
+  <meta property="og:locale" content="en" />
   <meta property="og:title" content={title} />
   <meta property="og:description" content={description} />
   <meta property="og:image" content={image} />
   <meta property="og:type" content="website" />
   <meta property="og:url" content={url} />
+  <meta property="og:logo" content={logo} />
 
   <!-- Twitter Card Tags -->
   <meta name="twitter:card" content="summary_large_image" />

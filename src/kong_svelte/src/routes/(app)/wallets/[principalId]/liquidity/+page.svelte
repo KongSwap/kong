@@ -7,7 +7,6 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import { Droplets, SlidersHorizontal, TrendingUp, DollarSign, ArrowDownUp, Info } from "lucide-svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { createEventDispatcher } from "svelte";
   import { tooltip } from "$lib/actions/tooltip";
   import LoadingEllipsis from "$lib/components/common/LoadingEllipsis.svelte";
   import { afterNavigate, goto } from "$app/navigation";

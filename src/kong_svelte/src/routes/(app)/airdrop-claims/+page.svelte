@@ -9,7 +9,6 @@
   import PageHeader from "$lib/components/common/PageHeader.svelte";
   import { Loader2, Award } from "lucide-svelte";
   import type { Claim } from "$lib/types/claims";
-  import { goto } from "$app/navigation";
 
   // State
   let claims = $state<Claim[]>([]);

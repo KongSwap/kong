@@ -13,7 +13,7 @@
   import TokenStatistics from "./TokenStatistics.svelte";
   import { GOVERNANCE_CANISTER_IDS } from "$lib/utils/snsUtils";
   import { tokenData } from "$lib/stores/tokenData";
-  import { fetchTokensByCanisterId } from "$lib/api/tokens";
+  import { fetchTokensByCanisterId, fetchTokens } from "$lib/api/tokens";
   import { browser } from "$app/environment";
   import PoolStatistics from "./PoolStatistics.svelte";
   import { snsService, icpGovernanceService } from '$lib/utils/snsUtils';
@@ -86,7 +86,23 @@
 
     try {
       // Try API first
-      const fetchedTokens = await fetchTokensByCanisterId([tokenId]);
+      let fetchedTokens: Kong.Token[] = [];
+      try {
+        // First try the by_canister endpoint
+        fetchedTokens = await fetchTokensByCanisterId([tokenId]);
+      } catch (apiError) {
+        console.warn("fetchTokensByCanisterId failed, trying fetchTokens:", apiError);
+        try {
+          // Fallback to regular tokens endpoint with canister_id filter
+          const response = await fetchTokens({ canister_id: tokenId, limit: 1 });
+          if (response.tokens.length > 0) {
+            fetchedTokens = response.tokens;
+          }
+        } catch (fallbackError) {
+          console.warn("fetchTokens also failed:", fallbackError);
+        }
+      }
+      
       if (fetchedTokens?.length > 0) {
         state.token = fetchedTokens[0];
         await fetchPoolData();
@@ -96,14 +112,24 @@
 
       // Fallback to store
       const data = $tokenData;
-      const foundToken = data?.find(t => t.address === tokenId);
+      const foundToken = data?.find(t => t.address === tokenId || t.canister_id === tokenId);
+      if (foundToken) {
+        state.token = foundToken;
+        await fetchPoolData();
+        checkActiveProposals();
+      } else {
+        console.warn(`Token not found for canister ID: ${tokenId}`);
+      }
+    } catch (error) {
+      console.error("Error fetching token:", error);
+      // Try one more time with just the store
+      const data = $tokenData;
+      const foundToken = data?.find(t => t.address === tokenId || t.canister_id === tokenId);
       if (foundToken) {
         state.token = foundToken;
         await fetchPoolData();
         checkActiveProposals();
       }
-    } catch (error) {
-      console.error("Error fetching token:", error);
     } finally {
       state.isTokenLoading = false;
     }
@@ -137,7 +163,6 @@
           if (ckusdcPool) {
             state.selectedPool = ckusdcPool;
             updateChartReadiness();
-            checkUserPoolPosition();
             return;
           }
         }
@@ -151,7 +176,6 @@
         if (bestPool) {
           state.selectedPool = bestPool;
           updateChartReadiness();
-          checkUserPoolPosition();
         }
       }
 

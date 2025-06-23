@@ -20,7 +20,6 @@
     bestPerformer: { symbol: "", change: 0 }
   });
 
-  let hasAttemptedTokenLoad = $state(false);
   let walletData = $derived($walletDataStore);
 
   // Reactive calculations for overview metrics

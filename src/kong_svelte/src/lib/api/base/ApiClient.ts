@@ -128,17 +128,37 @@ export class ApiClient {
       // Handle non-OK responses
       if (!response.ok) {
         let errorMessage: string;
+        const contentType = response.headers.get('content-type');
         
         try {
-          // Try to parse error response as JSON
-          const errorData = await response.json();
-          errorMessage = errorData.message || `HTTP error ${response.status}: ${response.statusText}`;
+          if (contentType && contentType.includes('application/json')) {
+            // Try to parse error response as JSON
+            const errorData = await response.json();
+            errorMessage = errorData.message || `HTTP error ${response.status}: ${response.statusText}`;
+          } else {
+            // For non-JSON responses, get the text
+            const errorText = await response.text();
+            console.error('Non-JSON error response:', errorText.substring(0, 500));
+            errorMessage = `HTTP error ${response.status}: ${response.statusText}`;
+          }
         } catch (e) {
           // If parsing fails, use status text
           errorMessage = `HTTP error ${response.status}: ${response.statusText}`;
         }
         
         throw new Error(errorMessage);
+      }
+      
+      // Check content type before parsing
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Expected JSON response but got:', contentType, 'Body preview:', text.substring(0, 500));
+        // Check if it's an HTML error page
+        if (text.trim().startsWith('<') || (contentType && contentType.includes('text/html'))) {
+          throw new Error(`API returned HTML instead of JSON. This usually means the endpoint is not available or there's a server error.`);
+        }
+        throw new Error(`Expected JSON response but got ${contentType || 'unknown content type'}`);
       }
       
       // Handle empty responses
@@ -148,9 +168,18 @@ export class ApiClient {
       }
       
       // Parse JSON response
-      return JSON.parse(text) as T;
+      try {
+        return JSON.parse(text) as T;
+      } catch (parseError) {
+        console.error('JSON parse error. Response text:', text.substring(0, 500));
+        throw new Error(`Failed to parse JSON response: ${parseError}`);
+      }
     } catch (error) {
-      console.error('API request failed:', error);
+      console.error('API request failed:', {
+        url,
+        method: options.method,
+        error: error instanceof Error ? error.message : error
+      });
       throw error;
     }
   }

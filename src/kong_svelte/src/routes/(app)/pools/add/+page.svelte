@@ -1,27 +1,19 @@
 <script lang="ts">
-  import PageHeader from "$lib/components/common/PageHeader.svelte";
   import CreateLiquidityPanel from "$lib/components/liquidity/create_pool/CreateLiquidityPanel.svelte";
   import PoolChart from "$lib/components/liquidity/create_pool/PoolChart.svelte";
-  import UserPoolBalance from "$lib/components/liquidity/create_pool/UserPoolBalance.svelte";
   import Panel from "$lib/components/common/Panel.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { 
-    Info, 
     TrendingUp, 
-    DollarSign, 
-    Wallet,
     Droplets
   } from "lucide-svelte";
   import { liquidityStore } from "$lib/stores/liquidityStore";
-  import { auth } from "$lib/stores/auth";
-  import { fade, fly } from "svelte/transition";
   import { livePools } from "$lib/stores/poolStore";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 
   // Get the selected tokens for pool info
   let token0 = $derived($liquidityStore.token0);
   let token1 = $derived($liquidityStore.token1);
-  let isAuthenticated = $derived(!!$auth?.account);
   let hasSelectedTokens = $derived(token0 && token1);
   
   // Get live pool data for selected tokens

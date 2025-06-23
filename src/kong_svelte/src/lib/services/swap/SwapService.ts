@@ -14,10 +14,7 @@ import { loadBalances } from "$lib/stores/tokenStore";
 import { userTokens } from "$lib/stores/userTokens";
 import { trackEvent, AnalyticsEvent } from "$lib/utils/analytics";
 import { swapState } from "$lib/stores/swapStateStore";
-
-// Import backend types properly
-type SwapAmountsResult = BE.SwapAmountsResult;
-type RequestsResult = BE.RequestsResult;
+import type { SwapAmountsResult, RequestsResult } from "../../../../../declarations/kong_backend/kong_backend.did";
 
 interface SwapExecuteParams {
   swapId: string;
@@ -646,7 +643,7 @@ export class SwapService {
       try {
         const status = await SwapService.requests([requestId]);
 
-        if (status.Ok?.[0]?.reply) {
+        if ("Ok" in status) {
           const res = status.Ok[0];
 
           // Only show toast for new status updates

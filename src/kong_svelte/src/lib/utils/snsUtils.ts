@@ -50,7 +50,6 @@ export const GOVERNANCE_CANISTER_IDS: { [key: string]: string } = {
   "emww2-4yaaa-aaaaq-aacbq-cai": "elxqo-raaaa-aaaaq-aacba-cai",
   "hvgxa-wqaaa-aaaaq-aacia-cai": "fi3zi-fyaaa-aaaaq-aachq-cai",
   "mih44-vaaaa-aaaaq-aaekq-cai": "mpg2i-yyaaa-aaaaq-aaeka-cai",
-  "xsi2v-cyaaa-aaaaq-aabfq-cai": "xsi2v-cyaaa-aaaaq-aabfq-cai",
   "k45jy-aiaaa-aaaaq-aadcq-cai": "k34pm-nqaaa-aaaaq-aadca-cai",
   "uf2wh-taaaa-aaaaq-aabna-cai": "umz53-fiaaa-aaaaq-aabmq-cai"
 }

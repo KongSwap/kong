@@ -100,7 +100,6 @@
 
   // Update motion values with effect
   $effect(() => {
-    console.log("token", activeToken);
     if (activeToken?.metrics) {
       marketCapValue = Number(activeToken.metrics.market_cap || 0);
       volume24hValue = Number(activeToken.metrics.volume_24h || 0);
