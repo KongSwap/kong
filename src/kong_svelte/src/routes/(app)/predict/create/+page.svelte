@@ -22,7 +22,7 @@
   import { auth } from "$lib/stores/auth";
   import Dropdown from "$lib/components/common/Dropdown.svelte";
   import { fetchTokensByCanisterId } from "$lib/api";
-  import LoadingWrapper from "$lib/components/common/LoadingWrapper.svelte";
+  import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
   import { debounce } from "$lib/utils/debounce";
   import type { MarketFormState } from "$lib/utils/validators/marketValidators";
   import { validateAndReadImageFile } from "$lib/utils/imageUtils";
@@ -31,7 +31,7 @@
   import Modal from "$lib/components/common/Modal.svelte";
   import PageHeader from "$lib/components/common/PageHeader.svelte";
   import { DEFAULT_TOKENS } from "$lib/constants/canisterConstants";
-    import { page } from "$app/state";
+  import { page } from "$app/state";
 
   // Constants
   const DEFAULT_DURATION = 24; // hours
@@ -120,7 +120,9 @@
         !supportedTokens.some((t) => t.address === formState.token_id)
       ) {
         // Try to set to KONG if available, else fallback to first token
-        const kongToken = supportedTokens.find((t) => t.address === DEFAULT_TOKENS.kong);
+        const kongToken = supportedTokens.find(
+          (t) => t.address === DEFAULT_TOKENS.kong,
+        );
         formState.token_id = kongToken
           ? kongToken.address
           : supportedTokens[0]?.address;
@@ -334,7 +336,10 @@
       icon={DiamondPercent}
     />
     <div class="max-w-7xl mx-auto px-4 mt-4">
-      <form onsubmit={(e) => e.preventDefault && handleSubmit} class="space-y-4">
+      <form
+        onsubmit={(e) => e.preventDefault && handleSubmit}
+        class="space-y-4"
+      >
         <div class="grid lg:grid-cols-2 gap-8 mb-8">
           <!-- Left Column: Details & Timeline in one Panel -->
           <Panel variant="solid">
@@ -446,10 +451,9 @@
                   label="Category"
                   error={categoryError || formErrors.category}
                 >
-                  <LoadingWrapper
-                    loading={loadingCategories}
-                    text="Loading categories..."
-                  >
+                  {#if loadingCategories}
+                    <LoadingIndicator message="Loading categories..." />
+                  {:else}
                     <div class="relative">
                       <select
                         id="category"
@@ -476,7 +480,7 @@
                         >
                       </div>
                     </div>
-                  </LoadingWrapper>
+                  {/if}
                 </FormField>
 
                 <!-- Token Selection -->
@@ -485,10 +489,9 @@
                   label="Token"
                   helpText="Token to be used to make predictions on the market"
                 >
-                  <LoadingWrapper
-                    loading={loadingTokens}
-                    text="Loading tokens..."
-                  >
+                  {#if loadingTokens}
+                    <LoadingIndicator message="Loading tokens..." />
+                  {:else}
                     <Dropdown width="w-full" bind:open={tokenDropdownOpen}>
                       <div
                         slot="trigger"
@@ -555,7 +558,7 @@
                         {/each}
                       </div>
                     </Dropdown>
-                  </LoadingWrapper>
+                  {/if}
                 </FormField>
 
                 <!-- Resolution Method -->

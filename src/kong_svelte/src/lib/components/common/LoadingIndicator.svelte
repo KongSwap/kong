@@ -3,7 +3,11 @@
   export let fullHeight = false;
 </script>
 
-<div class="flex flex-col items-center justify-center {fullHeight ? 'min-h-screen' : 'min-h-[300px]'}">
+<div
+  class="flex flex-col items-center justify-center {fullHeight
+    ? 'min-h-screen'
+    : 'min-h-[300px]'}"
+>
   <div class="loader mb-4"></div>
   <div class="text-kong-text-primary/70">{message}</div>
 </div>
