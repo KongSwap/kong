@@ -30,6 +30,7 @@
     colorKey: string;
   }
   let isMobile = $derived(app.isMobile);
+  let MAX_TOKENS = $derived(isMobile ? 50 : 100);
 
   // State
   let tokens = $state<Token[]>([]);
@@ -41,8 +42,6 @@
   let error = $state<string | null>(null);
   let hoveredToken = $state<string | null>(null);
   let isPaused = $state(false);
-  let isResizing = $state(false);
-  let resizeTimeout = $state<number | null>(null);
 
   // Utilities
   const formatCurrency = (value: number | string | null | undefined): string => {
@@ -69,7 +68,7 @@
     
     const largestChange = tokens.reduce((max, token) => Math.max(max, Math.abs(getChangePercent(token.metrics?.price_change_24h))), 0);
     const changes = tokens.map(token => Math.abs(getChangePercent(token.metrics?.price_change_24h)));
-    const usableArea = containerWidth * containerHeight * (isMobile ? 0.6 : 0.75);
+    const usableArea = containerWidth * containerHeight * (isMobile ? 0.65 : 0.75);
     const avgArea = usableArea / tokens.length;
     const baseDiameter = Math.sqrt(avgArea / Math.PI) * 2;
     
@@ -414,17 +413,15 @@
     }
   };
 
-  // Data loading
+  // Data loading with token limits
   const loadTokens = async () => {
     loading = true;
     try {
       const response = await fetchTokens();
       tokens = response.tokens
-        .filter(token => 
-          Number(token.metrics?.volume_24h) > 0 && 
-          Number(token.metrics?.tvl) > 100
-        )
-        // .slice(0, MAX_TOKENS);
+        .filter(token => Number(token.metrics?.volume_24h) > 0 && Number(token.metrics?.tvl) > 100)
+        .sort((a, b) => Number(b.metrics?.volume_24h || 0) - Number(a.metrics?.volume_24h || 0))
+        .slice(0, MAX_TOKENS);
       error = null;
     } catch (e) {
       console.error("Error loading tokens:", e);
@@ -434,7 +431,9 @@
     }
   };
 
-  // Setup effect - runs once on mount
+  $inspect(tokens.length);
+
+  // Combined setup and data loading effect
   $effect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
       if (event.key === ' ') {
@@ -448,11 +447,9 @@
 
     const handleVisibility = () => isPaused = document.hidden;
 
-    loadTokens(); // Initial load
-    
+    loadTokens();
     document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("keydown", handleKeydown);
-    
     const interval = setInterval(loadTokens, 30000);
 
     return () => {
@@ -462,28 +459,22 @@
     };
   });
 
-  // 2. Container size effect with debounced resize
+  // Container sizing with debounced resize
   $effect(() => {
     if (!containerElement) return;
     
+    let resizeTimeout: number | null = null;
+    
     const handleResize = () => {
-      // Clear existing timeout
       if (resizeTimeout) window.clearTimeout(resizeTimeout);
-      
-      // Show loading during resize
-      isResizing = true;
-      
-      // Debounce resize calculation
       resizeTimeout = window.setTimeout(() => {
         const rect = containerElement!.getBoundingClientRect();
         containerWidth = rect.width;
         containerHeight = rect.height;
-        isResizing = false;
         resizeTimeout = null;
-      }, 2000);
+      }, 150);
     };
 
-    // Initial size without debounce
     const rect = containerElement.getBoundingClientRect();
     containerWidth = rect.width;
     containerHeight = rect.height;
@@ -499,21 +490,17 @@
     };
   });
 
-  // 3. Position initialization effect - only runs when bubbleSizes change
+  // Position initialization
   $effect(() => {
-    if (containerElement && tokens.length && containerWidth && containerHeight && bubbleSizes.size) {
+    if (tokens.length && containerWidth && containerHeight && bubbleSizes.size) {
       initializePositions();
     }
   });
 
-  // 4. Animation control via CSS
+  // Animation control
   $effect(() => {
     if (containerElement) {
-      if (isPaused) {
-        containerElement.style.setProperty('--animation-play-state', 'paused');
-      } else {
-        containerElement.style.setProperty('--animation-play-state', 'running');
-      }
+      containerElement.style.setProperty('--animation-play-state', isPaused ? 'paused' : 'running');
     }
   });
 </script>
@@ -539,15 +526,6 @@
     </div>
   {:else if error}
     <div class="error">{error}</div>
-  {:else if isResizing}
-    <div class="loading">
-      <div class="loading-spinner">
-        {#each Array(4) as _, i}
-          <div class="spinner-ring" style="animation-delay: {-0.45 + i * 0.15}s;"></div>
-        {/each}
-      </div>
-      <div class="loading-text">Updating bubbles...</div>
-    </div>
   {:else}
     {#each tokens as token, i (token.address)}
       {@const style = calculateBubbleStyle(token, bubbleSizes)}
