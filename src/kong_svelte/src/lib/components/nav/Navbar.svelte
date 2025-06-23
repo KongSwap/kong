@@ -136,10 +136,7 @@
   // State
   let isMobile = $derived(app.isMobile);
   let navOpen = $state(false);
-  let activeDropdown = $state<Extract<
-    NavTabId,
-    "pro" | "earn" | "stats"
-  > | null>(null);
+  let activeDropdown = $state<Extract<NavTabId, "more"> | null>(null);
   let showWalletSidebar = $state(false);
   let walletSidebarActiveTab = $state<WalletTab>("notifications");
   let isClaiming = $state(false);
@@ -463,10 +460,7 @@
                   : null}
                 onShowDropdown={() => {
                   clearTimeout(closeTimeout);
-                  activeDropdown = navItem.tabId as Extract<
-                    NavTabId,
-                    "swap" | "earn" | "stats"
-                  >;
+                  activeDropdown = navItem.tabId as Extract<NavTabId, "more">;
                 }}
                 onHideDropdown={() => {
                   closeTimeout = setTimeout(() => (activeDropdown = null), 150);

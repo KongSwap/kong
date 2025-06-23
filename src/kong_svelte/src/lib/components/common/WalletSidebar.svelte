@@ -14,7 +14,7 @@
   import { fade, fly } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
   import { onMount, onDestroy } from "svelte";
-
+  import { enableBodyScroll, disableBodyScroll } from "$lib/utils/scrollUtils";
   // Component imports
   import TrollboxPanel from "$lib/components/wallet/trollbox/TrollboxPanel.svelte";
   import WalletPanel from "$lib/components/wallet/WalletPanel.svelte";
@@ -100,25 +100,14 @@
     currentTab = activeTab;
   });
 
-  onMount(() => {
-        // Prevent body scrolling when modal is open
-    // const body = document.body;
-    // const scrollY = window.scrollY;
-    // body.style.position = 'fixed';
-    // body.style.top = `-${scrollY}px`;
-    // body.style.width = '100%';
-    // body.style.overflow = 'hidden';
+  $effect(() => {
+    if (isOpen) {
+      disableBodyScroll();
+    } else {
+      enableBodyScroll();
+    }
   });
 
-  onDestroy(() => {
-    // Restore body scrolling when modal is closed
-    // const body = document.body;
-    // const scrollY = body.style.top;
-    // body.style.position = '';
-    // body.style.top = '';
-    // body.style.width = '';
-    // body.style.overflow = '';
-  });
 </script>
 
 {#if isOpen}

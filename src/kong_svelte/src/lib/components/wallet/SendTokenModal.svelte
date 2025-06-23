@@ -231,10 +231,14 @@
   function handleConfirmationClose() {
     showConfirmation = false;
     transferDetails = null;
+    resetState();
+    onClose();
   }
 
   async function handleConfirmationConfirm() {
     if (!transferDetails) return;
+
+    let tokenCopy = token; // Keep a copy of the token symbol, so even if the modal is closed, we can still access the details
 
     isValidating = true;
     errorMessage = "";
@@ -273,14 +277,14 @@
         
         // Update balance
         const principalId = authStore.pnp?.account?.owner;
-        await refreshSingleBalance(token, principalId, true);
+        await refreshSingleBalance(tokenCopy, principalId, true);
         
         // Reset form for next transaction
         recipientAddress = "";
         amount = "";
         
         // Notify success
-        toastStore.success(`Successfully sent ${token.symbol}`);
+        toastStore.success(`Successfully sent ${tokenCopy.symbol}`);
         onSuccess(txId);
         
         // Keep modal open, but reset success state after a delay
@@ -337,7 +341,7 @@
 </script>
 
 <Modal
-  {isOpen}
+  isOpen={isOpen && !showConfirmation}
   onClose={handleClose}
   title="Send {token?.name || 'Token'}"
   width="480px"
@@ -375,7 +379,7 @@
     <!-- Send Form -->
     {#if token}
       <form
-        onsubmit={(e) => e.preventDefault && handleSubmit}
+        onsubmit={handleSubmit}
         class="flex flex-col gap-4 transition-all duration-300"
         style="opacity: {closing ? 0 : mounted ? 1 : 0}; transform: translateY({closing ? '-10px' : mounted ? 0 : '20px'}); transition-delay: {closing ? '0ms' : '100ms'};"
       >

@@ -635,7 +635,7 @@
     position: relative;
     display: flex;
     width: 100%;
-    height: calc(100vh - var(--navbar-height));
+    height: calc(100dvh - var(--navbar-height));
     overflow: hidden;
     touch-action: none;
     -webkit-user-select: none;
