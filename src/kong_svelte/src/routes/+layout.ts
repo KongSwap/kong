@@ -1,7 +1,5 @@
 import type { LayoutLoad } from './$types';
 
-// Disable SSR for static adapter compatibility
-export const ssr = false;
 // Enable prerendering for better SEO
 export const prerender = true;
 
