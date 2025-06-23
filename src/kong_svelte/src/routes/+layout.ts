@@ -1,4 +1,9 @@
-// We are enabling prerendering for this layout
-// Note: Changed preload strategy from "hover" to "tap" in app.html to reduce
-// excessive preloading warnings for unused JavaScript chunks
-export const prerender = true;
+import type { LayoutLoad } from './$types';
+
+// This file is now only used for client-side operations
+// Server-side metadata loading is handled by +layout.server.ts
+
+export const load: LayoutLoad = ({ data }) => {
+  // Just pass through the data from +layout.server.ts
+  return data;
+};

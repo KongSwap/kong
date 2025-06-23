@@ -1,5 +1,3 @@
-import { browser } from '$app/environment';
-
 // Settings page requires client-side rendering for user preferences
 export const ssr = false;
 

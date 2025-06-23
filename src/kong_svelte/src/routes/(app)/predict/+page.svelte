@@ -135,7 +135,7 @@
   // Debounced market refresh to prevent too frequent updates
   const debouncedRefreshMarkets = debounce(() => {
     marketStore.refreshMarkets();
-  }, 1000);
+  }, 10000);
 
   function openBetModal(market: any, outcomeIndex?: number) {
     // Check if user is authenticated

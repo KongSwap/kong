@@ -43,14 +43,14 @@
   const currentPage = writable(1);
   const itemsPerPage = 48;
   let mobilePage = 1;
-  let isMobileFetching = false;
+  let isMobileFetching = $state(false);
 
   // Search
-  let searchInput = "";
+  let searchInput = $state("");
   let searchDebounceTimer: NodeJS.Timeout;
 
   // User pools
-  let hasCompletedInitialLoad = false;
+  let hasCompletedInitialLoad = $state(false);
 
   // Derived stores
   const tokenMap = derived(

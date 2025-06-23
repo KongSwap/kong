@@ -6,7 +6,7 @@
     formatToNonZeroDecimal,
   } from "$lib/utils/numberFormatUtils";
   import { flip } from "svelte/animate";
-  import { WalletDataService, walletDataStore } from "$lib/services/wallet";
+  import { walletDataStore } from "$lib/services/wallet";
   import { ArrowUp, ArrowDown, Coins } from "lucide-svelte";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
   import { tooltip } from "$lib/actions/tooltip";
@@ -127,7 +127,7 @@
   <div class="max-h-[600px] overflow-y-auto">
     {#if isLoadingBalances}
       <div class="text-center py-8">
-        <LoadingIndicator text="Loading token balances..." size={24} />
+        <LoadingIndicator message="Loading token balances..." />
       </div>
     {:else if formattedTokens.length === 0}
       <div class="text-center py-8 text-kong-text-secondary">
