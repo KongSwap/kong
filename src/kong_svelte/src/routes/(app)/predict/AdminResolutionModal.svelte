@@ -40,7 +40,7 @@
   }
 </script>
 
-<Modal {isOpen} on:close={close} variant="transparent" title="Resolve Market">
+<Modal {isOpen} onClose={close} variant="transparent" title="Resolve Market">
   <div class="p-4">
     <p class="text-lg text-kong-text-secondary mb-4">{market?.question}</p>
     
@@ -49,7 +49,7 @@
       {#each market?.outcomes || [] as outcome, index}
         <button
           class="w-full p-2 text-left rounded border {selectedOutcome === BigInt(index) ? 'border-kong-accent-green bg-kong-accent-green/10' : 'border-kong-border hover:border-kong-accent-green/50'} transition-colors"
-          on:click={() => selectedOutcome = BigInt(index)}
+          onclick={() => selectedOutcome = BigInt(index)}
         >
           {outcome}
         </button>
@@ -59,14 +59,14 @@
     <div class="mt-6 flex justify-end space-x-3">
       <button
         class="px-4 py-2 text-sm font-medium text-kong-text-secondary hover:text-kong-text-primary transition-colors"
-        on:click={close}
+        onclick={close}
         disabled={isSubmitting}
       >
         Cancel
       </button>
       <button
         class="px-4 py-2 text-sm font-medium bg-kong-accent-green text-white rounded hover:bg-kong-accent-green/90 disabled:opacity-50 transition-colors"
-        on:click={handleResolve}
+        onclick={handleResolve}
         disabled={isSubmitting}
       >
         {isSubmitting ? 'Resolving...' : 'Resolve Market'}

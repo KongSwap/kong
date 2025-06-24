@@ -24,29 +24,29 @@
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
 
   // Modal state
-  let showBetModal = false;
-  let selectedMarket: any = null;
-  let betAmount = 0;
-  let selectedOutcome: number | null = null;
-  let betError: string | null = null;
-  let isBetting = false;
-  let isApprovingAllowance = false;
+  let showBetModal = $state(false);
+  let selectedMarket = $state<any>(null);
+  let betAmount = $state(0);
+  let selectedOutcome = $state<number | null>(null);
+  let betError = $state<string | null>(null);
+  let isBetting = $state(false);
+  let isApprovingAllowance = $state(false);
 
-  let recentBets: any[] = [];
-  let previousBets: any[] = [];
-  let isInitialLoad = true;
-  let loadingBets = false;
-  let isUserAdmin = false;
+  let recentBets = $state<any[]>([]);
+  let previousBets = $state<any[]>([]);
+  let isInitialLoad = $state(true);
+  let loadingBets = $state(false);
+  let isUserAdmin = $state(false);
 
   // UI state for dropdowns
-  let statusDropdownOpen = false;
-  let sortDropdownOpen = false;
+  let statusDropdownOpen = $state(false);
+  let sortDropdownOpen = $state(false);
 
   // Store the market and outcome to open after authentication
-  let pendingMarket: any = null;
-  let pendingOutcome: number | null = null;
-  let tokens = [];
-  let kongToken = null;
+  let pendingMarket = $state<any>(null);
+  let pendingOutcome = $state<number | null>(null);
+  let tokens = $state([]);
+  let kongToken = $state(null);
 
   onDestroy(() => {
     // Stop the polling task
@@ -105,11 +105,13 @@
     return `${bet.timestamp}-${bet.user}`;
   }
 
-  $: if ($auth.isConnected) {
-    isAdmin($auth.account.owner).then((isAdmin) => {
-      isUserAdmin = isAdmin;
-    });
-  }
+  $effect(() => {
+    if ($auth.isConnected) {
+      isAdmin($auth.account.owner).then((isAdmin) => {
+        isUserAdmin = isAdmin;
+      });
+    }
+  });
 
   onMount(async () => {
     // Initialize market store
@@ -239,20 +241,14 @@
     { value: "pool_asc", label: "Pool Size (Low to High)" },
   ];
 
-  // Get current option label
-  function getCurrentStatusLabel() {
-    return (
-      statusOptions.find((option) => option.value === $marketStore.statusFilter)
-        ?.label || "All"
-    );
-  }
+  // Get current option label - make reactive with $derived
+  const currentStatusLabel = $derived(
+    statusOptions.find((option) => option.value === $marketStore.statusFilter)?.label || "All"
+  );
 
-  function getCurrentSortLabel() {
-    return (
-      sortOptions.find((option) => option.value === $marketStore.sortOption)
-        ?.label || "Pool Size (High to Low)"
-    );
-  }
+  const currentSortLabel = $derived(
+    sortOptions.find((option) => option.value === $marketStore.sortOption)?.label || "Pool Size (High to Low)"
+  );
 </script>
 
 <svelte:head>
@@ -342,7 +338,7 @@
             }}
           >
             <span class="whitespace-nowrap overflow-hidden text-ellipsis">
-              Status: {getCurrentStatusLabel()}
+              Status: {currentStatusLabel}
             </span>
             <ChevronDown class="w-3 h-3 ml-1 flex-shrink-0" />
           </button>
@@ -383,7 +379,7 @@
             }}
           >
             <span class="whitespace-nowrap overflow-hidden text-ellipsis">
-              Sort: {getCurrentSortLabel()}
+              Sort: {currentSortLabel}
             </span>
             <ChevronDown class="w-3 h-3 ml-1 flex-shrink-0" />
           </button>
@@ -456,7 +452,7 @@
                   <p class="text-lg">No markets available</p>
                   <p class="text-sm mt-2">
                     {$marketStore.statusFilter !== "all"
-                      ? `Try changing the status filter from "${getCurrentStatusLabel()}" to "All".`
+                      ? `Try changing the status filter from "${currentStatusLabel}" to "All".`
                       : "Check back later for new prediction markets."}
                   </p>
                 </div>
