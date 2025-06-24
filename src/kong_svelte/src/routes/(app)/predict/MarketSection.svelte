@@ -120,8 +120,15 @@
   }
 
   function openResolutionModal(market: any) {
-    selectedMarket = market;
-    showResolutionModal = true;
+    // Reset state first
+    showResolutionModal = false;
+    selectedMarket = null;
+    
+    // Then set new state after a brief delay
+    setTimeout(() => {
+      selectedMarket = market;
+      showResolutionModal = true;
+    }, 50);
   }
 
   async function handleResolved() {
@@ -176,7 +183,10 @@
 <AdminResolutionModal
   isOpen={showResolutionModal}
   market={selectedMarket}
-  onClose={() => (showResolutionModal = false)}
+  onClose={() => {
+    showResolutionModal = false;
+    selectedMarket = null;
+  }}
   onResolved={handleResolved}
 />
 
@@ -187,7 +197,7 @@
     </div>
   {:else}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-      {#each markets as market (market.id)}
+      {#each markets as market, index (`${market.id}-${index}`)}
         <Panel
           className="relative {isMarketResolved(market)
             ? 'opacity-100'
