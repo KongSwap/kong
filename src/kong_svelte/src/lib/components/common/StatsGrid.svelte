@@ -53,7 +53,12 @@
   // Reference to the scrollable container and frozen content
   let scrollContainer: HTMLDivElement;
   let frozenBody: HTMLDivElement;
+  let gridScrollContainer: HTMLDivElement;
   let previousPageValue = $state(currentPage); // Track previous page
+
+  // Manual scroll system
+  let rootScrollTop = $state(0);
+  let maxScrollHeight = $state(0);
 
   // Column map for optimized lookups
   let columnMap = $state(new Map());
@@ -92,40 +97,62 @@
   // Use the provided data directly (already sorted by parent)
   let displayData = $derived(data);
 
+  // Calculate max scroll height (for desktop)
   $effect(() => {
-    // Scroll to top when currentPage changes
-    if (scrollContainer && currentPage !== previousPageValue) {
-      scrollContainer.scrollTop = 0;
-      if (frozenBody) {
-        frozenBody.scrollTop = 0;
-      }
+    if (scrollContainer && frozenBody) {
+      const containerHeight = scrollContainer.clientHeight;
+      const contentHeight = scrollContainer.scrollHeight;
+      maxScrollHeight = Math.max(0, contentHeight - containerHeight);
     }
-    previousPageValue = currentPage; // Update after check
   });
 
-  // Bidirectional scroll sync between frozen and scrollable sections
+  // Reset scroll when page changes
+  $effect(() => {
+    if (currentPage !== previousPageValue) {
+      rootScrollTop = 0;
+    }
+    previousPageValue = currentPage;
+  });
+
+  // Manual scroll synchronization
   $effect(() => {
     if (!scrollContainer || !frozenBody) return;
 
-    frozenBody.scrollTop = scrollContainer.scrollTop;
-    scrollContainer.scrollTop = frozenBody.scrollTop;
-
-    scrollContainer.addEventListener('scroll', () => {
-      frozenBody.scrollTop = scrollContainer.scrollTop;
-    });
-    frozenBody.addEventListener('scroll', () => {
-      scrollContainer.scrollTop = frozenBody.scrollTop;
-    });
+    // Clamp scrollTop to valid range
+    const clampedScrollTop = Math.max(0, Math.min(rootScrollTop, maxScrollHeight));
     
-    return () => {
-      scrollContainer.removeEventListener('scroll', () => {
-        frozenBody.scrollTop = scrollContainer.scrollTop;
-      });
-      frozenBody.removeEventListener('scroll', () => {
-        scrollContainer.scrollTop = frozenBody.scrollTop;
-      });
-    };
+    // Update both containers' scroll positions
+    scrollContainer.scrollTop = clampedScrollTop;
+    frozenBody.scrollTop = clampedScrollTop;
   });
+
+
+
+  // Handle wheel events for manual scrolling
+  function handleWheel(event: WheelEvent) {
+    // Only handle vertical scrolling, allow horizontal scrolling to work normally
+    if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+      event.preventDefault();
+      
+      const scrollSpeed = 1.5; // Adjust scroll sensitivity
+      const deltaY = event.deltaY * scrollSpeed;
+      
+      rootScrollTop = Math.max(0, Math.min(rootScrollTop + deltaY, maxScrollHeight));
+    }
+  }
+
+  // Prevent vertical scroll events from interfering
+  function preventVerticalScroll(event: Event) {
+    // Only prevent the default if it's a vertical scroll event
+    const scrollEvent = event as any;
+    if (scrollEvent.target === frozenBody || scrollEvent.target === scrollContainer) {
+      // Check if scrollTop changed (vertical scroll) and reset it
+      if (scrollEvent.target.scrollTop !== rootScrollTop) {
+        event.preventDefault();
+        scrollEvent.target.scrollTop = rootScrollTop;
+      }
+    }
+  }
 
   function toggleSort(column: string) {
     if (!onSortChange) return;
@@ -136,11 +163,6 @@
     }
     
     onSortChange(column, newDirection);
-  }
-
-  function getSortIcon(column: string) {
-    if (sortColumn !== column) return ArrowUpDown;
-    return sortDirection === 'asc' ? ArrowUp : ArrowDown;
   }
 
   function nextPage() {
@@ -188,7 +210,7 @@
   // Generate column templates for frozen columns
   let frozenGridTemplateColumns = $derived(frozenColumns.map(col => {
     if (col.key === '#') return isMobile ? '35px' : '50px';
-    if (col.key === 'token') return isMobile ? '80px' : '250px';
+    if (col.key === 'token') return isMobile ? '70px' : '250px';
     return col.width || '120px';
   }).join(' '));
   
@@ -206,20 +228,27 @@
 
 <div class="stats-grid-container">
   <!-- Frozen Columns + Scrollable Container -->
-  <div class="grid-scroll-container">
+  <div 
+    class="grid-scroll-container" 
+    bind:this={gridScrollContainer}
+    onwheel={handleWheel}
+  >
     <div class="grid-content-wrapper">
       <!-- Frozen Columns Section -->
       <div class="frozen-columns-section">
-        <div class="frozen-content" bind:this={frozenBody}>
+        <div class="frozen-content" bind:this={frozenBody} onscroll={preventVerticalScroll}>
           <!-- Frozen Header -->
           <div class="grid-header frozen-header bg-kong-bg-secondary" style="grid-template-columns: {frozenGridTemplateColumns}">
             {#each frozenColumns as column (column.key)}
-              <div 
-                class="header-cell {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'} {column.sortable ? 'sortable' : ''} {column.sortable && sortColumn === column.key ? 'active' : ''}"
-                onclick={() => column.sortable && toggleSort(column.key)}
-              >
-                <span>{column.title}</span>
-              </div>
+              {@const key = column.key}
+              {#if !isMobile || key !== '#'}
+                <div 
+                  class="header-cell {isMobile ? 'center ml-2' : column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'} {column.sortable ? 'sortable' : ''} {column.sortable && sortColumn === column.key ? 'active' : ''}"
+                  onclick={() => column.sortable && toggleSort(column.key)}
+                >
+                  <span>{column.title}</span>
+                </div>
+              {/if}
             {/each}
           </div>
           
@@ -237,7 +266,7 @@
                   {@const value = getValue(row, column.key)}
                   {@const formattedValue = column.formatter ? column.formatter(row, idx) : value}
                   
-                  <div class="grid-cell {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'}">
+                  <div class="{column.key === 'token' ? 'token-cell' : 'grid-cell'} {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'}">
                     {#if column.component}
                       <svelte:component 
                         this={column.component} 
@@ -264,9 +293,9 @@
       
       <!-- Scrollable Columns Section -->
       <div class="scrollable-columns-section">
-        <div class="scrollable-content" bind:this={scrollContainer}>
+        <div class="scrollable-content" bind:this={scrollContainer} onscroll={preventVerticalScroll}>
           <!-- Scrollable Header -->
-          <div class="grid-header scrollable-header bg-kong-bg-secondary justify-between" style="grid-template-columns: {scrollableGridTemplateColumns}">
+          <div class="grid-header scrollable-header bg-kong-bg-secondary justify-between gap-2" style="grid-template-columns: {scrollableGridTemplateColumns}">
             {#each scrollableColumns as column (column.key)}
               <div 
                 class="header-cell {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'} {column.sortable ? 'sortable' : ''} {column.sortable && sortColumn === column.key ? 'active' : ''}"
@@ -289,7 +318,7 @@
           </div>
           
           <!-- Scrollable Body -->
-          <div class="grid-body scrollable-body">
+          <div class="grid-body scrollable-body gap-2">
             {#each displayData as row, idx (row[rowKey] || idx)}
               <div
                 class="grid-row scrollable-row justify-between {$panelRoundness} {onRowClick ? 'clickable' : ''} {hoveredRowIndex === idx ? 'hovered' : ''} {isLowTVL(row) ? 'low-tvl' : ''}"
@@ -449,8 +478,8 @@
   .frozen-content {
     height: 100%;
     overflow-x: hidden;
-    overflow-y: auto;
-    /* Hide scrollbars */
+    overflow-y: hidden; /* Disable native vertical scrolling */
+    /* Hide scrollbars completely */
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* Internet Explorer 10+ */
   }
@@ -458,9 +487,11 @@
   /* Hide scrollbars for WebKit browsers */
   .frozen-content::-webkit-scrollbar {
     display: none;
+    width: 0px;
+    height: 0px;
   }
   
-  .scrollable-columns-section {
+    .scrollable-columns-section {
     display: flex;
     width: 100%;
     height: 100%;
@@ -471,16 +502,18 @@
   .scrollable-content {
     height: 100%; /* Match frozen content height */
     width: 100%;
-    overflow-x: auto;
-    overflow-y: auto;
-    /* Hide scrollbars */
-    scrollbar-width: none; /* Firefox */
+    overflow-x: auto; /* Keep horizontal scrolling for table columns */
+    overflow-y: hidden; /* Disable native vertical scrolling */
+    /* Hide vertical scrollbars completely */
+    scrollbar-width: none; /* Firefox - hide all scrollbars */
     -ms-overflow-style: none; /* Internet Explorer 10+ */
   }
   
-  /* Hide scrollbars for WebKit browsers */
+  /* Hide all scrollbars for WebKit browsers */
   .scrollable-content::-webkit-scrollbar {
     display: none;
+    width: 0px;
+    height: 0px;
   }
   
   .footer-container {
@@ -562,6 +595,19 @@
     border-bottom: 1px solid rgba(var(--border) / 0.1);
     transition: background-color 0.2s;
     background-color: var(--bg-dark); /* Ensure rows have solid background */
+  }
+
+  .token-cell {
+    padding: 0.75rem 1rem; /* Match header cell padding exactly */
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    white-space: nowrap; /* Prevent text wrapping */
+    border-right: 1px solid transparent; /* Match header cell border structure */
+
+    @media (max-width: 768px) {
+      padding: 0.75rem 0.25rem;
+    }
   }
   
   .grid-cell {
@@ -817,13 +863,10 @@
   @media (max-width: 768px) {
     
     .frozen-columns-section {
-      min-width: 100px;
+      min-width: 80px;
     }
     
-    .scrollable-columns-section {
-      /* Enable smooth scrolling on mobile */
-      -webkit-overflow-scrolling: touch;
-    }
+
     
     /* .header-cell {
       padding: 0.5rem 0.75rem;

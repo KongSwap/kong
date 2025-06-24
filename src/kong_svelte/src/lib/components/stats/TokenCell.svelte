@@ -35,34 +35,34 @@
   {#if !isMobile}
     <!-- <span class="token-name ml-2 {isHovered ? '!text-kong-primary' : ''}">{row.name}</span> -->
     <span class="token-name ml-2 {isHovered ? '!text-kong-primary' : ''}">{row.symbol}</span>
+    <div class="flex gap-1 items-center">
+      {#if isLowTVL}
+        <div use:tooltip={{ text: "Low TVL (<$1,000) - Limited liquidity", direction: "top" }}>
+          <AlertTriangle class="w-4 h-4 text-kong-error !opacity-100" />
+        </div>
+      {/if}
+      {#if isTopVolume}
+        <div use:tooltip={{ text: `#${volumeRank} by Volume`, direction: "top" }}>
+          <TriangleRight class="w-4 h-4 text-orange-400" fill="currentColor" />
+        </div>
+      {/if}
+      {#if isTopGainer}
+        <div use:tooltip={{ text: `#${gainerRank} Gainer (24h)`, direction: "top" }}>
+          <TrendingUp class="w-4 h-4 text-green-400" />
+        </div>
+      {/if}
+      {#if isTopLoser}
+        <div use:tooltip={{ text: `#${loserRank} Loser (24h)`, direction: "top" }}>
+          <TrendingDown class="w-4 h-4 text-red-400" />
+        </div>
+      {/if}
+      {#if isTopTVL}
+        <div use:tooltip={{ text: `Top TVL`, direction: "top" }}>
+          <PiggyBank class="w-4 h-4 text-pink-500" />
+        </div>
+      {/if}
+    </div>
   {/if}
-  <div class="flex gap-1 items-center">
-    {#if isLowTVL}
-      <div use:tooltip={{ text: "Low TVL (<$1,000) - Limited liquidity", direction: "top" }}>
-        <AlertTriangle class="w-4 h-4 text-kong-error !opacity-100" />
-      </div>
-    {/if}
-    {#if isTopVolume}
-      <div use:tooltip={{ text: `#${volumeRank} by Volume`, direction: "top" }}>
-        <TriangleRight class="w-4 h-4 text-orange-400" fill="currentColor" />
-      </div>
-    {/if}
-    {#if isTopGainer}
-      <div use:tooltip={{ text: `#${gainerRank} Gainer (24h)`, direction: "top" }}>
-        <TrendingUp class="w-4 h-4 text-green-400" />
-      </div>
-    {/if}
-    {#if isTopLoser}
-      <div use:tooltip={{ text: `#${loserRank} Loser (24h)`, direction: "top" }}>
-        <TrendingDown class="w-4 h-4 text-red-400" />
-      </div>
-    {/if}
-    {#if isTopTVL}
-      <div use:tooltip={{ text: `Top TVL`, direction: "top" }}>
-        <PiggyBank class="w-4 h-4 text-pink-500" />
-      </div>
-    {/if}
-  </div>
 </div>
 
 <style lang="postcss">

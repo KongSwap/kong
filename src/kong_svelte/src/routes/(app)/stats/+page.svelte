@@ -45,6 +45,8 @@
   let refreshInterval: ReturnType<typeof setInterval>;
   let searchTimeout: ReturnType<typeof setTimeout>;
   let isInitialLoad = true;
+  let leftSidebar = $state<HTMLElement>();
+  let sidebarHeight = $state(330);
 
   // Derived values
   const topGainers = $derived(topTokens.gainers);
@@ -301,6 +303,16 @@
     },
   ]);
 
+  // Dynamic sidebar height observer
+  $effect(() => {
+    if (!leftSidebar) return;
+    const observer = new ResizeObserver(([entry]) => {
+      sidebarHeight = entry.contentRect.height;
+    });
+    observer.observe(leftSidebar);
+    return () => observer.disconnect();
+  });
+
   // Initialize and cleanup
   onMount(() => {
     if (!browser) return;
@@ -336,9 +348,9 @@
   <title>Market Stats - KongSwap</title>
 </svelte:head>
 
-<section class="flex flex-col md:flex-row w-full gap-4 px-4">
+<section class="flex flex-col md:flex-row w-full gap-4 p-4" style="--sidebar-height: {sidebarHeight}px;">
   <!-- Sidebar -->
-  <div class="w-full md:w-[330px] flex flex-col gap-2 order-1">
+  <div bind:this={leftSidebar} class="w-full md:w-[330px] flex flex-col gap-2 order-1">
     <PlatformStats {poolTotals} {isLoading} />
     <BiggestMovers {topGainers} {topLosers} {isLoading} panelRoundness={$panelRoundness} />
     <TopVolume {topVolumeTokens} {isLoading} panelRoundness={$panelRoundness} />
@@ -409,5 +421,11 @@
 
   .stats-height {
     height: calc(100dvh - var(--navbar-height) - 10px);
+    min-height: calc(var(--sidebar-height));
+
+    @media (max-width: 768px) {
+      height: auto;
+    }
   }
+
 </style>
