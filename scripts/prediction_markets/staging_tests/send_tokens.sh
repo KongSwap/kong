@@ -81,8 +81,8 @@ get_token_config() {
 }
 
 # Configuration - CHANGE THESE TO SWITCH TOKENS
-SELECTED_TOKEN="DKP"  # Change to "DKP" to send DKP tokens instead
-SEND_AMOUNT=1000          # Amount to send to each recipient (in human-readable units)
+SELECTED_TOKEN="KONG"  # Change to "DKP" to send DKP tokens instead
+SEND_AMOUNT=20          # Amount to send to each recipient (in human-readable units)
 
 # Derived configuration
 TOKEN_CANISTER=$(get_token_config "$SELECTED_TOKEN" "CANISTER")

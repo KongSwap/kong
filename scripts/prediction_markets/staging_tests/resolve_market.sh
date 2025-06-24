@@ -223,10 +223,26 @@ case $RESOLUTION_METHOD in
 esac
 
 # Check resolution result
-if [ $? -eq 0 ] && ([[ $RESOLUTION_RESULT == *"Success"* ]] || [[ $RESOLUTION_RESULT == *"Ok"* ]]); then
-    echo -e "${CMD_COLOR}Status: ${RESET}${SUCCESS_COLOR}✓ RESOLUTION SUCCESSFUL${RESET}"
-    echo -e "${CMD_COLOR}Result: ${RESET}${RESULT_COLOR}$RESOLUTION_RESULT${RESET}"
-    RESOLUTION_SUCCESS=true
+if [ $? -eq 0 ] && ([[ $RESOLUTION_RESULT == *"Success"* ]] || [[ $RESOLUTION_RESULT == *"Ok"* ]] || [[ $RESOLUTION_RESULT == *"AwaitingCreatorApproval"* ]] || [[ $RESOLUTION_RESULT == *"AwaitingAdminApproval"* ]]); then
+    if [[ $RESOLUTION_RESULT == *"Success"* ]]; then
+        echo -e "${CMD_COLOR}Status: ${RESET}${SUCCESS_COLOR}✓ RESOLUTION SUCCESSFUL${RESET}"
+        echo -e "${CMD_COLOR}Result: ${RESET}${RESULT_COLOR}$RESOLUTION_RESULT${RESET}"
+        RESOLUTION_SUCCESS=true
+    elif [[ $RESOLUTION_RESULT == *"AwaitingCreatorApproval"* ]]; then
+        echo -e "${CMD_COLOR}Status: ${RESET}${WARNING_COLOR}⏳ AWAITING CREATOR APPROVAL${RESET}"
+        echo -e "${CMD_COLOR}Result: ${RESET}${RESULT_COLOR}$RESOLUTION_RESULT${RESET}"
+        echo -e "${WARNING_COLOR}The admin has proposed a resolution. Waiting for the market creator to approve.${RESET}"
+        RESOLUTION_SUCCESS=false
+    elif [[ $RESOLUTION_RESULT == *"AwaitingAdminApproval"* ]]; then
+        echo -e "${CMD_COLOR}Status: ${RESET}${WARNING_COLOR}⏳ AWAITING ADMIN APPROVAL${RESET}"
+        echo -e "${CMD_COLOR}Result: ${RESET}${RESULT_COLOR}$RESOLUTION_RESULT${RESET}"
+        echo -e "${WARNING_COLOR}The creator has proposed a resolution. Waiting for an admin to approve.${RESET}"
+        RESOLUTION_SUCCESS=false
+    else
+        echo -e "${CMD_COLOR}Status: ${RESET}${SUCCESS_COLOR}✓ RESOLUTION ACCEPTED${RESET}"
+        echo -e "${CMD_COLOR}Result: ${RESET}${RESULT_COLOR}$RESOLUTION_RESULT${RESET}"
+        RESOLUTION_SUCCESS=true
+    fi
 else
     echo -e "${CMD_COLOR}Status: ${RESET}${ERROR_COLOR}✗ RESOLUTION FAILED${RESET}"
     echo -e "${CMD_COLOR}Error: ${RESET}${ERROR_COLOR}$RESOLUTION_RESULT${RESET}"
@@ -246,7 +262,9 @@ if [ "$RESOLUTION_SUCCESS" = true ]; then
         echo -e "${CMD_COLOR}Market Status: ${RESET}${RESULT_COLOR}$MARKET_STATUS${RESET}"
         
         # Check if it shows as resolved
-        if [[ $MARKET_STATUS == *"Resolved"* ]]; then
+        if [[ $MARKET_STATUS == *"Closed"* ]]; then
+            echo -e "${SUCCESS_COLOR}✓ Market is now resolved (Closed)${RESET}"
+        elif [[ $MARKET_STATUS == *"Resolved"* ]]; then
             echo -e "${SUCCESS_COLOR}✓ Market is now resolved${RESET}"
         else
             echo -e "${WARNING_COLOR}⚠ Market status: $MARKET_STATUS${RESET}"
