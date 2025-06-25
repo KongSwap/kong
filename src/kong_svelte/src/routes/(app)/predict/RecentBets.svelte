@@ -5,7 +5,17 @@
   import { fade } from "svelte/transition";
   import { onDestroy, onMount } from "svelte";
 
-  const props = $props<{
+  let {
+    bets = [],
+    outcomes = null,
+    title = "Recent Predictions",
+    maxHeight = "300px",
+    showOutcomes = true,
+    className = "",
+    panelVariant = "transparent",
+    loading = false,
+    tokenSymbol = "KONG"
+  } = $props<{
     bets?: any[];
     outcomes?: string[] | null;
     title?: string;
@@ -16,17 +26,6 @@
     loading?: boolean;
     tokenSymbol?: string;
   }>();
-
-  // Set default values for props in non-reactive way
-  let bets = $state(props.bets ?? []);
-  let outcomes = $state(props.outcomes ?? null);
-  let title = $state(props.title ?? "Recent Predictions");
-  let maxHeight = $state(props.maxHeight ?? "300px");
-  let showOutcomes = $state(props.showOutcomes ?? true);
-  let className = $state(props.className ?? "");
-  let panelVariant = $state(props.panelVariant ?? "transparent");
-  let loading = $state(props.loading ?? false);
-  let tokenSymbol = $state(props.tokenSymbol ?? "KONG");
 
   // Store visible bets to avoid animation flashes
   let visibleBets = $state<any[]>([]);
@@ -55,12 +54,12 @@
     }
   });
 
-  // Only update when props.bets changes
+  // Only update when bets prop changes
   $effect(() => {
-    if (!props.bets) return;
+    if (!bets) return;
 
     // Use a simple approach to just set the visibleBets directly
-    visibleBets = [...props.bets];
+    visibleBets = [...bets];
   });
 
   function getBetData(bet: any) {

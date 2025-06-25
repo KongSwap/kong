@@ -27,7 +27,7 @@
   );
 </script>
 
-{#if marketClaims.length > 0}
+{#if marketClaims}
   <Panel variant="transparent" className="backdrop-blur-sm !rounded shadow-lg border border-kong-border/10">
     <div class="p-4">
       <div class="flex items-center justify-between mb-3">

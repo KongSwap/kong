@@ -7,7 +7,7 @@
   export let onClose: () => void;
   export let onInitialize: (outcomeIndex: number) => void;
   export let outcomes: string[] = [];
-  export let initializing = false;
+  export let activating = false;
   export let formattedMinInitialBetString = "";
   
   let selectedOutcome: number | null = null;
@@ -67,16 +67,16 @@
       <ButtonV2
         theme="secondary"
         onclick={handleClose}
-        disabled={initializing}
+        disabled={activating}
       >
         Cancel
       </ButtonV2>
       <ButtonV2
         theme="accent-green"
         onclick={handleInitialize}
-        disabled={selectedOutcome === null || initializing}
+        disabled={selectedOutcome === null || activating}
       >
-        {initializing ? 'Initializing...' : 'Initialize Market'}
+        {activating ? 'Activating...' : 'Activate Market'}
       </ButtonV2>
     </div>
   </div>
