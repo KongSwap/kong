@@ -215,9 +215,9 @@
                 </Badge>
               {/each}
               {#if activeToken?.metrics?.is_verified}
-                <Badge variant="green" size="xs" class=""><BadgeCheck size="14" /> Verified</Badge>
+                <Badge variant="green" size="xs" class="" tooltip="This token is verified by Kong"><BadgeCheck size="14" /> Verified</Badge>
               {:else}
-                <Badge variant="yellow" size="xs" class=""><BadgeX size="14" /> Unverified</Badge>
+                <Badge variant="yellow" size="xs" class="" tooltip="This token is not verified by Kong"><BadgeX size="14" /> Unverified</Badge>
               {/if}
             </div>
           </div>

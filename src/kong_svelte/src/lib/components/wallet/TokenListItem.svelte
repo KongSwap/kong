@@ -79,9 +79,9 @@
 					</span>
 					<div class="flex flex-wrap items-center">
 						{#if token?.metrics?.is_verified}
-						  <Badge variant="green" size="xs" class="!p-0"><BadgeCheck size="14" /></Badge>
+						  <Badge variant="green" size="xs" class="!p-0" tooltip="This token is verified by Kong" tooltipDirection="bottom"><BadgeCheck size="14" /></Badge>
 						{:else}
-						  <Badge variant="yellow" size="xs" class="!p-0"><BadgeX size="14" /></Badge>
+						  <Badge variant="yellow" size="xs" class="!p-0" tooltip="This token is not verified by Kong" tooltipDirection="bottom"><BadgeX size="14" /></Badge>
 						{/if}
 					  </div>
 				</div>
