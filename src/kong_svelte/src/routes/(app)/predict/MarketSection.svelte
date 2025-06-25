@@ -27,11 +27,25 @@
   let selectedMarket = $state<any>(null);
   let isUserAdmin = $state(false);
 
-  // Add state for dropdown
-  let showDropdown = $state<number | null>(null);
+  // Add state for dropdown - track which market ID has open dropdown
+  let openDropdownMarketId = $state<string | null>(null);
 
+  // Helper function to get grid class
+  function getGridClass(cols: number, prefix: string = ''): string {
+    const classPrefix = prefix ? `${prefix}:grid-cols-` : 'grid-cols-';
+    switch (cols) {
+      case 1: return `${classPrefix}1`;
+      case 2: return `${classPrefix}2`;
+      case 3: return `${classPrefix}3`;
+      case 4: return `${classPrefix}4`;
+      default: return `${classPrefix}2`;
+    }
+  }
+  
   // Compute grid columns class string
-  const gridColumnClasses = $derived(`grid-cols-${columns.mobile || 1} md:grid-cols-${columns.tablet || 2} lg:grid-cols-${columns.desktop || 3}`);
+  const gridColumnClasses = $derived(
+    `${getGridClass(columns.mobile || 1)} ${getGridClass(columns.tablet || 2, 'md')} ${getGridClass(columns.desktop || 3, 'lg')}`
+  );
 
   // Check if user is admin using $effect (replacing onMount)
   $effect(() => {
@@ -49,14 +63,18 @@
   // Close dropdown when clicking outside
   function handleClickOutside(event: MouseEvent) {
     const target = event.target as HTMLElement;
-    if (!target.closest('.admin-dropdown')) {
-      showDropdown = null;
+    // Check if the click is outside the dropdown button and menu
+    const dropdownButton = target.closest('button[class*="rounded-full"]');
+    const dropdownMenu = target.closest('div[class*="fixed w-48"]');
+    
+    if (!dropdownButton && !dropdownMenu) {
+      openDropdownMarketId = null;
     }
   }
 
   // Add click outside listener
   $effect(() => {
-    if (showDropdown !== null) {
+    if (openDropdownMarketId !== null) {
       document.addEventListener('click', handleClickOutside);
     }
     return () => {
@@ -96,6 +114,10 @@
                 {onMarketResolved}
                 {columns}
                 hasClaim={userClaims.some(claim => claim.market_id === market.id)}
+                isDropdownOpen={openDropdownMarketId === market.id}
+                onDropdownToggle={() => {
+                  openDropdownMarketId = openDropdownMarketId === market.id ? null : market.id;
+                }}
               />
             </div>
           {/each}
@@ -115,6 +137,10 @@
               {onMarketResolved}
               {columns}
               hasClaim={userClaims.some(claim => claim.market_id === market.id)}
+              isDropdownOpen={openDropdownMarketId === market.id}
+              onDropdownToggle={() => {
+                openDropdownMarketId = openDropdownMarketId === market.id ? null : market.id;
+              }}
             />
           {/each}
         </div>

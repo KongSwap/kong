@@ -341,8 +341,6 @@ export async function getUserPendingClaims(principal: string) {
   const actor = predictionActor({anon: true});
   try {
     const pendingClaims = await actor.get_user_pending_claims(principal);
-    console.log("pending claims", pendingClaims)
-    
     return pendingClaims;
   } catch (error) {
     console.error("Error in getUserPendingClaims:", error);

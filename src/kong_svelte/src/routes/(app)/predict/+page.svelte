@@ -4,7 +4,7 @@
   import { goto } from "$app/navigation";
   import { browser } from "$app/environment";
   import { placeBet, getLatestBets, getUserPendingClaims } from "$lib/api/predictionMarket";
-  import { AlertTriangle, ChevronDown } from "lucide-svelte";
+  import { AlertTriangle } from "lucide-svelte";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { toScaledAmount } from "$lib/utils/numberFormatUtils";
@@ -14,46 +14,48 @@
   import { auth } from "$lib/stores/auth";
   import {
     marketStore,
+    filteredMarkets,
     type SortOption,
     type StatusFilter,
   } from "$lib/stores/marketStore";
   import { debounce } from "lodash-es";
   import { startPolling, stopPolling } from "$lib/utils/pollingService";
-  import { clickOutside } from "$lib/actions/clickOutside";
   import Badge from "$lib/components/common/Badge.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
+  import DropdownSelect from "$lib/components/common/DropdownSelect.svelte";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
-  import { userTokens } from "$lib/stores/userTokens";
+  import { syncURLParams, getURLParams } from "$lib/utils/urlUtils";
   import type { LatestBets } from "../../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
   import RecentBets from "./RecentBets.svelte";
+  import PredictionMarketsHeader from "$lib/components/predict/PredictionMarketsHeader.svelte";
 
-  // Modal state
-  let showBetModal = false;
-  let selectedMarket: any = null;
-  let betAmount = 0;
-  let selectedOutcome: number | null = null;
-  let betError: string | null = null;
-  let isBetting = false;
-  let isApprovingAllowance = false;
+  // Bet modal state
+  let betModalState = $state({
+    show: false,
+    market: null as any,
+    amount: 0,
+    outcome: null as number | null,
+    error: null as string | null,
+    isBetting: false,
+    isApprovingAllowance: false
+  });
 
-  let recentBets: LatestBets[] = [];
+  let recentBets = $state<LatestBets[]>([]);
   let previousBets: any[] = [];
   let isInitialLoad = true;
-  let loadingBets = false;
+  let loadingBets = $state(false);
 
-  // UI state for dropdowns
-  let statusDropdownOpen = false;
-  let sortDropdownOpen = false;
-  let layoutDropdownOpen = false;
-  let selectedLayout = 2;
+  // UI state
+  let selectedLayout = $state(3); // Default to 3 markets
 
   // Store the market and outcome to open after authentication
   let pendingMarket: any = null;
   let pendingOutcome: number | null = null;
   let tokens = [];
   let kongToken = null;
-  let userClaims = [];
-  let loadingClaims = false;
+  let userClaims = $state([]);
+  let loadingClaims = $state(false);
+  let lastLoadedPrincipal = $state<string | null>(null);
 
   // Define valid filter/sort options based on marketStore types
   const validStatusFilters: StatusFilter[] = [
@@ -104,7 +106,8 @@
       previousBets = [...recentBets];
 
       try {
-        recentBets = await getLatestBets();
+        const bets = await getLatestBets();
+        recentBets = bets;
         // Minimum loading time of 500ms to prevent flash
         const elapsed = Date.now() - startTime;
         if (elapsed < 500) {
@@ -145,19 +148,17 @@
   }
 
   onMount(async () => {
-    const urlParams = $page.url.searchParams;
-    const statusFromUrl = urlParams.get("status");
-    const sortFromUrl = urlParams.get("sort");
-
+    const urlParams = getURLParams($page, ["status", "sort"]);
+    
     let initialOverrides: {
       statusFilter?: StatusFilter;
       sortOption?: SortOption;
     } = {};
-    if (isValidStatusFilter(statusFromUrl)) {
-      initialOverrides.statusFilter = statusFromUrl;
+    if (isValidStatusFilter(urlParams.status)) {
+      initialOverrides.statusFilter = urlParams.status as StatusFilter;
     }
-    if (isValidSortOption(sortFromUrl)) {
-      initialOverrides.sortOption = sortFromUrl;
+    if (isValidSortOption(urlParams.sort)) {
+      initialOverrides.sortOption = urlParams.sort as SortOption;
     }
 
     // Set the current user principal in the market store
@@ -192,9 +193,11 @@
   });
 
   // Save layout preference when changed
-  $: if (browser && selectedLayout !== undefined) {
-    localStorage.setItem('preferedLayout', selectedLayout.toString());
-  }
+  $effect(() => {
+    if (browser && selectedLayout !== undefined) {
+      localStorage.setItem('preferedLayout', selectedLayout.toString());
+    }
+  });
 
   // Debounced market refresh to prevent too frequent updates
   const debouncedRefreshMarkets = debounce(() => {
@@ -211,32 +214,20 @@
       return;
     }
 
-    // User is authenticated, proceed with opening bet modal
-    // First set all the values to initial state
-    showBetModal = false;
-    selectedMarket = null;
-    betAmount = 0;
-    selectedOutcome = null;
-    betError = null;
-
-    // Short delay to ensure clean state before opening
-    setTimeout(() => {
-      selectedMarket = market;
-      // Make sure we always have a selected outcome
-      selectedOutcome = outcomeIndex !== undefined ? outcomeIndex : 0;
-      showBetModal = true;
-    }, 50);
+    // Reset state and open modal
+    betModalState = {
+      show: true,
+      market: market,
+      amount: 0,
+      outcome: outcomeIndex !== undefined ? outcomeIndex : 0,
+      error: null,
+      isBetting: false,
+      isApprovingAllowance: false
+    };
   }
 
   function closeBetModal() {
-    showBetModal = false;
-    // Don't immediately set selectedMarket to null, small delay to ensure proper cleanup
-    setTimeout(() => {
-      selectedMarket = null;
-      betAmount = 0;
-      selectedOutcome = null;
-      betError = null;
-    }, 100);
+    betModalState.show = false;
   }
 
   function handleWalletLogin() {
@@ -249,11 +240,11 @@
   }
 
   async function handleBet(amount: number) {
-    if (!selectedMarket || selectedOutcome === null) return;
+    if (!betModalState.market || betModalState.outcome === null) return;
 
     try {
-      isBetting = true;
-      betError = null;
+      betModalState.isBetting = true;
+      betModalState.error = null;
 
       if (!kongToken) {
         throw new Error("Failed to fetch KONG token information");
@@ -264,14 +255,14 @@
 
       await placeBet(
         kongToken,
-        BigInt(selectedMarket.id),
-        BigInt(selectedOutcome),
+        BigInt(betModalState.market.id),
+        BigInt(betModalState.outcome),
         scaledAmount,
       );
 
       toastStore.add({
         title: "Bet Placed",
-        message: `You bet ${amount} KONG on ${selectedMarket.outcomes[selectedOutcome]}`,
+        message: `You bet ${amount} KONG on ${betModalState.market.outcomes[betModalState.outcome]}`,
         type: "success",
       });
 
@@ -281,24 +272,28 @@
       await marketStore.refreshMarkets();
     } catch (e) {
       console.error("Bet error:", e);
-      betError = e instanceof Error ? e.message : "Failed to place bet";
+      betModalState.error = e instanceof Error ? e.message : "Failed to place bet";
     } finally {
-      isBetting = false;
+      betModalState.isBetting = false;
     }
   }
 
-  // Status display mapping
-  const statusOptions = [
+  // Filter and sort options
+  const statusOptions = $derived([
     { value: "all", label: "All" },
     { value: "active", label: "Active" },
     { value: "pending", label: "Pending" },
     { value: "closed", label: "Closed" },
     { value: "disputed", label: "Disputed" },
     { value: "voided", label: "Voided" },
-    { value: "myMarkets", label: "My Markets" },
-  ];
+    { 
+      value: "myMarkets", 
+      label: "My Markets",
+      disabled: !$auth.isConnected,
+      tooltip: "Please connect your wallet to view your markets"
+    },
+  ]);
 
-  // Sort options mapping
   const sortOptions = [
     { value: "newest", label: "Newest" },
     { value: "pool_desc", label: "Pool Size (High to Low)" },
@@ -307,32 +302,30 @@
     { value: "end_time_desc", label: "End Time (Latest First)" },
   ];
 
-  // Get current option label
-  function getCurrentStatusLabel() {
-    return (
-      statusOptions.find((option) => option.value === $marketStore.statusFilter)
-        ?.label || "All"
-    );
-  }
+  // Get the current status filter label
+  const currentStatusLabel = $derived(
+    statusOptions.find(opt => opt.value === $marketStore.statusFilter)?.label || "All"
+  );
 
-  function getCurrentSortLabel() {
-    return (
-      sortOptions.find((option) => option.value === $marketStore.sortOption)
-        ?.label || "Pool Size (High to Low)"
-    );
-  }
-
-  // Reactive statement to update market store when auth state changes
-  $: if (browser) {
-    if ($auth.isConnected && $auth.account?.owner) {
-      marketStore.setCurrentUserPrincipal($auth.account.owner);
-      // Load user claims when authenticated
-      loadUserClaims();
-    } else {
-      marketStore.setCurrentUserPrincipal(null);
-      userClaims = [];
+  // Update market store when auth state changes
+  $effect(() => {
+    if (browser) {
+      if ($auth.isConnected && $auth.account?.owner) {
+        const currentPrincipal = $auth.account.owner;
+        marketStore.setCurrentUserPrincipal(currentPrincipal);
+        
+        // Only load claims if principal changed
+        if (currentPrincipal !== lastLoadedPrincipal) {
+          lastLoadedPrincipal = currentPrincipal;
+          loadUserClaims();
+        }
+      } else {
+        marketStore.setCurrentUserPrincipal(null);
+        userClaims = [];
+        lastLoadedPrincipal = null;
+      }
     }
-  }
+  });
 
   async function loadUserClaims() {
     if (!$auth.isConnected || !$auth.account?.owner || loadingClaims) return;
@@ -348,34 +341,20 @@
     }
   }
 
-  // Reactive statement to update URL when filters change
-  $: if (
-    browser &&
-    $marketStore.statusFilter &&
-    $marketStore.sortOption &&
-    !$marketStore.loading
-  ) {
-    const newUrlParams = new URLSearchParams($page.url.searchParams.toString());
-    let changed = false;
-
-    if (newUrlParams.get("status") !== $marketStore.statusFilter) {
-      newUrlParams.set("status", $marketStore.statusFilter);
-      changed = true;
-    }
-    if (newUrlParams.get("sort") !== $marketStore.sortOption) {
-      newUrlParams.set("sort", $marketStore.sortOption);
-      changed = true;
-    }
-
-    if (changed) {
-      const currentPath = $page.url.pathname;
-      goto(`${currentPath}?${newUrlParams.toString()}`, {
-        replaceState: true,
-        noScroll: true,
-        keepFocus: true,
+  // Update URL when filters change
+  $effect(() => {
+    if (
+      browser &&
+      $marketStore.statusFilter &&
+      $marketStore.sortOption &&
+      !$marketStore.loading
+    ) {
+      syncURLParams($page, {
+        status: { param: "status", value: $marketStore.statusFilter },
+        sort: { param: "sort", value: $marketStore.sortOption }
       });
     }
-  }
+  });
 </script>
 
 <svelte:head>
@@ -383,209 +362,86 @@
   <meta name="description" content="Predict the future and earn rewards" />
 </svelte:head>
 
-<div class="min-h-screen text-kong-text-primary px-4">
+<div class="min-h-screen text-kong-text-primary">
   <div class="mx-auto">
-    <div
-      class="text-center mb-8 flex flex-col md:flex-row md:justify-between md:items-center gap-6"
-    >
-      <div class="flex flex-col gap-2 w-full">
-        <h1
-          class="text-2xl flex items-center gap-3 justify-center md:justify-start drop-shadow-lg md:text-3xl font-bold text-kong-text-primary/80"
-        >
-          Prediction Markets
-        </h1>
-      </div>
+    <!-- Prediction Markets Header -->
+    <PredictionMarketsHeader {openBetModal} {userClaims} />
 
-      <div class="flex gap-3 w-full justify-center md:justify-end">
-        {#if $auth.isConnected}
-          <ButtonV2
-            theme="primary"
-            variant="solid"
-            size="md"
-            onclick={() => goto("/predict/create")}
-          >
-            Create Market
-          </ButtonV2>
-          <ButtonV2
-            theme="secondary"
-            variant="solid"
-            size="md"
-            onclick={() => goto("/predict/history")}
-          >
-            Prediction History
-          </ButtonV2>
-        {/if}
-      </div>
-    </div>
+    <!-- Filters and Controls -->
+    <div class="border-b border-kong-text-primary/10 pb-4 mb-6 px-4">
+      <div class="flex flex-col lg:flex-row justify-between gap-4">
+        <!-- Category Filters -->
+        <div class="flex flex-wrap gap-2 items-center">
+          {#each $marketStore.categories as category}
+            <button
+              class="px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200
+                     {($marketStore.selectedCategory === category || (category === "All" && $marketStore.selectedCategory === null))
+                       ? 'bg-kong-accent-blue/20 text-kong-accent-blue border border-kong-accent-blue/30'
+                       : 'bg-kong-bg-secondary text-kong-text-secondary hover:bg-kong-bg-tertiary hover:text-kong-text-primary border border-kong-text-primary/10'}"
+              onclick={() => marketStore.setCategory(category === "All" ? null : category)}
+            >
+              {category}
+            </button>
+          {/each}
+        </div>
 
-    <!-- Admin Actions & User History -->
-    <div class="flex flex-col md:flex-row justify-between gap-3 mb-4">
-      <!-- Category Filters -->
-      <div class="flex flex-wrap gap-2 max-w-full overflow-x-auto items-center">
-        {#each $marketStore.categories as category}
-          <span
-            class="cursor-pointer"
-            onclick={() =>
-              marketStore.setCategory(category === "All" ? null : category)}
-          >
-            {#if $marketStore.selectedCategory === category || (category === "All" && $marketStore.selectedCategory === null)}
-              <Badge
-                variant="green"
-                size="sm"
-                pill={true}
-                icon="●"
-                class="border border-kong-success font-medium"
+        <!-- Filters Container -->
+        <div class="flex items-center gap-2">
+          <!-- Status Filter -->
+          <DropdownSelect
+            options={statusOptions}
+            value={$marketStore.statusFilter}
+            label="Status"
+            onChange={(value) => {
+              marketStore.setStatusFilter(value as StatusFilter);
+            }}
+            size="sm"
+            className="min-w-[120px]"
+          />
+
+          <!-- Sort Options -->
+          <DropdownSelect
+            options={sortOptions}
+            value={$marketStore.sortOption}
+            label="Sort by"
+            onChange={(value) => {
+              marketStore.setSortOption(value as SortOption);
+            }}
+            size="sm"
+            className="min-w-[180px]"
+          />
+
+          <!-- Layout Toggle -->
+          <div class="hidden lg:flex items-center gap-1 ml-4 bg-kong-bg-secondary rounded-lg p-1 border border-kong-text-primary/10">
+            {#each [1, 2, 3, 4] as columns}
+              <button
+                class="p-2 rounded transition-all duration-200
+                       {selectedLayout === columns
+                         ? 'bg-kong-bg-tertiary text-kong-text-primary'
+                         : 'text-kong-text-secondary hover:text-kong-text-primary'}"
+                onclick={() => selectedLayout = columns}
+                title="{columns} column{columns > 1 ? 's' : ''}"
               >
-                {category}
-              </Badge>
-            {:else}
-              <Badge variant="gray" size="sm" pill={true}>
-                {category}
-              </Badge>
-            {/if}
-          </span>
-        {/each}
-      </div>
-
-      <!-- Filters Container -->
-      <div
-        class="flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0"
-      >
-        <!-- Layout Toggle Dropdown -->
-        <div
-          class="relative layout-dropdown flex-1 md:flex-none max-w-[48%] md:max-w-none"
-          use:clickOutside={() => (layoutDropdownOpen = false)}
-        >
-          <button
-            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-bg-tertiary text-kong-text-primary hover:bg-kong-bg-secondary/30 transition-colors border border-kong-border/50"
-            onclick={(e) => {
-              e.stopPropagation();
-              layoutDropdownOpen = !layoutDropdownOpen;
-              statusDropdownOpen = false;
-              sortDropdownOpen = false;
-            }}
-          >
-            <span class="whitespace-nowrap overflow-hidden text-ellipsis">
-              Columns: {layoutOptions[selectedLayout].label}
-            </span>
-            <ChevronDown class="w-3 h-3 ml-1 flex-shrink-0" />
-          </button>
-
-          {#if layoutDropdownOpen}
-            <div
-              class="absolute top-full left-0 mt-1 z-50 bg-kong-bg-tertiary border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[120px] backdrop-blur-sm"
-            >
-              {#each layoutOptions as option, index}
-                <button
-                  class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-secondary/30 {selectedLayout === index
-                    ? 'bg-kong-success/20 text-kong-success font-medium'
-                    : 'text-kong-text-primary'}"
-                  onclick={() => {
-                    selectedLayout = index;
-                    layoutDropdownOpen = false;
-                  }}
-                >
-                  {option.label}
-                </button>
-              {/each}
-            </div>
-          {/if}
-        </div>
-
-        <!-- Status Filter Dropdown -->
-        <div
-          class="relative status-dropdown flex-1 md:flex-none max-w-[48%] md:max-w-none"
-          use:clickOutside={() => (statusDropdownOpen = false)}
-        >
-          <button
-            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-bg-tertiary text-kong-text-primary hover:bg-kong-bg-secondary/30 transition-colors border border-kong-border/50"
-            onclick={(e) => {
-              e.stopPropagation();
-              statusDropdownOpen = !statusDropdownOpen;
-              sortDropdownOpen = false;
-            }}
-          >
-            <span class="whitespace-nowrap overflow-hidden text-ellipsis">
-              Status: {getCurrentStatusLabel()}
-            </span>
-            <ChevronDown class="w-3 h-3 ml-1 flex-shrink-0" />
-          </button>
-
-          {#if statusDropdownOpen}
-            <div
-              class="absolute top-full left-0 mt-1 z-50 bg-kong-bg-tertiary border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[120px] backdrop-blur-sm"
-            >
-              {#each statusOptions as option}
-                {#if option.value === "myMarkets" && !$auth.isConnected}
-                  <!-- Disabled My Markets option when not authenticated -->
-                  <div
-                    class="w-full text-left px-3 py-2 text-xs text-kong-text-disabled cursor-not-allowed opacity-50"
-                    title="Please connect your wallet to view your markets"
-                  >
-                    {option.label}
-                  </div>
-                {:else}
-                  <button
-                    class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-secondary/30 {$marketStore.statusFilter ===
-                    option.value
-                      ? 'bg-kong-success/20 text-kong-success font-medium'
-                      : 'text-kong-text-primary'}"
-                    onclick={() => {
-                      if (option.value === "myMarkets" && !$auth.isConnected) {
-                        // This shouldn't happen due to the conditional above, but just in case
-                        return;
-                      }
-                      marketStore.setStatusFilter(option.value as StatusFilter);
-                      statusDropdownOpen = false;
-                    }}
-                  >
-                    {option.label}
-                  </button>
-                {/if}
-              {/each}
-            </div>
-          {/if}
-        </div>
-
-        <!-- Sorting Dropdown -->
-        <div
-          class="relative sort-dropdown flex-1 md:flex-none max-w-[48%] md:max-w-none"
-          use:clickOutside={() => (sortDropdownOpen = false)}
-        >
-          <button
-            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-bg-tertiary text-kong-text-primary hover:bg-kong-bg-secondary/30 transition-colors border border-kong-border/50"
-            onclick={(e) => {
-              e.stopPropagation();
-              sortDropdownOpen = !sortDropdownOpen;
-              statusDropdownOpen = false;
-            }}
-          >
-            <span class="whitespace-nowrap overflow-hidden text-ellipsis">
-              Sort: {getCurrentSortLabel()}
-            </span>
-            <ChevronDown class="w-3 h-3 ml-1 flex-shrink-0" />
-          </button>
-
-          {#if sortDropdownOpen}
-            <div
-              class="absolute top-full right-0 mt-1 z-30 bg-kong-bg-tertiary border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[180px] backdrop-blur-sm"
-            >
-              {#each sortOptions as option}
-                <button
-                  class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-secondary/30 {$marketStore.sortOption ===
-                  option.value
-                    ? 'bg-kong-success/20 text-kong-success font-medium'
-                    : 'text-kong-text-primary'}"
-                  onclick={() => {
-                    marketStore.setSortOption(option.value as SortOption);
-                    sortDropdownOpen = false;
-                  }}
-                >
-                  {option.label}
-                </button>
-              {/each}
-            </div>
-          {/if}
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  {#if columns === 1}
+                    <rect x="2" y="2" width="16" height="16" rx="1" />
+                  {:else if columns === 2}
+                    <rect x="2" y="2" width="7" height="16" rx="1" />
+                    <rect x="11" y="2" width="7" height="16" rx="1" />
+                  {:else if columns === 3}
+                    <rect x="2" y="2" width="4.5" height="16" rx="1" />
+                    <rect x="7.75" y="2" width="4.5" height="16" rx="1" />
+                    <rect x="13.5" y="2" width="4.5" height="16" rx="1" />
+                  {:else}
+                    <rect x="2" y="2" width="3.5" height="16" rx="0.5" />
+                    <rect x="6.25" y="2" width="3.5" height="16" rx="0.5" />
+                    <rect x="10.5" y="2" width="3.5" height="16" rx="0.5" />
+                    <rect x="14.75" y="2" width="3.25" height="16" rx="0.5" />
+                  {/if}
+                </svg>
+              </button>
+            {/each}
+          </div>
         </div>
       </div>
     </div>
@@ -603,9 +459,9 @@
         {:else}
           <div class="relative">
             <!-- Display markets based on status filter -->
-            {#if $marketStore.markets.length > 0}
+            {#if $filteredMarkets.length > 0}
               <MarketSection
-                markets={$marketStore.markets}
+                markets={$filteredMarkets}
                 {openBetModal}
                 {userClaims}
                 onMarketResolved={async () => {
@@ -614,8 +470,8 @@
                 }}
                 columns={{
                   mobile: 1,
-                  tablet: layoutOptions[selectedLayout].value <= 2 ? layoutOptions[selectedLayout].value : 2,
-                  desktop: layoutOptions[selectedLayout].value
+                  tablet: selectedLayout <= 2 ? selectedLayout : 2,
+                  desktop: selectedLayout
                 }}
               />
             {:else}
@@ -626,7 +482,7 @@
                   <p class="text-lg">No markets available</p>
                   <p class="text-sm mt-2">
                     {$marketStore.statusFilter !== "all"
-                      ? `Try changing the status filter from "${getCurrentStatusLabel()}" to "All".`
+                      ? `Try changing the status filter from "${currentStatusLabel}" to "All".`
                       : "Check back later for new prediction markets."}
                   </p>
                 </div>
@@ -655,13 +511,13 @@
 
 <!-- Betting Modal -->
 <BetModal
-  {showBetModal}
-  {selectedMarket}
-  {isBetting}
-  {isApprovingAllowance}
-  {betError}
-  {selectedOutcome}
-  bind:betAmount
+  showBetModal={betModalState.show}
+  selectedMarket={betModalState.market}
+  isBetting={betModalState.isBetting}
+  isApprovingAllowance={betModalState.isApprovingAllowance}
+  betError={betModalState.error}
+  selectedOutcome={betModalState.outcome}
+  bind:betAmount={betModalState.amount}
   onClose={closeBetModal}
   onBet={handleBet}
 />

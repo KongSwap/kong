@@ -115,7 +115,7 @@
 
         {#if isWinner}
           <CheckCircle
-            class="w-4 h-4 text-kong-success animate-pulse flex-shrink-0"
+            class="w-4 h-4 text-kong-success flex-shrink-0"
           />
         {/if}
       </div>
@@ -157,7 +157,7 @@
         <span class="truncate block {isMarketResolved(market) && !isWinner ? 'text-kong-text-disabled' : ''}">{outcome}</span>
         {#if isWinner}
           <CheckCircle
-            class="w-4 h-4 text-kong-success animate-pulse flex-shrink-0"
+            class="w-4 h-4 text-kong-success flex-shrink-0"
           />
         {/if}
       </span>

@@ -22,7 +22,6 @@
   import { isAdmin, setMarketFeatured } from "$lib/api/predictionMarket";
   import { voidMarketViaAdmin } from "$lib/api/predictionMarket";
   import { userTokens } from "$lib/stores/userTokens";
-  import { panelRoundness } from "$lib/stores/derivedThemeStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import MarketOutcomeButton from "./MarketOutcomeButton.svelte";
   import AdminDropdownButton from "./AdminDropdownButton.svelte";
@@ -34,6 +33,8 @@
     onMarketResolved,
     columns = { mobile: 1, tablet: 2, desktop: 3 },
     hasClaim = false,
+    isDropdownOpen = false,
+    onDropdownToggle,
   } = $props<{
     market: any;
     showEndTime?: boolean;
@@ -41,17 +42,20 @@
     onMarketResolved: () => Promise<void>;
     columns?: { mobile?: number; tablet?: number; desktop?: number };
     hasClaim?: boolean;
+    isDropdownOpen?: boolean;
+    onDropdownToggle?: () => void;
   }>();
 
   // Convert local state to use $state
   let showResolutionModal = $state(false);
   let isUserAdmin = $state(false);
-  let showDropdown = $state(false);
+  // Remove local dropdown state - now managed by parent
 
   // Check if user is admin using $effect
   $effect(() => {
     if ($auth.isConnected && $auth.account) {
       isAdmin($auth.account.owner).then((result) => {
+        console.log("Is user admin:", result);
         isUserAdmin = result;
       });
     }
@@ -122,7 +126,8 @@
         }
       }
 
-      if (outcomeIndex === 0) {
+      // Only warn if the market is actually closed (not voided or expired unresolved)
+      if (outcomeIndex === 0 && market.status && "Closed" in market.status) {
         console.warn(
           "Could not determine winning outcome. Market structure:",
           market,
@@ -215,26 +220,10 @@
   }
 
   function toggleDropdown() {
-    showDropdown = !showDropdown;
+    onDropdownToggle?.();
   }
 
-  // Close dropdown when clicking outside
-  function handleClickOutside(event: MouseEvent) {
-    const target = event.target as HTMLElement;
-    if (!target.closest(".admin-dropdown")) {
-      showDropdown = false;
-    }
-  }
-
-  // Add click outside listener
-  $effect(() => {
-    if (showDropdown) {
-      document.addEventListener("click", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("click", handleClickOutside);
-    };
-  });
+  // Click outside handling is now managed by parent component
 </script>
 
 <AdminResolutionModal
@@ -391,22 +380,22 @@
             {/if}
             {#if isUserAdmin}
               <AdminDropdownButton
-                isOpen={showDropdown}
+                isOpen={isDropdownOpen}
                 onToggle={(e) => {
                   e.stopPropagation();
                   toggleDropdown();
                 }}
                 onSetFeatured={() => {
                   handleSetFeatured(market, !market.featured);
-                  showDropdown = false;
+                  onDropdownToggle?.();
                 }}
                 onResolve={() => {
                   openResolutionModal(market);
-                  showDropdown = false;
+                  onDropdownToggle?.();
                 }}
                 onVoid={() => {
                   handleVoidMarket(market);
-                  showDropdown = false;
+                  onDropdownToggle?.();
                 }}
                 isFeatured={market.featured}
               />
@@ -575,22 +564,22 @@
           {/if}
           {#if isUserAdmin}
             <AdminDropdownButton
-              isOpen={showDropdown}
+              isOpen={isDropdownOpen}
               onToggle={(e) => {
                 e.stopPropagation();
                 toggleDropdown();
               }}
               onSetFeatured={() => {
                 handleSetFeatured(market, !market.featured);
-                showDropdown = false;
+                onDropdownToggle?.();
               }}
               onResolve={() => {
                 openResolutionModal(market);
-                showDropdown = false;
+                onDropdownToggle?.();
               }}
               onVoid={() => {
                 handleVoidMarket(market);
-                showDropdown = false;
+                onDropdownToggle?.();
               }}
               isFeatured={market.featured}
             />

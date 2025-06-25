@@ -459,7 +459,7 @@ let initializing = $state(false);
           theme="warning"
           onclick={() => showInitializeDialog = true}
         >
-          Initialize Market
+          Activate Market
         </ButtonV2>
       </div>
     {/if}
@@ -624,7 +624,7 @@ showClose={false}
   }}
   onInitialize={initializeMarket}
   outcomes={market?.outcomes || []}
-  {initializing}
+  activating={initializing}
   {formattedMinInitialBetString}
 />
 

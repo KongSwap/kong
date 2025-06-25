@@ -220,8 +220,24 @@ function createMarketStore() {
 
 export const marketStore = createMarketStore();
 
-// Derived store for filtered markets
+// Derived store for filtered markets (returns flat array)
 export const filteredMarkets = derived(marketStore, $marketStore => {
+  const { markets, selectedCategory } = $marketStore;
+  
+  // Filter by category if selected
+  let filtered = selectedCategory 
+    ? markets.filter(market => {
+        // Check if the market category matches the selected category
+        // MarketCategory is a variant type, so we need to check the key
+        return selectedCategory in market.category;
+      })
+    : markets;
+    
+  return filtered;
+});
+
+// Derived store for grouped filtered markets
+export const groupedFilteredMarkets = derived(marketStore, $marketStore => {
   const { markets, selectedCategory } = $marketStore;
   
   // Filter by category if selected
