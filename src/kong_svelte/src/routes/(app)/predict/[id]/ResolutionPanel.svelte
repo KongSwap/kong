@@ -3,9 +3,10 @@
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import { Trophy, AlertCircle, CheckCircle, Info } from "lucide-svelte";
   import type { Market } from "$lib/types/predictionMarket";
-  import { resolveMarketViaAdmin, getMarketResolutionDetails } from "$lib/api/predictionMarket";
+  import { proposeResolution, getResolutionProposal } from "$lib/api/predictionMarket";
   import { toastStore } from "$lib/stores/toastStore";
-  import type { MarketResolutionDetails } from "../../../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
+  import { auth } from "$lib/stores/auth";
+  import type { ResolutionProposalInfo } from "../../../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
   
   let {
     market,
@@ -22,8 +23,8 @@
   let resolutionError = $state<string | null>(null);
   let showConfirmDialog = $state(false);
   let loadingResolutionDetails = $state(false);
-  let existingResolutionDetails = $state<MarketResolutionDetails | null>(null);
-  let hasExistingResolution = $derived(existingResolutionDetails !== null);
+  let existingResolutionDetails = $state<ResolutionProposalInfo | null>(null);
+  let hasExistingResolution = $derived(existingResolutionDetails !== null && existingResolutionDetails.creator_vote.length > 0);
   
   // Load existing resolution details when component mounts
   $effect(() => {
@@ -35,12 +36,13 @@
   async function loadResolutionDetails() {
     try {
       loadingResolutionDetails = true;
-      const details = await getMarketResolutionDetails(BigInt(market.id));
+      const details = await getResolutionProposal(BigInt(market.id));
+      console.log("details", details);
       existingResolutionDetails = details;
       
       // If there are existing resolution details, prefill the form
-      if (details && details.winning_outcomes.length > 0) {
-        selectedOutcome = Number(details.winning_outcomes[0]);
+      if (details && details.creator_vote.length > 0) {
+        selectedOutcome = Number(details.creator_vote[0].proposed_outcomes[0]);
       }
     } catch (error) {
       console.error("Failed to load resolution details:", error);
@@ -57,7 +59,11 @@
       resolving = true;
       resolutionError = null;
       
-      await resolveMarketViaAdmin(
+      console.log("Debug - Market creator:", market.creator?.toText());
+      console.log("Debug - Current user:", $auth.account?.owner);
+      console.log("Debug - Are they equal?", market.creator?.toText() === $auth.account?.owner);
+      
+      await proposeResolution(
         BigInt(market.id),
         BigInt(selectedOutcome)
       );
@@ -141,9 +147,17 @@
         <div class="text-sm text-kong-text-secondary">
           <p class="font-medium text-kong-accent-green mb-1">Resolution Already Submitted</p>
           <p>You have already submitted a resolution for this market. Your selection is awaiting admin verification.</p>
+          {#if existingResolutionDetails && existingResolutionDetails.creator_vote.length > 0}
+            {@const selectedOutcomeIndex = Number(existingResolutionDetails.creator_vote[0].proposed_outcomes[0])}
+            {@const selectedOutcomeText = outcomes[selectedOutcomeIndex]}
+            <p class="mt-2 p-2 bg-kong-bg-secondary/20 rounded border-l-2 border-kong-accent-green">
+              <span class="font-medium text-kong-accent-green">Your Selection:</span>
+              <span class="text-kong-text-primary ml-2">"{selectedOutcomeText}"</span>
+            </p>
+          {/if}
           {#if existingResolutionDetails}
             <p class="mt-1 text-xs text-kong-text-secondary/80">
-              Submitted: {new Date(Number(existingResolutionDetails.resolution_timestamp) / 1_000_000).toLocaleString()}
+              Submitted: {new Date(Number(existingResolutionDetails.created_at) / 1_000_000).toLocaleString()}
             </p>
           {/if}
         </div>

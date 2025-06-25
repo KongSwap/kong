@@ -3,7 +3,7 @@ import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { predictionActor } from "$lib/stores/auth";
 import { Principal } from "@dfinity/principal";
 import { notificationsStore } from "$lib/stores/notificationsStore";
-import type { MarketStatus, SortOption, MarketResolutionDetails } from "../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
+import type { MarketStatus, SortOption } from "../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
 
 export async function getMarket(marketId: bigint) {
   const actor = predictionActor({anon: true});
@@ -195,9 +195,10 @@ export async function resolveMarketViaAdmin(
   try {
     const actor = predictionActor({anon: false, requiresSigning: false});
 
-    // Convert marketId from string to number
-    const marketIdNumber = marketId;
-    const result = await actor.resolve_via_admin(marketIdNumber, [winningOutcome]);
+    const result = await actor.resolve_via_admin({
+      market_id: marketId,
+      winning_outcomes: [winningOutcome]
+    });
 
     if ("Err" in result) {
       const error = result.Err as any;
@@ -222,6 +223,72 @@ export async function resolveMarketViaAdmin(
     });
   } catch (error) {
     console.error("Failed to resolve market via admin:", error);
+    throw error;
+  }
+}
+
+export async function proposeResolution(
+  marketId: bigint,
+  winningOutcome: bigint,
+): Promise<void> {
+  try {
+    const actor = predictionActor({anon: false, requiresSigning: true});
+
+    console.log("Calling propose_resolution with:", {
+      market_id: marketId,
+      winning_outcomes: [winningOutcome]
+    });
+
+    const result = await actor.propose_resolution({
+      market_id: marketId,
+      winning_outcomes: [winningOutcome]
+    });
+
+    console.log("propose_resolution result", result);
+
+    if ("Error" in result) {
+      const error = result.Error as any;
+      if ("MarketNotFound" in error) {
+        throw new Error("Market not found");
+      } else if ("MarketStillOpen" in error) {
+        throw new Error("Market is still open");
+      } else if ("AlreadyResolved" in error) {
+        throw new Error("Market has already been resolved");
+      } else if ("Unauthorized" in error) {
+        throw new Error("You are not authorized to propose resolution for this market");
+      } else if ("AwaitingAdminApproval" in error) {
+        throw new Error("Resolution is awaiting admin approval");
+      } else if ("AwaitingCreatorApproval" in error) {
+        throw new Error("Resolution is awaiting creator approval");
+      } else {
+        throw new Error(
+          `Failed to propose resolution: ${JSON.stringify(result.Error)}`,
+        );
+      }
+    }
+    
+    // Handle success cases
+    if ("AwaitingAdminApproval" in result) {
+      notificationsStore.add({
+        title: "Resolution Proposed",
+        message: `Your resolution proposal for market ${marketId} is awaiting admin approval`,
+        type: "success",
+      });
+    } else if ("AwaitingCreatorApproval" in result) {
+      notificationsStore.add({
+        title: "Resolution Proposed",
+        message: `Your resolution proposal for market ${marketId} is awaiting creator approval`,
+        type: "success",
+      });
+    } else if ("Success" in result) {
+      notificationsStore.add({
+        title: "Resolution Submitted",
+        message: `Market ${marketId} resolution has been submitted successfully`,
+        type: "success",
+      });
+    }
+  } catch (error) {
+    console.error("Failed to propose resolution:", error);
     throw error;
   }
 }
@@ -450,19 +517,28 @@ export async function setMarketFeatured(marketId: bigint, featured: boolean): Pr
   }
 }
 
-export async function getMarketResolutionDetails(marketId: bigint): Promise<MarketResolutionDetails | null> {
+export async function resolveMarket(
+  marketId: bigint,
+  winningOutcome: bigint,
+  userPrincipal: string,
+): Promise<void> {
+  // Check if current user is admin
+  const userIsAdmin = await isAdmin(userPrincipal);
+  
+  if (userIsAdmin) {
+    await resolveMarketViaAdmin(marketId, winningOutcome);
+  } else {
+    await proposeResolution(marketId, winningOutcome);
+  }
+}
+
+export async function getResolutionProposal(marketId: bigint) {
   const actor = predictionActor({anon: true});
   try {
-    const result = await actor.get_market_resolution_details(marketId);
-    
-    if ("Ok" in result) {
-      return result.Ok[0] || null; // Extract the optional value
-    } else {
-      console.error("Failed to get market resolution details:", result.Err);
-      return null;
-    }
+    const result = await actor.get_resolution_proposal(marketId);
+    return result[0] || null; // Extract the optional value
   } catch (error) {
-    console.error("Error in getMarketResolutionDetails:", error);
+    console.error("Error in getResolutionProposal:", error);
     return null;
   }
 }
