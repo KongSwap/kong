@@ -3,7 +3,7 @@ import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { predictionActor } from "$lib/stores/auth";
 import { Principal } from "@dfinity/principal";
 import { notificationsStore } from "$lib/stores/notificationsStore";
-import type { MarketStatus, SortOption } from "../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
+import type { MarketStatus, SortOption, MarketResolutionDetails } from "../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
 
 export async function getMarket(marketId: bigint) {
   const actor = predictionActor({anon: true});
@@ -447,5 +447,22 @@ export async function setMarketFeatured(marketId: bigint, featured: boolean): Pr
   } catch (error) {
     console.error("Failed to set market featured status:", error);
     throw error;
+  }
+}
+
+export async function getMarketResolutionDetails(marketId: bigint): Promise<MarketResolutionDetails | null> {
+  const actor = predictionActor({anon: true});
+  try {
+    const result = await actor.get_market_resolution_details(marketId);
+    
+    if ("Ok" in result) {
+      return result.Ok[0] || null; // Extract the optional value
+    } else {
+      console.error("Failed to get market resolution details:", result.Err);
+      return null;
+    }
+  } catch (error) {
+    console.error("Error in getMarketResolutionDetails:", error);
+    return null;
   }
 }

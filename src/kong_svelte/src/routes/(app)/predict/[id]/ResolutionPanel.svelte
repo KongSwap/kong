@@ -1,10 +1,11 @@
 <script lang="ts">
   import Panel from "$lib/components/common/Panel.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import { Trophy, AlertCircle, CheckCircle } from "lucide-svelte";
+  import { Trophy, AlertCircle, CheckCircle, Info } from "lucide-svelte";
   import type { Market } from "$lib/types/predictionMarket";
-  import { resolveMarketViaAdmin } from "$lib/api/predictionMarket";
+  import { resolveMarketViaAdmin, getMarketResolutionDetails } from "$lib/api/predictionMarket";
   import { toastStore } from "$lib/stores/toastStore";
+  import type { MarketResolutionDetails } from "../../../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
   
   let {
     market,
@@ -20,6 +21,34 @@
   let resolving = $state(false);
   let resolutionError = $state<string | null>(null);
   let showConfirmDialog = $state(false);
+  let loadingResolutionDetails = $state(false);
+  let existingResolutionDetails = $state<MarketResolutionDetails | null>(null);
+  let hasExistingResolution = $derived(existingResolutionDetails !== null);
+  
+  // Load existing resolution details when component mounts
+  $effect(() => {
+    if (market?.id) {
+      loadResolutionDetails();
+    }
+  });
+  
+  async function loadResolutionDetails() {
+    try {
+      loadingResolutionDetails = true;
+      const details = await getMarketResolutionDetails(BigInt(market.id));
+      existingResolutionDetails = details;
+      
+      // If there are existing resolution details, prefill the form
+      if (details && details.winning_outcomes.length > 0) {
+        selectedOutcome = Number(details.winning_outcomes[0]);
+      }
+    } catch (error) {
+      console.error("Failed to load resolution details:", error);
+      existingResolutionDetails = null;
+    } finally {
+      loadingResolutionDetails = false;
+    }
+  }
   
   async function handleResolve() {
     if (selectedOutcome === null) return;
@@ -34,13 +63,18 @@
       );
       
       toastStore.add({
-        title: "Resolution Submitted",
-        message: "Your resolution has been submitted for admin verification.",
+        title: hasExistingResolution ? "Resolution Updated" : "Resolution Submitted",
+        message: hasExistingResolution 
+          ? "Your resolution has been updated and is awaiting admin verification."
+          : "Your resolution has been submitted for admin verification.",
         type: "success",
       });
       
       // Notify parent to refresh market data
       onMarketResolved();
+      
+      // Reload resolution details to show updated state
+      await loadResolutionDetails();
       
     } catch (error) {
       console.error("Resolution error:", error);
@@ -89,14 +123,41 @@
       </div>
     </div>
     
-    <!-- Info Alert -->
-    <div class="flex items-start gap-2 p-3 rounded-lg bg-kong-accent-blue/10 border border-kong-accent-blue/20">
-      <AlertCircle class="w-4 h-4 text-kong-accent-blue mt-0.5 flex-shrink-0" />
-      <div class="text-sm text-kong-text-secondary">
-        <p class="font-medium text-kong-accent-blue mb-1">Resolution Process</p>
-        <p>As the market creator, you can select the winning outcome. Your selection will be submitted for admin verification before payouts are distributed.</p>
+    <!-- Loading Resolution Details -->
+    {#if loadingResolutionDetails}
+      <div class="flex items-start gap-2 p-3 rounded-lg bg-kong-bg-secondary/30 border border-kong-border/50">
+        <div class="w-4 h-4 mt-0.5 flex-shrink-0">
+          <div class="w-4 h-4 border-2 border-kong-text-secondary/30 border-t-kong-text-secondary rounded-full animate-spin"></div>
+        </div>
+        <div class="text-sm text-kong-text-secondary">
+          <p class="font-medium mb-1">Loading Resolution Details...</p>
+          <p>Checking for existing resolution submissions.</p>
+        </div>
       </div>
-    </div>
+    {:else if hasExistingResolution}
+      <!-- Existing Resolution Info -->
+      <div class="flex items-start gap-2 p-3 rounded-lg bg-kong-accent-green/10 border border-kong-accent-green/20">
+        <Info class="w-4 h-4 text-kong-accent-green mt-0.5 flex-shrink-0" />
+        <div class="text-sm text-kong-text-secondary">
+          <p class="font-medium text-kong-accent-green mb-1">Resolution Already Submitted</p>
+          <p>You have already submitted a resolution for this market. Your selection is awaiting admin verification.</p>
+          {#if existingResolutionDetails}
+            <p class="mt-1 text-xs text-kong-text-secondary/80">
+              Submitted: {new Date(Number(existingResolutionDetails.resolution_timestamp) / 1_000_000).toLocaleString()}
+            </p>
+          {/if}
+        </div>
+      </div>
+    {:else}
+      <!-- Info Alert -->
+      <div class="flex items-start gap-2 p-3 rounded-lg bg-kong-accent-blue/10 border border-kong-accent-blue/20">
+        <AlertCircle class="w-4 h-4 text-kong-accent-blue mt-0.5 flex-shrink-0" />
+        <div class="text-sm text-kong-text-secondary">
+          <p class="font-medium text-kong-accent-blue mb-1">Resolution Process</p>
+          <p>As the market creator, you can select the winning outcome. Your selection will be submitted for admin verification before payouts are distributed.</p>
+        </div>
+      </div>
+    {/if}
     
     <!-- Outcome Selection -->
     <div class="space-y-2">
@@ -134,9 +195,11 @@
       variant="solid"
       fullWidth
       onclick={openConfirmDialog}
-      disabled={resolving || selectedOutcome === null}
+      disabled={resolving || selectedOutcome === null || loadingResolutionDetails}
     >
-      {resolving ? 'Submitting Resolution...' : 'Submit Resolution'}
+      {loadingResolutionDetails ? 'Loading...' : 
+       resolving ? 'Submitting Resolution...' : 
+       hasExistingResolution ? 'Update Resolution' : 'Submit Resolution'}
     </ButtonV2>
   </div>
 </Panel>
@@ -150,13 +213,15 @@
     ></div>
     <div class="relative bg-kong-bg-primary border border-kong-border rounded-lg p-6 max-w-md w-full shadow-xl">
       <h3 class="text-lg font-semibold text-kong-text-primary mb-2">
-        Confirm Resolution
+        {hasExistingResolution ? 'Update Resolution' : 'Confirm Resolution'}
       </h3>
       <p class="text-kong-text-secondary mb-4">
-        Are you sure you want to resolve this market with <span class="font-medium text-kong-accent-green">"{outcomes[selectedOutcome!]}"</span> as the winner?
+        Are you sure you want to {hasExistingResolution ? 'update' : 'resolve'} this market with <span class="font-medium text-kong-accent-green">"{outcomes[selectedOutcome!]}"</span> as the winner?
       </p>
       <p class="text-sm text-kong-text-secondary/80 mb-6">
-        This action will be submitted for admin verification and cannot be undone.
+        {hasExistingResolution 
+          ? 'This will update your previous resolution submission and reset the admin verification process.'
+          : 'This action will be submitted for admin verification and cannot be undone.'}
       </p>
       <div class="flex gap-3">
         <ButtonV2
