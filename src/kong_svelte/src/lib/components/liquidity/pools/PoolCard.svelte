@@ -27,7 +27,7 @@
 
   const stats = $derived([
     { 
-      label: "APR", 
+      label: "APY", 
       value: pool.apr ? `${pool.apr}%` : `${Number(pool.rolling_24h_apy || 0).toFixed(2)}%`,
       color: 'text-kong-primary'
     },

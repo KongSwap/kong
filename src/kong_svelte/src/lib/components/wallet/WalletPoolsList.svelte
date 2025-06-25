@@ -253,7 +253,7 @@
                         $****
                       {/if}
                     </span>
-                    <span class="text-kong-success">{getPoolApy(pool)}% APR</span>
+                    <span class="text-kong-success">{getPoolApy(pool)}% APY</span>
                 </div>
               </div>
             </div>
@@ -324,7 +324,7 @@
                 </div>
               </div>
               <div>
-                <div class="text-kong-text-secondary">APR</div>
+                <div class="text-kong-text-secondary">APY</div>
                 <div class="text-kong-success font-medium mt-0.5">
                   {pool.apr}%
                 </div>
