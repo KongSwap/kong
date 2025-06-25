@@ -199,6 +199,16 @@ export interface FailureDetails {
   'error_message' : string,
   'timestamp' : bigint,
 }
+export interface GetActiveUserMarketsArgs {
+  'user' : Principal,
+  'start' : bigint,
+  'length' : bigint,
+  'sort_option' : [] | [SortOption],
+}
+export interface GetActiveUserMarketsResult {
+  'markets' : Array<Market>,
+  'total_count' : bigint,
+}
 export interface GetAllMarketsArgs {
   'status_filter' : [] | [MarketStatus],
   'start' : bigint,
@@ -473,6 +483,10 @@ export interface _SERVICE {
   'generate_time_weight_curve' : ActorMethod<
     [bigint, bigint],
     Array<TimeWeightPoint>
+  >,
+  'get_active_user_markets' : ActorMethod<
+    [GetActiveUserMarketsArgs],
+    GetActiveUserMarketsResult
   >,
   'get_all_categories' : ActorMethod<[], Array<string>>,
   'get_all_markets' : ActorMethod<[GetAllMarketsArgs], GetAllMarketsResult>,
