@@ -152,7 +152,7 @@
   }
 
   .token-item.disabled::after {
-    content: "Selected in other panel";
+    /* content: "Selected in other panel"; */
     position: absolute;
     right: 1rem;
     top: 50%;
