@@ -11,6 +11,7 @@ pub mod resolution_refunds;
 pub mod resolution_actions;
 pub mod resolution_proposal;
 pub mod resolution_api;
+pub mod resolution_proposal_api;
 
 // Other resolution modules
 pub mod resolve_via_admin;

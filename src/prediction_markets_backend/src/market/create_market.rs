@@ -251,6 +251,10 @@ pub fn create_market(
                 // Featured markets will be displayed prominently in the UI
                 // This can only be set to true by admins via the set_market_featured function
                 featured: false,
+                
+                // Resolution proposal for dual-approval markets
+                // Initially None; populated when resolution voting begins
+                resolution_proposal: None,
             },
         );
         market_id

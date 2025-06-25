@@ -148,7 +148,11 @@ pub struct Market {
     
     /// Whether this market is featured (highlighted in UI)
     /// Featured markets are prioritized in listings
-    pub featured: bool
+    pub featured: bool,
+    
+    /// Active resolution proposal for this market (if any)
+    /// Contains detailed voting information for dual-approval resolution
+    pub resolution_proposal: Option<ResolutionProposalInfo>
 }
 
 impl Storable for Market {

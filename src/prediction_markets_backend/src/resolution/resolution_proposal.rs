@@ -85,15 +85,34 @@ pub async fn propose_resolution(args: ResolutionArgs) -> ResolutionResult {
     let _ = match existing_proposal {
         // First resolution step: No proposal exists yet, so create one
         None => {
-            // Create a new resolution proposal recording who proposed it and with what outcomes
+            use crate::resolution::resolution::{ResolutionVote, VoterType};
+            
+            let current_time = get_current_time();
+            
+            // Create the vote for whoever is proposing first
+            let vote = ResolutionVote {
+                voter: caller,
+                proposed_outcomes: winning_outcomes.clone(),
+                voted_at: current_time.clone(),
+                voter_type: if is_caller_creator { VoterType::Creator } else { VoterType::Admin },
+            };
+            
+            // Create a new resolution proposal with the first vote
             let proposal = ResolutionProposal {
                 market_id: market_id.clone(),
-                proposed_outcomes: winning_outcomes.clone(),
-                creator_approved: is_caller_creator,
-                admin_approved: is_caller_admin,
+                creator_vote: if is_caller_creator { Some(vote.clone()) } else { None },
+                admin_vote: if is_caller_admin { Some(vote) } else { None },
                 creator: market.creator,
+                proposed_at: current_time,
+                // Legacy fields for backward compatibility
+                #[allow(deprecated)]
+                proposed_outcomes: winning_outcomes.clone(),
+                #[allow(deprecated)]
+                creator_approved: is_caller_creator,
+                #[allow(deprecated)]
+                admin_approved: is_caller_admin,
+                #[allow(deprecated)]
                 admin_approver: if is_caller_admin { Some(caller) } else { None },
-                proposed_at: get_current_time(),
             };
 
             // Store the proposal in stable memory so it persists across canister upgrades
@@ -112,17 +131,44 @@ pub async fn propose_resolution(args: ResolutionArgs) -> ResolutionResult {
             }
         }
         // Second resolution step: Proposal exists, now checking for agreement/disagreement
-        Some(proposal) => {
-            // Check who previously approved this proposal
-            let creator_already_approved = proposal.creator_approved;
-            let admin_already_approved = proposal.admin_approved;
+        Some(mut proposal) => {
+            use crate::resolution::resolution::{ResolutionVote, VoterType};
+            
+            // Check who has already voted
+            let creator_already_voted = proposal.creator_vote.is_some();
+            let admin_already_voted = proposal.admin_vote.is_some();
 
             // DUAL APPROVAL SCENARIO 1: Creator proposed first, now admin reviewing
-            if creator_already_approved && is_caller_admin && !admin_already_approved {
+            if creator_already_voted && is_caller_admin && !admin_already_voted {
                 ic_cdk::println!("Admin reviewing creator's resolution proposal");
 
+                // Create admin vote
+                let admin_vote = ResolutionVote {
+                    voter: caller,
+                    proposed_outcomes: winning_outcomes.clone(),
+                    voted_at: get_current_time(),
+                    voter_type: VoterType::Admin,
+                };
+                
+                // Add admin vote to proposal
+                proposal.admin_vote = Some(admin_vote);
+                
+                // Update legacy fields for backward compatibility
+                #[allow(deprecated)]
+                {
+                    proposal.admin_approved = true;
+                    proposal.admin_approver = Some(caller);
+                }
+
+                // Save updated proposal with admin vote to storage
+                RESOLUTION_PROPOSALS.with(|proposals| {
+                    let mut proposals_ref = proposals.borrow_mut();
+                    proposals_ref.insert(market_id.clone(), proposal.clone());
+                });
+
                 // Check if admin's outcomes match creator's proposed outcomes
-                if proposal.proposed_outcomes == winning_outcomes {
+                let creator_outcomes = proposal.creator_vote.as_ref().unwrap().proposed_outcomes.clone();
+                if creator_outcomes == winning_outcomes {
                     // AGREEMENT: Both creator and admin agree on outcomes
                     ic_cdk::println!("Admin confirms creator's resolution outcomes. Finalizing market.");
 
@@ -163,11 +209,35 @@ pub async fn propose_resolution(args: ResolutionArgs) -> ResolutionResult {
                 }
             }
             // DUAL APPROVAL SCENARIO 2: Admin proposed first, now creator reviewing
-            else if admin_already_approved && is_caller_creator && !creator_already_approved {
+            else if admin_already_voted && is_caller_creator && !creator_already_voted {
                 ic_cdk::println!("Creator reviewing admin's resolution proposal");
 
+                // Create creator vote
+                let creator_vote = ResolutionVote {
+                    voter: caller,
+                    proposed_outcomes: winning_outcomes.clone(),
+                    voted_at: get_current_time(),
+                    voter_type: VoterType::Creator,
+                };
+                
+                // Add creator vote to proposal
+                proposal.creator_vote = Some(creator_vote);
+                
+                // Update legacy fields for backward compatibility
+                #[allow(deprecated)]
+                {
+                    proposal.creator_approved = true;
+                }
+
+                // Save updated proposal with creator vote to storage
+                RESOLUTION_PROPOSALS.with(|proposals| {
+                    let mut proposals_ref = proposals.borrow_mut();
+                    proposals_ref.insert(market_id.clone(), proposal.clone());
+                });
+
                 // Check if creator's outcomes match admin's proposed outcomes
-                if proposal.proposed_outcomes == winning_outcomes {
+                let admin_outcomes = proposal.admin_vote.as_ref().unwrap().proposed_outcomes.clone();
+                if admin_outcomes == winning_outcomes {
                     // AGREEMENT: Both admin and creator agree on outcomes
                     ic_cdk::println!("Creator confirms admin's resolution outcomes. Finalizing market.");
 
@@ -208,7 +278,7 @@ pub async fn propose_resolution(args: ResolutionArgs) -> ResolutionResult {
                 }
             }
             // EDGE CASE: Caller is attempting to re-submit an already submitted proposal
-            else if (is_caller_creator && creator_already_approved) || (is_caller_admin && admin_already_approved) {
+            else if (is_caller_creator && creator_already_voted) || (is_caller_admin && admin_already_voted) {
                 // Caller is attempting to submit a proposal they already made
                 if is_caller_creator {
                     ic_cdk::println!("Creator has already proposed a resolution, waiting for admin approval");

@@ -325,14 +325,14 @@ echo -e "${CMD_COLOR}  Transfer Fee: ${RESET}${RESULT_COLOR}$TOKEN_FEE base unit
 echo ""
 echo -e "${CMD_COLOR}Betting Schedule (10-second intervals):${RESET}"
 if [ "$SELECTED_TOKEN" = "KONG" ]; then
-    echo -e "${CMD_COLOR}  1. Alice → 5 $SELECTED_TOKEN on YES (outcome 0)${RESET}"
-    echo -e "${CMD_COLOR}  2. Bob   → 5 $SELECTED_TOKEN on NO  (outcome 1) [+10s]${RESET}"
+echo -e "${CMD_COLOR}  1. Alice → 5 $SELECTED_TOKEN on YES (outcome 0)${RESET}"
+echo -e "${CMD_COLOR}  2. Bob   → 5 $SELECTED_TOKEN on NO  (outcome 1) [+10s]${RESET}"
     echo -e "${CMD_COLOR}  3. Carol → 5 $SELECTED_TOKEN on YES (outcome 0) [+20s]${RESET}"
     echo -e "${CMD_COLOR}  4. Dave  → 5 $SELECTED_TOKEN on NO  (outcome 1) [+30s]${RESET}"
 else
     echo -e "${CMD_COLOR}  1. Alice → 10 $SELECTED_TOKEN on YES (outcome 0)${RESET}"
     echo -e "${CMD_COLOR}  2. Bob   → 10 $SELECTED_TOKEN on NO  (outcome 1) [+10s]${RESET}"
-    echo -e "${CMD_COLOR}  3. Carol → 10 $SELECTED_TOKEN on YES (outcome 0) [+20s]${RESET}"
+echo -e "${CMD_COLOR}  3. Carol → 10 $SELECTED_TOKEN on YES (outcome 0) [+20s]${RESET}"
     echo -e "${CMD_COLOR}  4. Dave  → 10 $SELECTED_TOKEN on NO  (outcome 1) [+30s]${RESET}"
 fi
 echo ""
@@ -413,7 +413,7 @@ echo ""
 # Show results
 if [ "$ALICE_SUCCESS" = true ]; then
     if [ "$SELECTED_TOKEN" = "KONG" ]; then
-        echo -e "${SUCCESS_COLOR}  ✓ Alice: 5 $SELECTED_TOKEN on YES (outcome 0) - HIGHEST time weight${RESET}"
+    echo -e "${SUCCESS_COLOR}  ✓ Alice: 5 $SELECTED_TOKEN on YES (outcome 0) - HIGHEST time weight${RESET}"
     else
         echo -e "${SUCCESS_COLOR}  ✓ Alice: 10 $SELECTED_TOKEN on YES (outcome 0) - HIGHEST time weight${RESET}"
     fi
@@ -423,7 +423,7 @@ fi
 
 if [ "$BOB_SUCCESS" = true ]; then
     if [ "$SELECTED_TOKEN" = "KONG" ]; then
-        echo -e "${SUCCESS_COLOR}  ✓ Bob: 5 $SELECTED_TOKEN on NO (outcome 1) - HIGH time weight${RESET}"
+    echo -e "${SUCCESS_COLOR}  ✓ Bob: 5 $SELECTED_TOKEN on NO (outcome 1) - HIGH time weight${RESET}"
     else
         echo -e "${SUCCESS_COLOR}  ✓ Bob: 10 $SELECTED_TOKEN on NO (outcome 1) - HIGH time weight${RESET}"
     fi
@@ -435,7 +435,7 @@ if [ "$CAROL_SUCCESS" = true ]; then
     if [ "$SELECTED_TOKEN" = "KONG" ]; then
         echo -e "${SUCCESS_COLOR}  ✓ Carol: 5 $SELECTED_TOKEN on YES (outcome 0) - MEDIUM time weight${RESET}"
     else
-        echo -e "${SUCCESS_COLOR}  ✓ Carol: 10 $SELECTED_TOKEN on YES (outcome 0) - MEDIUM time weight${RESET}"
+    echo -e "${SUCCESS_COLOR}  ✓ Carol: 10 $SELECTED_TOKEN on YES (outcome 0) - MEDIUM time weight${RESET}"
     fi
 else
     echo -e "${ERROR_COLOR}  ✗ Carol: FAILED${RESET}"
@@ -443,7 +443,7 @@ fi
 
 if [ "$DAVE_SUCCESS" = true ]; then
     if [ "$SELECTED_TOKEN" = "KONG" ]; then
-        echo -e "${SUCCESS_COLOR}  ✓ Dave: 5 $SELECTED_TOKEN on NO (outcome 1) - LOWEST time weight${RESET}"
+    echo -e "${SUCCESS_COLOR}  ✓ Dave: 5 $SELECTED_TOKEN on NO (outcome 1) - LOWEST time weight${RESET}"
     else
         echo -e "${SUCCESS_COLOR}  ✓ Dave: 10 $SELECTED_TOKEN on NO (outcome 1) - LOWEST time weight${RESET}"
     fi

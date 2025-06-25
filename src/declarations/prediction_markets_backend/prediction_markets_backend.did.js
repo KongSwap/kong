@@ -123,6 +123,26 @@ export const idlFactory = ({ IDL }) => {
     'absolute_time' : IDL.Nat,
     'relative_time' : IDL.Float64,
   });
+  const ResolutionProposalStatus = IDL.Variant({
+    'VotesAgree' : IDL.Null,
+    'AwaitingCreatorVote' : IDL.Null,
+    'VotesDisagree' : IDL.Null,
+    'AwaitingAdminVote' : IDL.Null,
+  });
+  const VoterType = IDL.Variant({ 'Admin' : IDL.Null, 'Creator' : IDL.Null });
+  const ResolutionVote = IDL.Record({
+    'voter_type' : VoterType,
+    'voted_at' : IDL.Nat,
+    'voter' : IDL.Principal,
+    'proposed_outcomes' : IDL.Vec(IDL.Nat),
+  });
+  const ResolutionProposalInfo = IDL.Record({
+    'status' : ResolutionProposalStatus,
+    'creator_vote' : IDL.Opt(ResolutionVote),
+    'market_id' : IDL.Nat,
+    'created_at' : IDL.Nat,
+    'admin_vote' : IDL.Opt(ResolutionVote),
+  });
   const SortDirection = IDL.Variant({
     'Descending' : IDL.Null,
     'Ascending' : IDL.Null,
@@ -165,6 +185,7 @@ export const idlFactory = ({ IDL }) => {
     'outcomes' : IDL.Vec(IDL.Text),
     'resolution_method' : ResolutionMethod,
     'time_weight_alpha' : IDL.Opt(IDL.Float64),
+    'resolution_proposal' : IDL.Opt(ResolutionProposalInfo),
     'category' : MarketCategory,
     'rules' : IDL.Text,
     'resolved_by' : IDL.Opt(IDL.Principal),
@@ -511,6 +532,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(TimeWeightPoint)],
         ['query'],
       ),
+    'get_active_resolution_proposals' : IDL.Func(
+        [],
+        [IDL.Vec(ResolutionProposalInfo)],
+        ['query'],
+      ),
     'get_active_user_markets' : IDL.Func(
         [GetActiveUserMarketsArgs],
         [GetActiveUserMarketsResult],
@@ -570,6 +596,16 @@ export const idlFactory = ({ IDL }) => {
     'get_markets_by_status' : IDL.Func(
         [GetFeaturedMarketsArgs],
         [GetMarketsByStatusResult],
+        ['query'],
+      ),
+    'get_resolution_proposal' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Opt(ResolutionProposalInfo)],
+        ['query'],
+      ),
+    'get_resolution_proposals_by_status' : IDL.Func(
+        [ResolutionProposalStatus],
+        [IDL.Vec(ResolutionProposalInfo)],
         ['query'],
       ),
     'get_stats' : IDL.Func([], [StatsResult], ['query']),
