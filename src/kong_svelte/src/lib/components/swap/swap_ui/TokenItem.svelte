@@ -56,9 +56,9 @@
         <span class="token-symbol">{props.token.symbol}</span>
         <div class="flex flex-wrap items-center">
           {#if props.token?.metrics?.is_verified}
-            <Badge variant="green" size="xs"><BadgeCheck size="14" /></Badge>
+            <Badge variant="green" size="xs" class="!p-0"><BadgeCheck size="14" /></Badge>
           {:else}
-            <Badge variant="yellow" size="xs"><BadgeX size="14" /></Badge>
+            <Badge variant="yellow" size="xs" class="!p-0"><BadgeX size="14" /></Badge>
           {/if}
         </div>
       </div>
@@ -189,6 +189,10 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    
+    @media (max-width: 768px) {
+      gap: 0.25rem;
+    }
   }
 
   .favorite-button {
