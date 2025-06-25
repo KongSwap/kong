@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Star } from "lucide-svelte";
+  import { Star, BadgeCheck, BadgeX } from "lucide-svelte";
+  import Badge from "$lib/components/common/Badge.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatTokenName } from "$lib/utils/tokenFormatUtils";
 
@@ -53,6 +54,13 @@
           />
         </button>
         <span class="token-symbol">{props.token.symbol}</span>
+        <div class="flex flex-wrap items-center">
+          {#if props.token?.metrics?.is_verified}
+            <Badge variant="green" size="xs"><BadgeCheck size="14" /></Badge>
+          {:else}
+            <Badge variant="yellow" size="xs"><BadgeX size="14" /></Badge>
+          {/if}
+        </div>
       </div>
       <span class="token-name">{formatTokenName(props.token.name, 30)}</span>
     </div>
@@ -88,7 +96,7 @@
         {/if}
       </span>
       <!-- Selected indicator -->
-      {#if props.currentToken?.address === props.token.address}
+      <!-- {#if props.currentToken?.address === props.token.address}
         <div class="selected-indicator">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -104,7 +112,7 @@
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
         </div>
-      {/if}
+      {/if} -->
     {/if}
   </div>
 </div>
