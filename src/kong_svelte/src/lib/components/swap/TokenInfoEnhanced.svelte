@@ -12,6 +12,7 @@
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import Dropdown from "$lib/components/common/Dropdown.svelte";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
+  import { BadgeCheck, BadgeX } from "lucide-svelte";
 
   let { fromToken = null, toToken = null, activeToken = $bindable() } = $props<{ 
     fromToken: Kong.Token | null;
@@ -204,7 +205,7 @@
                 ({activeToken.symbol || "..."})
               </span>
             </h1>
-            <!-- <div class="flex flex-wrap gap-1 items-center">
+            <div class="flex flex-wrap gap-1 items-center">
               {#each activeToken.standards as standard}
                 <Badge
                   variant={standard.includes("ICRC") ? "icrc" : "solana"}
@@ -213,7 +214,12 @@
                   {standard}
                 </Badge>
               {/each}
-            </div> -->
+              {#if activeToken?.metrics?.is_verified}
+                <Badge variant="green" size="xs" class=""><BadgeCheck size="14" /> Verified</Badge>
+              {:else}
+                <Badge variant="yellow" size="xs" class=""><BadgeX size="14" /> Unverified</Badge>
+              {/if}
+            </div>
           </div>
         </div>
       </div>

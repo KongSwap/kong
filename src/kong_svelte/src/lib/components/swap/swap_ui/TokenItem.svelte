@@ -4,7 +4,20 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatTokenName } from "$lib/utils/tokenFormatUtils";
 
-  const props = $props<{
+  const {
+    token,
+    index,
+    currentToken,
+    otherPanelToken,
+    isApiToken,
+    isFavorite,
+    enablingTokenId,
+    blockedTokenIds,
+    balance,
+    onTokenClick,
+    onFavoriteClick,
+    onEnableClick,
+  } = $props<{
     token: Kong.Token;
     index: number;
     currentToken: Kong.Token | null;
@@ -24,16 +37,16 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div
   class="token-item"
-  class:selected={props.currentToken?.address === props.token.address}
-  class:disabled={props.otherPanelToken?.address === props.token.address}
-  class:blocked={props.blockedTokenIds.includes(props.token.address)}
-  class:not-enabled={props.isApiToken}
-  onclick={props.onTokenClick}
+  class:selected={currentToken?.address === token.address}
+  class:disabled={otherPanelToken?.address === token.address}
+  class:blocked={blockedTokenIds.includes(token.address)}
+  class:not-enabled={isApiToken}
+  onclick={onTokenClick}
 >
   <!-- Token info section (left side) -->
   <div class="token-info">
     <TokenImages
-      tokens={[props.token]}
+      tokens={[token]}
       size={40}
       containerClass="token-logo-container"
     />
@@ -44,59 +57,59 @@
         <!-- svelte-ignore a11y-no-static-element-interactions -->
         <button
           class="favorite-button"
-          class:active={props.isFavorite}
-          onclick={props.onFavoriteClick}
-          title={props.isFavorite ? "Remove from favorites" : "Add to favorites"}
+          class:active={isFavorite}
+          onclick={onFavoriteClick}
+          title={isFavorite ? "Remove from favorites" : "Add to favorites"}
         >
           <Star
             size={14}
-            fill={props.isFavorite ? "#ffd700" : "none"}
+            fill={isFavorite ? "#ffd700" : "none"}
           />
         </button>
-        <span class="token-symbol">{props.token.symbol}</span>
+        <span class="token-symbol">{token.symbol}</span>
         <div class="flex flex-wrap items-center">
-          {#if props.token?.metrics?.is_verified}
+          {#if token?.metrics?.is_verified}
             <Badge variant="green" size="xs" class="!p-0"><BadgeCheck size="14" /></Badge>
           {:else}
             <Badge variant="yellow" size="xs" class="!p-0"><BadgeX size="14" /></Badge>
           {/if}
         </div>
       </div>
-      <span class="token-name">{formatTokenName(props.token.name, 30)}</span>
+      <span class="token-name">{formatTokenName(token.name, 30)}</span>
     </div>
   </div>
 
   <!-- Token actions section (right side) -->
   <div class="text-sm token-right text-kong-text-primary">
-    {#if props.isApiToken}
+    {#if isApiToken}
       <!-- Enable button for API tokens -->
       <button
         class="enable-token-button"
-        onclick={props.onEnableClick}
-        disabled={props.enablingTokenId === props.token.address}
+        onclick={onEnableClick}
+        disabled={enablingTokenId === token.address}
       >
-        {#if props.enablingTokenId === props.token.address}
+        {#if enablingTokenId === token.address}
           <div class="button-spinner" />
         {:else}
           Enable
         {/if}
       </button>
-    {:else if props.balance}
+    {:else if balance}
       <!-- Balance display for enabled tokens -->
       <span class="flex flex-col text-right token-balance">
-        {#if props.balance.loading}
+        {#if balance.loading}
           <div class="balance-loading-indicator">
             <div class="balance-spinner"></div>
           </div>
         {:else}
-          {props.balance.tokens}
+          {balance.tokens}
           <span class="text-xs token-balance-label">
-            {props.balance.usd}
+            {balance.usd}
           </span>
         {/if}
       </span>
       <!-- Selected indicator -->
-      <!-- {#if props.currentToken?.address === props.token.address}
+      <!-- {#if currentToken?.address === token.address}
         <div class="selected-indicator">
           <svg
             xmlns="http://www.w3.org/2000/svg"
