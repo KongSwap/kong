@@ -225,9 +225,9 @@ esac
 # Check resolution result
 if [ $? -eq 0 ] && ([[ $RESOLUTION_RESULT == *"Success"* ]] || [[ $RESOLUTION_RESULT == *"Ok"* ]] || [[ $RESOLUTION_RESULT == *"AwaitingCreatorApproval"* ]] || [[ $RESOLUTION_RESULT == *"AwaitingAdminApproval"* ]]); then
     if [[ $RESOLUTION_RESULT == *"Success"* ]]; then
-        echo -e "${CMD_COLOR}Status: ${RESET}${SUCCESS_COLOR}✓ RESOLUTION SUCCESSFUL${RESET}"
-        echo -e "${CMD_COLOR}Result: ${RESET}${RESULT_COLOR}$RESOLUTION_RESULT${RESET}"
-        RESOLUTION_SUCCESS=true
+    echo -e "${CMD_COLOR}Status: ${RESET}${SUCCESS_COLOR}✓ RESOLUTION SUCCESSFUL${RESET}"
+    echo -e "${CMD_COLOR}Result: ${RESET}${RESULT_COLOR}$RESOLUTION_RESULT${RESET}"
+    RESOLUTION_SUCCESS=true
     elif [[ $RESOLUTION_RESULT == *"AwaitingCreatorApproval"* ]]; then
         echo -e "${CMD_COLOR}Status: ${RESET}${WARNING_COLOR}⏳ AWAITING CREATOR APPROVAL${RESET}"
         echo -e "${CMD_COLOR}Result: ${RESET}${RESULT_COLOR}$RESOLUTION_RESULT${RESET}"

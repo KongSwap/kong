@@ -53,6 +53,9 @@ impl MarketTransformer {
     pub fn transform_market(&self, market_id: MarketId, market: &Market) -> Market {
         let mut market = market.clone();
 
+        // Always populate resolution proposal information
+        market.resolution_proposal = self.get_resolution_proposal_info(&market_id);
+
         if !self.calculate_pools && !self.calculate_bet_counts {
             return market;
         }
@@ -110,6 +113,14 @@ impl MarketTransformer {
         }
         
         market
+    }
+    
+    /// Get resolution proposal information for a market
+    fn get_resolution_proposal_info(&self, market_id: &MarketId) -> Option<crate::resolution::resolution::ResolutionProposalInfo> {
+        crate::storage::RESOLUTION_PROPOSALS.with(|proposals| {
+            let proposals_ref = proposals.borrow();
+            proposals_ref.get(market_id).map(|proposal| proposal.to_info())
+        })
     }
     
     /// Transform a resolved market into a MarketResult with distributions

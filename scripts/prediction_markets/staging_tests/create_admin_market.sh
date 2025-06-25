@@ -167,7 +167,7 @@ echo -e "${CMD_COLOR}DEBUG - Full command parameters:${RESET}"
 echo -e "${WARNING_COLOR}$COMMAND_TO_EXECUTE${RESET}"
 echo ""
 
-# Create the market  
+# Create the market
 MARKET_CREATION_RESULT=$(dfx canister call $PREDICTION_MARKETS_CANISTER create_market \
     "$COMMAND_TO_EXECUTE" \
     --network $DFX_NETWORK 2>&1)

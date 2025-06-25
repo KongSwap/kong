@@ -86,6 +86,8 @@ pub mod utils;
 // Re-export common types for convenience
 pub use types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, PoolAmount, BetCount, TokenIdentifier, PlaceBetArgs, ResolutionArgs};
 pub use claims::claims_types::{ClaimRecord, ClaimStatus, ClaimType, ClaimableSummary, BatchClaimResult, ClaimResult};
+pub use resolution::resolution::{ResolutionProposalInfo, ResolutionProposalStatus, ResolutionVote, VoterType};
+pub use resolution::resolution_proposal_api::{get_resolution_proposal, get_active_resolution_proposals, get_resolution_proposals_by_status};
 
 // Constants
 const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; ///Production KONG canister
