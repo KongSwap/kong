@@ -86,7 +86,10 @@
 <AdminResolutionModal
   isOpen={showResolutionModal}
   market={selectedMarket}
-  onClose={() => (showResolutionModal = false)}
+  onClose={() => {
+    showResolutionModal = false;
+    selectedMarket = null;
+  }}
   onResolved={handleResolved}
 />
 

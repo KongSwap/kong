@@ -197,7 +197,7 @@ export async function resolveMarketViaAdmin(
 
     // Convert marketId from string to number
     const marketIdNumber = marketId;
-    const result = await actor.resolve_via_admin({ market_id: marketIdNumber, winning_outcomes: [winningOutcome] });
+    const result = await actor.resolve_via_admin(marketIdNumber, [winningOutcome]);
 
     if ("Err" in result) {
       const error = result.Err as any;

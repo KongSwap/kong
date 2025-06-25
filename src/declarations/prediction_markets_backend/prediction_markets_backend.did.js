@@ -123,13 +123,25 @@ export const idlFactory = ({ IDL }) => {
     'absolute_time' : IDL.Nat,
     'relative_time' : IDL.Float64,
   });
-  const MarketStatus = IDL.Variant({
-    'Disputed' : IDL.Null,
-    'Closed' : IDL.Vec(IDL.Nat),
-    'Active' : IDL.Null,
-    'ExpiredUnresolved' : IDL.Null,
-    'Voided' : IDL.Null,
-    'PendingActivation' : IDL.Null,
+  const ResolutionProposalStatus = IDL.Variant({
+    'VotesAgree' : IDL.Null,
+    'AwaitingCreatorVote' : IDL.Null,
+    'VotesDisagree' : IDL.Null,
+    'AwaitingAdminVote' : IDL.Null,
+  });
+  const VoterType = IDL.Variant({ 'Admin' : IDL.Null, 'Creator' : IDL.Null });
+  const ResolutionVote = IDL.Record({
+    'voter_type' : VoterType,
+    'voted_at' : IDL.Nat,
+    'voter' : IDL.Principal,
+    'proposed_outcomes' : IDL.Vec(IDL.Nat),
+  });
+  const ResolutionProposalInfo = IDL.Record({
+    'status' : ResolutionProposalStatus,
+    'creator_vote' : IDL.Opt(ResolutionVote),
+    'market_id' : IDL.Nat,
+    'created_at' : IDL.Nat,
+    'admin_vote' : IDL.Opt(ResolutionVote),
   });
   const SortDirection = IDL.Variant({
     'Descending' : IDL.Null,
@@ -140,11 +152,19 @@ export const idlFactory = ({ IDL }) => {
     'CreatedAt' : SortDirection,
     'EndTime' : SortDirection,
   });
-  const GetAllMarketsArgs = IDL.Record({
-    'status_filter' : IDL.Opt(MarketStatus),
+  const GetActiveUserMarketsArgs = IDL.Record({
+    'user' : IDL.Principal,
     'start' : IDL.Nat,
     'length' : IDL.Nat64,
     'sort_option' : IDL.Opt(SortOption),
+  });
+  const MarketStatus = IDL.Variant({
+    'Disputed' : IDL.Null,
+    'Closed' : IDL.Vec(IDL.Nat),
+    'Active' : IDL.Null,
+    'ExpiredUnresolved' : IDL.Null,
+    'Voided' : IDL.Null,
+    'PendingActivation' : IDL.Null,
   });
   const Market = IDL.Record({
     'id' : IDL.Nat,
@@ -165,10 +185,21 @@ export const idlFactory = ({ IDL }) => {
     'outcomes' : IDL.Vec(IDL.Text),
     'resolution_method' : ResolutionMethod,
     'time_weight_alpha' : IDL.Opt(IDL.Float64),
+    'resolution_proposal' : IDL.Opt(ResolutionProposalInfo),
     'category' : MarketCategory,
     'rules' : IDL.Text,
     'resolved_by' : IDL.Opt(IDL.Principal),
     'bet_counts' : IDL.Vec(IDL.Nat),
+  });
+  const GetActiveUserMarketsResult = IDL.Record({
+    'markets' : IDL.Vec(Market),
+    'total_count' : IDL.Nat,
+  });
+  const GetAllMarketsArgs = IDL.Record({
+    'status_filter' : IDL.Opt(MarketStatus),
+    'start' : IDL.Nat,
+    'length' : IDL.Nat64,
+    'sort_option' : IDL.Opt(SortOption),
   });
   const GetAllMarketsResult = IDL.Record({
     'markets' : IDL.Vec(Market),
@@ -501,6 +532,16 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(TimeWeightPoint)],
         ['query'],
       ),
+    'get_active_resolution_proposals' : IDL.Func(
+        [],
+        [IDL.Vec(ResolutionProposalInfo)],
+        ['query'],
+      ),
+    'get_active_user_markets' : IDL.Func(
+        [GetActiveUserMarketsArgs],
+        [GetActiveUserMarketsResult],
+        ['query'],
+      ),
     'get_all_categories' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
     'get_all_markets' : IDL.Func(
         [GetAllMarketsArgs],
@@ -555,6 +596,16 @@ export const idlFactory = ({ IDL }) => {
     'get_markets_by_status' : IDL.Func(
         [GetFeaturedMarketsArgs],
         [GetMarketsByStatusResult],
+        ['query'],
+      ),
+    'get_resolution_proposal' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Opt(ResolutionProposalInfo)],
+        ['query'],
+      ),
+    'get_resolution_proposals_by_status' : IDL.Func(
+        [ResolutionProposalStatus],
+        [IDL.Vec(ResolutionProposalInfo)],
         ['query'],
       ),
     'get_stats' : IDL.Func([], [StatsResult], ['query']),

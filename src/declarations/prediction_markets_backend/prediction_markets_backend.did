@@ -196,6 +196,16 @@ type FailureDetails = record {
   error_message : text;
   timestamp : nat;
 };
+type GetActiveUserMarketsArgs = record {
+  user : principal;
+  start : nat;
+  length : nat64;
+  sort_option : opt SortOption;
+};
+type GetActiveUserMarketsResult = record {
+  markets : vec Market;
+  total_count : nat;
+};
 type GetAllMarketsArgs = record {
   status_filter : opt MarketStatus;
   start : nat;
@@ -239,6 +249,7 @@ type Market = record {
   outcomes : vec text;
   resolution_method : ResolutionMethod;
   time_weight_alpha : opt float64;
+  resolution_proposal : opt ResolutionProposalInfo;
   category : MarketCategory;
   rules : text;
   resolved_by : opt principal;
@@ -331,11 +342,30 @@ type ResolutionMethod = variant {
   Decentralized : record { quorum : nat };
   Admin;
 };
+type ResolutionProposalInfo = record {
+  status : ResolutionProposalStatus;
+  creator_vote : opt ResolutionVote;
+  market_id : nat;
+  created_at : nat;
+  admin_vote : opt ResolutionVote;
+};
+type ResolutionProposalStatus = variant {
+  VotesAgree;
+  AwaitingCreatorVote;
+  VotesDisagree;
+  AwaitingAdminVote;
+};
 type ResolutionResult = variant {
   Error : ResolutionError;
   AwaitingAdminApproval;
   Success;
   AwaitingCreatorApproval;
+};
+type ResolutionVote = record {
+  voter_type : VoterType;
+  voted_at : nat;
+  voter : principal;
+  proposed_outcomes : vec nat;
 };
 type Result = variant { Ok; Err : text };
 type Result_1 = variant { Ok : nat; Err : text };
@@ -419,6 +449,7 @@ type UserHistory = record {
   active_bets : vec UserBetInfo;
   resolved_bets : vec UserBetInfo;
 };
+type VoterType = variant { Admin; Creator };
 service : () -> {
   add_supported_token : (TokenInfo) -> (Result);
   calculate_token_balance_reconciliation : () -> (BalanceReconciliationSummary);
@@ -441,6 +472,10 @@ service : () -> {
     ) query;
   force_resolve_market : (ResolutionArgs) -> (ResolutionResult);
   generate_time_weight_curve : (nat64, nat64) -> (vec TimeWeightPoint) query;
+  get_active_resolution_proposals : () -> (vec ResolutionProposalInfo) query;
+  get_active_user_markets : (GetActiveUserMarketsArgs) -> (
+      GetActiveUserMarketsResult,
+    ) query;
   get_all_categories : () -> (vec text) query;
   get_all_markets : (GetAllMarketsArgs) -> (GetAllMarketsResult) query;
   get_all_transactions : () -> (vec record { nat64; FailedTransaction }) query;
@@ -464,6 +499,10 @@ service : () -> {
     ) query;
   get_markets_by_status : (GetFeaturedMarketsArgs) -> (
       GetMarketsByStatusResult,
+    ) query;
+  get_resolution_proposal : (nat) -> (opt ResolutionProposalInfo) query;
+  get_resolution_proposals_by_status : (ResolutionProposalStatus) -> (
+      vec ResolutionProposalInfo,
     ) query;
   get_stats : () -> (StatsResult) query;
   get_supported_tokens : () -> (vec TokenInfo) query;

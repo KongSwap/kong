@@ -97,7 +97,7 @@ pub fn init() {
 
         // Add KONG token
         registry.insert(
-            "umunu-kh777-77774-qaaca-cai".to_string(),
+            "o7oak-iyaaa-aaaaq-aadzq-cai".to_string(),
             TokenInfo {
                 id: "o7oak-iyaaa-aaaaq-aadzq-cai".to_string(),
                 name: "Kong Swap Token".to_string(),

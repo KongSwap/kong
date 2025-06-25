@@ -199,6 +199,16 @@ export interface FailureDetails {
   'error_message' : string,
   'timestamp' : bigint,
 }
+export interface GetActiveUserMarketsArgs {
+  'user' : Principal,
+  'start' : bigint,
+  'length' : bigint,
+  'sort_option' : [] | [SortOption],
+}
+export interface GetActiveUserMarketsResult {
+  'markets' : Array<Market>,
+  'total_count' : bigint,
+}
 export interface GetAllMarketsArgs {
   'status_filter' : [] | [MarketStatus],
   'start' : bigint,
@@ -250,6 +260,7 @@ export interface Market {
   'outcomes' : Array<string>,
   'resolution_method' : ResolutionMethod,
   'time_weight_alpha' : [] | [number],
+  'resolution_proposal' : [] | [ResolutionProposalInfo],
   'category' : MarketCategory,
   'rules' : string,
   'resolved_by' : [] | [Principal],
@@ -341,10 +352,27 @@ export type ResolutionMethod = {
   } |
   { 'Decentralized' : { 'quorum' : bigint } } |
   { 'Admin' : null };
+export interface ResolutionProposalInfo {
+  'status' : ResolutionProposalStatus,
+  'creator_vote' : [] | [ResolutionVote],
+  'market_id' : bigint,
+  'created_at' : bigint,
+  'admin_vote' : [] | [ResolutionVote],
+}
+export type ResolutionProposalStatus = { 'VotesAgree' : null } |
+  { 'AwaitingCreatorVote' : null } |
+  { 'VotesDisagree' : null } |
+  { 'AwaitingAdminVote' : null };
 export type ResolutionResult = { 'Error' : ResolutionError } |
   { 'AwaitingAdminApproval' : null } |
   { 'Success' : null } |
   { 'AwaitingCreatorApproval' : null };
+export interface ResolutionVote {
+  'voter_type' : VoterType,
+  'voted_at' : bigint,
+  'voter' : Principal,
+  'proposed_outcomes' : Array<bigint>,
+}
 export type Result = { 'Ok' : null } |
   { 'Err' : string };
 export type Result_1 = { 'Ok' : bigint } |
@@ -439,6 +467,8 @@ export interface UserHistory {
   'active_bets' : Array<UserBetInfo>,
   'resolved_bets' : Array<UserBetInfo>,
 }
+export type VoterType = { 'Admin' : null } |
+  { 'Creator' : null };
 export interface _SERVICE {
   'add_supported_token' : ActorMethod<[TokenInfo], Result>,
   'calculate_token_balance_reconciliation' : ActorMethod<
@@ -474,6 +504,14 @@ export interface _SERVICE {
     [bigint, bigint],
     Array<TimeWeightPoint>
   >,
+  'get_active_resolution_proposals' : ActorMethod<
+    [],
+    Array<ResolutionProposalInfo>
+  >,
+  'get_active_user_markets' : ActorMethod<
+    [GetActiveUserMarketsArgs],
+    GetActiveUserMarketsResult
+  >,
   'get_all_categories' : ActorMethod<[], Array<string>>,
   'get_all_markets' : ActorMethod<[GetAllMarketsArgs], GetAllMarketsResult>,
   'get_all_transactions' : ActorMethod<[], Array<[bigint, FailedTransaction]>>,
@@ -501,6 +539,14 @@ export interface _SERVICE {
   'get_markets_by_status' : ActorMethod<
     [GetFeaturedMarketsArgs],
     GetMarketsByStatusResult
+  >,
+  'get_resolution_proposal' : ActorMethod<
+    [bigint],
+    [] | [ResolutionProposalInfo]
+  >,
+  'get_resolution_proposals_by_status' : ActorMethod<
+    [ResolutionProposalStatus],
+    Array<ResolutionProposalInfo>
   >,
   'get_stats' : ActorMethod<[], StatsResult>,
   'get_supported_tokens' : ActorMethod<[], Array<TokenInfo>>,

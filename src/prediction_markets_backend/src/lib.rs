@@ -39,6 +39,10 @@ use crate::market::update_expired_markets::*;
 pub use crate::market::featured::{get_featured_markets, set_market_featured};
 pub use crate::market::featured::{GetFeaturedMarketsArgs, GetFeaturedMarketsResult};
 
+// Import and re-export active user markets functionality
+pub use crate::market::get_active_user_markets::{get_active_user_markets};
+pub use crate::market::get_active_user_markets::{GetActiveUserMarketsArgs, GetActiveUserMarketsResult};
+
 use crate::market::estimate_return_types::{BetPayoutRecord, EstimatedReturn, TimeWeightPoint};
 use crate::market::get_stats::StatsResult;
 // Standard types
@@ -82,10 +86,12 @@ pub mod utils;
 // Re-export common types for convenience
 pub use types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, PoolAmount, BetCount, TokenIdentifier, PlaceBetArgs, ResolutionArgs};
 pub use claims::claims_types::{ClaimRecord, ClaimStatus, ClaimType, ClaimableSummary, BatchClaimResult, ClaimResult};
+pub use resolution::resolution::{ResolutionProposalInfo, ResolutionProposalStatus, ResolutionVote, VoterType};
+pub use resolution::resolution_proposal_api::{get_resolution_proposal, get_active_resolution_proposals, get_resolution_proposals_by_status};
 
 // Constants
-// const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; ///Production KONG canister
-const KONG_LEDGER_ID: &str = "umunu-kh777-77774-qaaca-cai";
+const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; ///Production KONG canister
+// const KONG_LEDGER_ID: &str = "umunu-kh777-77774-qaaca-cai";
 /// Canister ID for KONG token ledger (local testing environment)
 
 // We don't need import the registry functions here
