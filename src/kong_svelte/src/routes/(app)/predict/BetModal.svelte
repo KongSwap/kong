@@ -48,6 +48,18 @@
     onClose: () => void;
     onBet: (amount: number) => void;
   }>();
+  
+  // Check if market is inactive (not initialized)
+  const isMarketInactive = $derived(() => {
+    if (!selectedMarket) return false;
+    
+    // Check if total_pool is 0 or if all bet_counts are 0
+    const totalPool = Number(selectedMarket.total_pool || 0);
+    const betCounts = selectedMarket.bet_counts?.map(Number) || [];
+    const totalBets = betCounts.reduce((acc, curr) => acc + curr, 0);
+    
+    return totalPool === 0 || totalBets === 0;
+  });
 
   const state = $state({
     tokenBalance: 0,
@@ -397,6 +409,21 @@
       <div
         class="px-3 pb-3 sm:px-4 space-y-3 sm:space-y-5 flex-1 overflow-y-auto"
       >
+        <!-- Market Activation Notice -->
+        {#if isMarketInactive()}
+          <div
+            class="bg-kong-accent-yellow/20 border-2 border-kong-accent-yellow p-4 rounded relative"
+          >
+            <div class="flex items-center gap-2 mb-2">
+              <AlertTriangle class="w-5 h-5 text-kong-accent-yellow" />
+              <p class="text-sm font-semibold text-kong-accent-yellow">Market Not Yet Active</p>
+            </div>
+            <p class="text-sm text-kong-text-secondary">
+              This market requires an initial bet to become active. The market creator must place a minimum bet to activate it before others can participate.
+            </p>
+          </div>
+        {/if}
+        
         <!-- Simplified Betting Summary Section -->
         {#if selectedOutcome !== null}
           <div
@@ -464,8 +491,9 @@
                   min="0"
                   max={state.maxAmount}
                   step="0.1"
-                  class="w-full p-2.5 sm:p-3 bg-kong-bg-secondary rounded border border-kong-border focus:border-kong-accent-blue focus:ring-1 focus:ring-kong-accent-blue mb-2"
+                  class="w-full p-2.5 sm:p-3 bg-kong-bg-secondary rounded border border-kong-border focus:border-kong-accent-blue focus:ring-1 focus:ring-kong-accent-blue mb-2 {isMarketInactive() ? 'opacity-50 cursor-not-allowed' : ''}"
                   placeholder="Enter token amount"
+                  disabled={isMarketInactive()}
                 />
                 {#if state.tokenPriceUsd > 0 && betAmount !== null && betAmount > 0}
                   <div
@@ -484,8 +512,9 @@
                   bind:value={state.usdInputValue}
                   min="0"
                   step="0.01"
-                  class="w-full p-2.5 sm:p-3 !pl-7 bg-kong-bg-secondary rounded border border-kong-border focus:border-kong-accent-blue focus:ring-1 focus:ring-kong-accent-blue mb-2"
+                  class="w-full p-2.5 sm:p-3 !pl-7 bg-kong-bg-secondary rounded border border-kong-border focus:border-kong-accent-blue focus:ring-1 focus:ring-kong-accent-blue mb-2 {isMarketInactive() ? 'opacity-50 cursor-not-allowed' : ''}"
                   placeholder="Enter USD amount"
+                  disabled={isMarketInactive()}
                 />
                 <div
                   class="absolute left-3 top-[43%] transform -translate-y-1/2 text-kong-text-secondary"
@@ -512,7 +541,7 @@
                 variant="solid"
                 size="xs"
                 onclick={() => setPercentage(25)}
-                isDisabled={!$auth.isConnected || state.tokenBalance <= 0}
+                isDisabled={!$auth.isConnected || state.tokenBalance <= 0 || isMarketInactive()}
                 className="sm:text-sm"
               />
               <ButtonV2
@@ -521,7 +550,7 @@
                 variant="solid"
                 size="xs"
                 onclick={() => setPercentage(50)}
-                isDisabled={!$auth.isConnected || state.tokenBalance <= 0}
+                isDisabled={!$auth.isConnected || state.tokenBalance <= 0 || isMarketInactive()}
                 className="sm:text-sm"
               />
               <ButtonV2
@@ -530,7 +559,7 @@
                 variant="solid"
                 size="xs"
                 onclick={() => setPercentage(75)}
-                isDisabled={!$auth.isConnected || state.tokenBalance <= 0}
+                isDisabled={!$auth.isConnected || state.tokenBalance <= 0 || isMarketInactive()}
                 className="sm:text-sm"
               />
               <ButtonV2
@@ -539,7 +568,7 @@
                 variant="solid"
                 size="xs"
                 onclick={() => setPercentage(100)}
-                isDisabled={!$auth.isConnected || state.tokenBalance <= 0}
+                isDisabled={!$auth.isConnected || state.tokenBalance <= 0 || isMarketInactive()}
                 className="sm:text-sm"
               />
             </div>
@@ -586,7 +615,7 @@
             variant="solid"
             size="lg"
             onclick={goToNextStep}
-            isDisabled={selectedOutcome === null || !betAmount}
+            isDisabled={selectedOutcome === null || !betAmount || isMarketInactive()}
             className="flex-1 font-bold sm:text-base"
           />
         </div>

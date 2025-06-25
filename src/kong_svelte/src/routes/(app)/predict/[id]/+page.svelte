@@ -1,6 +1,5 @@
 <script lang="ts">
 	import {page } from '$app/state';
-  import { goto } from "$app/navigation";
   import {
     getMarket,
     getMarketBets,
@@ -12,7 +11,7 @@
   } from "$lib/api/predictionMarket";
   import { formatBalance, toScaledAmount } from "$lib/utils/numberFormatUtils";
   import Panel from "$lib/components/common/Panel.svelte";
-  import { ArrowLeft, Check, TriangleAlert } from "lucide-svelte";
+  import { TriangleAlert } from "lucide-svelte";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import RecentBets from "../RecentBets.svelte";
@@ -28,10 +27,10 @@
   import MarketHeader from "./MarketHeader.svelte";
   import ChartPanel from "./ChartPanel.svelte";
   import OutcomesList from "./OutcomesList.svelte";
-  import MarketStats from "./MarketStats.svelte";
+  import MarketDetailsCard from "./MarketDetailsCard.svelte";
+  import ResolutionPanel from "./ResolutionPanel.svelte";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
   import Dialog from "$lib/components/common/Dialog.svelte";
-  import SocialSharePanel from "./SocialSharePanel.svelte";
   import AdminControlsPanel from "./AdminControlsPanel.svelte";
   import InitializeMarketDialog from "./InitializeMarketDialog.svelte";
   import UserClaimsPanel from "./UserClaimsPanel.svelte";
@@ -335,6 +334,16 @@ let initializing = $state(false);
       initializing = false;
     }
   }
+  
+  async function handleMarketResolved() {
+    // Refresh market data after resolution
+    const marketId = BigInt(page.params.id);
+    const marketData = await getMarket(marketId);
+    market = marketData[0];
+    
+    // Reload bets
+    await loadMarketBets();
+  }
 
   let token = $derived(market ? $userTokens.tokens.find(t => t.address === market.token_id) : null);
 
@@ -364,6 +373,15 @@ let initializing = $state(false);
     marketTokenInfo.symbol
       ? `${formatBalance(Number(marketTokenInfo.activation_fee), marketTokenInfo.decimals)} ${marketTokenInfo.symbol}`
       : "the required minimum" // Fallback string
+  );
+  
+  // Check if this is a user-created market pending resolution
+  let isUserCreatedPendingResolution = $derived(
+    isPendingResolution && 
+    market && 
+    $auth.isConnected && 
+    $auth.account?.owner === market.creator?.toText() &&
+    !isUserAdmin
   );
 
   $effect(() => {
@@ -495,9 +513,9 @@ let initializing = $state(false);
         ></div>
       </div>
     {:else if market}
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         <!-- Left Column -->
-        <div class="lg:col-span-2 space-y-3 sm:space-y-4">
+        <div class="lg:col-span-3 space-y-3 sm:space-y-4">
           <!-- Chart Panel with Tabs -->
           <Panel
             variant="transparent"
@@ -506,9 +524,6 @@ let initializing = $state(false);
             <!-- Market Info Panel -->
             <MarketHeader
               {market}
-              {isMarketResolved}
-              {isPendingResolution}
-              {isMarketVoided}
             />
 
             <!-- Re-enable the simplified ChartPanel -->
@@ -520,20 +535,28 @@ let initializing = $state(false);
             />
           </Panel>
 
-          <!-- Outcomes Panel -->
-          <OutcomesList
-            {market}
-            {token}
-            {outcomes}
-            {outcomePercentages}
-            {betCountPercentages}
-            {betCounts}
-            {isMarketResolved}
-            {isPendingResolution}
-            {isMarketClosed}
-            {winningOutcomes}
-            onSelectOutcome={handleOutcomeSelect}
-          />
+          <!-- Outcomes Panel or Resolution Panel -->
+          {#if isUserCreatedPendingResolution}
+            <ResolutionPanel
+              {market}
+              {outcomes}
+              onMarketResolved={handleMarketResolved}
+            />
+          {:else}
+            <OutcomesList
+              {market}
+              {token}
+              {outcomes}
+              {outcomePercentages}
+              {betCountPercentages}
+              {betCounts}
+              {isMarketResolved}
+              {isPendingResolution}
+              {isMarketClosed}
+              {winningOutcomes}
+              onSelectOutcome={handleOutcomeSelect}
+            />
+          {/if}
         </div>
 
         <!-- Right Column -->
@@ -556,19 +579,16 @@ let initializing = $state(false);
             on:marketUpdated={e => market = e.detail.market}
           />
           <!-- Market Stats Panel -->
-          <MarketStats
+          <MarketDetailsCard
             {totalPool}
             {betCounts}
             {timeLeft}
             {market}
             {isMarketResolved}
+            {isPendingResolution}
+            {isMarketVoided}
             marketEndTime={market.end_time}
-          />
-
-          <!-- Social Share Buttons -->
-          <SocialSharePanel
-            marketUrl={`${page.url.origin}/predict/${page.params.id}`}
-            marketQuestion={market?.question}
+            loading={loading}
           />
 
           <!-- Restore the simplified RecentBets -->

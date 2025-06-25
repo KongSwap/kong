@@ -92,7 +92,7 @@ const delegationTargets = [
   predictionMarketsBackendCanisterId,
   trollboxCanisterId,
   kongDataCanisterId
-]
+].filter(Boolean);
 
 // Function to show signature modal
 function showSignatureModal(message: string, onSignatureComplete?: () => void) {

@@ -1,70 +1,28 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
-	import { truncateAddress } from '$lib/utils/principalUtils';
-  import { Activity, CircleHelp, User } from "lucide-svelte";
+  import { CircleHelp } from "lucide-svelte";
 
-  let { market, isMarketResolved, isPendingResolution, isMarketVoided } = $props();
+  let { market } = $props();
 </script>
 
 <div class="!rounded animate-fadeIn mb-2">
-  <div class="flex items-center gap-2 sm:gap-3">
+  <div class="flex items-center gap-3 sm:gap-4">
     <div
-      class="{market.image_url ? '' : 'p-2 sm:p-2 bg-kong-success/10 rounded flex items-center justify-center'}"
+      class="{market.image_url ? '' : 'p-3 bg-kong-bg-secondary/50 rounded-lg flex items-center justify-center'}"
     >
-    {#if market.image_url.length > 0}
-      <img src={market.image_url} alt="Market Icon" class="w-[4.4rem] h-[4.4rem] object-cover">
+    {#if market.image_url && market.image_url.length > 0}
+      <img src={market.image_url} alt="Market Icon" class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg">
     {:else}
       <CircleHelp
-        class="text-kong-success w-8 h-8"
+        class="text-kong-text-secondary/60 w-10 h-10 sm:w-12 sm:h-12"
       />
     {/if}
     </div>
     <div class="flex-1">
       <h1
-        class="text-xl sm:text-2xl lg:text-2xl font-bold text-kong-text-primary leading-tight"
+        class="text-xl sm:text-2xl lg:text-3xl font-bold text-kong-text-primary leading-tight"
       >
         {market.question}
       </h1>
-      {#if isMarketResolved || isPendingResolution || isMarketVoided}
-        <div class="flex items-center gap-2 mt-1">
-          {#if isMarketResolved}
-            <span
-              class="px-2 py-0.5 flex items-center gap-0.5 bg-kong-success/20 text-kong-success text-xs rounded-full"
-            >
-              <Activity size={12} />
-              Resolved
-            </span>
-            {#if market.resolved_by}
-              <span class="text-xs text-kong-text-secondary">
-                by {market.resolved_by[0].toString().slice(0, 8)}...
-              </span>
-            {/if}
-          {:else if isMarketVoided}
-            <span
-              class="px-2 py-0.5 flex items-center gap-0.5 bg-kong-error/20 text-kong-error text-xs rounded-full"
-            >
-              <Activity size={12} />
-              Voided
-            </span>
-          {:else if isPendingResolution}
-            <span
-              class="px-2 py-0.5 flex items-center gap-0.5 bg-yellow-500/20 text-yellow-500 text-xs rounded-full"
-            >
-              <Activity size={12} />
-              Pending Resolution
-            </span>
-          {/if}
-          <span
-            class="px-2 py-0.5 cursor-pointer flex items-center gap-0.5 bg-yellow-500/20 text-yellow-500 text-xs rounded-full"
-            onclick={(e) => {
-              goto(`/wallets/${market.creator.toText()}`);
-            }}
-          >
-            <User size={12} />
-            {truncateAddress(market.creator.toText())}
-          </span>
-        </div>
-      {/if}
     </div>
   </div>
 </div> 
