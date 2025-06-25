@@ -3,7 +3,7 @@
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { browser } from "$app/environment";
-  import { placeBet, getLatestBets } from "$lib/api/predictionMarket";
+  import { placeBet, getLatestBets, getUserPendingClaims } from "$lib/api/predictionMarket";
   import { AlertTriangle, ChevronDown } from "lucide-svelte";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
@@ -23,12 +23,9 @@
   import Badge from "$lib/components/common/Badge.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
-  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { userTokens } from "$lib/stores/userTokens";
   import type { LatestBets } from "../../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
-  import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import Panel from "$lib/components/common/Panel.svelte";
-  import { truncateAddress } from "$lib/utils/principalUtils";
+  import RecentBets from "./RecentBets.svelte";
 
   // Modal state
   let showBetModal = false;
@@ -55,6 +52,8 @@
   let pendingOutcome: number | null = null;
   let tokens = [];
   let kongToken = null;
+  let userClaims = [];
+  let loadingClaims = false;
 
   // Define valid filter/sort options based on marketStore types
   const validStatusFilters: StatusFilter[] = [
@@ -327,8 +326,25 @@
   $: if (browser) {
     if ($auth.isConnected && $auth.account?.owner) {
       marketStore.setCurrentUserPrincipal($auth.account.owner);
+      // Load user claims when authenticated
+      loadUserClaims();
     } else {
       marketStore.setCurrentUserPrincipal(null);
+      userClaims = [];
+    }
+  }
+
+  async function loadUserClaims() {
+    if (!$auth.isConnected || !$auth.account?.owner || loadingClaims) return;
+    
+    try {
+      loadingClaims = true;
+      userClaims = await getUserPendingClaims($auth.account.owner);
+    } catch (e) {
+      console.error("Failed to load user claims:", e);
+      userClaims = [];
+    } finally {
+      loadingClaims = false;
     }
   }
 
@@ -591,8 +607,11 @@
               <MarketSection
                 markets={$marketStore.markets}
                 {openBetModal}
-                onMarketResolved={async () =>
-                  await marketStore.refreshMarkets()}
+                {userClaims}
+                onMarketResolved={async () => {
+                  await marketStore.refreshMarkets();
+                  await loadUserClaims();
+                }}
                 columns={{
                   mobile: 1,
                   tablet: layoutOptions[selectedLayout].value <= 2 ? layoutOptions[selectedLayout].value : 2,
@@ -618,93 +637,17 @@
       </div>
 
       <!-- Recent Bets column - takes up 1/4 of the space -->
-      <div class="mt-6 lg:mt-0">
-        <Panel variant="solid" type="main" className="overflow-hidden px-0 !bg-kong-bg-secondary">
-          <div
-            class="border-b border-kong-border/30 flex justify-between items-center px-4"
-          >
-            <h2 class="font-semibold">Recent Predictions</h2>
-            <span
-              class="text-kong-success flex items-center gap-1 text-sm px-2 py-1 rounded-full font-medium"
-              >
-              <div class="bg-kong-success w-2 h-2 animate-pulse rounded-full"></div>
-              Live</span
-            >
-          </div>
-
-          {#if loadingBets && isInitialLoad}
-            <div class="p-4 text-center">
-              <div
-                class="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-kong-success border-r-transparent"
-              ></div>
-              <p class="mt-2 text-kong-text-secondary">
-                Loading recent predictions...
-              </p>
-            </div>
-          {:else if recentBets.length === 0}
-            <div class="p-4 text-center text-kong-text-secondary">
-              <p>No recent predictions yet</p>
-            </div>
-          {:else}
-            <div
-              class="divide-y divide-kong-border/30 flex flex-col gap-2 pt-1"
-            >
-              {#each recentBets as bet}
-                <div
-                  class="items-center cursor-pointer py-1.5 px-4 transition-colors group"
-                >
-                  <div
-                    class="mb-1 font-medium text-kong-text-primary group-hover:text-kong-primary transition-colors"
-                    onclick={() => goto(`/predict/${bet.market.id}`)}
-
-                    >
-                    {bet.market.question}
-                  </div>
-                  <!-- User predicted outcome on market question -->
-                  <div class="text-kong-text-secondary break-all">
-                    <span
-                      class="font-medium text-kong-success inline-flex gap-1"
-                    >
-                      <TokenImages
-                        tokens={[
-                          $userTokens.tokens.find(
-                            (token) => token.address === bet.bet.token_id,
-                          ),
-                        ]}
-                        size={14}
-                      />
-                      {formatToNonZeroDecimal(Number(bet.bet.amount) / 10 ** 8)}
-                      {$userTokens.tokens.find(
-                        (token) => token.address === bet.bet.token_id,
-                      )?.symbol}
-                    </span>
-                    on
-
-                    <span
-                      class="font-medium bg-kong-primary inline-flex items-center text-kong-text-on-primary px-1.5 rounded"
-                    >
-                      {bet.market.outcomes[Number(bet.bet.outcome_index)]}
-                    </span>
-
-                    by
-                    <span class="hover:text-kong-primary transition-colors" onclick={() => goto(
-                      `/wallets/${bet.bet.user.toString()}`
-                    )}>
-                      {truncateAddress(bet.bet.user.toString())}
-                    </span>
-
-                    at {new Date(
-                      Number(bet.bet.timestamp) / 1_000_000,
-                    ).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </Panel>
+      <div class="mt-6 lg:mt-0 lg:sticky lg:top-0">
+        <div class="lg:max-h-[calc(100vh-2rem)] flex flex-col">
+          <RecentBets
+            bets={recentBets}
+            loading={loadingBets && isInitialLoad}
+            maxHeight="calc(100vh - 10.7rem)"
+            panelVariant="solid"
+            showOutcomes={false}
+            className="!bg-kong-bg-secondary"
+          />
+        </div>
       </div>
     </div>
   </div>

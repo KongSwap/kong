@@ -145,7 +145,7 @@ export async function placeBet(
       throw new Error("Bet amount cannot be zero");
     }
 
-    const result = await actor.place_bet({market_id: marketId, outcome_index: outcomeIndex, amount: bigIntAmount, token_id: []});
+    const result = await actor.place_bet(marketId, outcomeIndex, bigIntAmount, []);
 
     if ("Err" in result) {
       // Handle specific error cases

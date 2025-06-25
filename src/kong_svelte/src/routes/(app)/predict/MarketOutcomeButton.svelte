@@ -97,8 +97,12 @@
       {isWinner
       ? 'bg-kong-success/20 text-kong-success font-bold border-kong-success/40'
       : `${bgColor} border-${outcome.toLowerCase() === 'yes' ? 'kong-success' : 'kong-error'}/20`} 
-      {isMarketExpiredUnresolved(market) || isMarketResolved(market)
+      {isMarketExpiredUnresolved(market)
       ? 'opacity-80 cursor-default'
+      : isMarketResolved(market) && !isWinner
+      ? 'opacity-40 cursor-default grayscale'
+      : isMarketResolved(market) && isWinner
+      ? 'opacity-100 cursor-default'
       : 'hover:opacity-100 hover:shadow-sm transform hover:translate-y-[0.5px]'}"
     onclick={handleOutcomeClick}
   >
@@ -107,7 +111,7 @@
     >
 
       <div class="flex items-center justify-center gap-1">
-        <span class="truncate">{outcome}</span>
+        <span class="truncate {isMarketResolved(market) && !isWinner ? 'text-kong-text-disabled' : ''}">{outcome}</span>
 
         {#if isWinner}
           <CheckCircle
@@ -115,7 +119,7 @@
           />
         {/if}
       </div>
-      <div class="text-xs text-kong-text-secondary font-normal">
+      <div class="text-xs {isMarketResolved(market) && !isWinner ? 'text-kong-text-disabled' : 'text-kong-text-secondary'} font-normal">
         {percentage}%
       </div>
     </div>
@@ -128,8 +132,12 @@
       {isWinner
       ? 'bg-kong-success/10 text-kong-success font-bold border-kong-success/30'
       : 'border-kong-border/20 hover:border-kong-border/40 hover:bg-kong-bg-secondary/20'} 
-      {isMarketExpiredUnresolved(market) || isMarketResolved(market)
+      {isMarketExpiredUnresolved(market)
       ? 'opacity-80 cursor-default'
+      : isMarketResolved(market) && !isWinner
+      ? 'opacity-40 cursor-default grayscale'
+      : isMarketResolved(market) && isWinner
+      ? 'opacity-100 cursor-default'
       : 'hover:opacity-100 hover:shadow-sm'}"
     onclick={handleOutcomeClick}
   >
@@ -137,6 +145,8 @@
     <div
       class="absolute left-0 top-0 h-full {isWinner
         ? 'bg-kong-success/20'
+        : isMarketResolved(market) && !isWinner
+        ? 'bg-gray-500/10'
         : 'bg-kong-primary/10'} opacity-90 transition-width duration-300 {$panelRoundness}"
       style="width: {width};"
     />
@@ -144,7 +154,7 @@
     <!-- Outcome text content -->
     <div class="flex w-full justify-between items-center">
       <span class="relative z-10 flex items-center gap-2 min-w-0">
-        <span class="truncate block">{outcome}</span>
+        <span class="truncate block {isMarketResolved(market) && !isWinner ? 'text-kong-text-disabled' : ''}">{outcome}</span>
         {#if isWinner}
           <CheckCircle
             class="w-4 h-4 text-kong-success animate-pulse flex-shrink-0"
@@ -152,7 +162,7 @@
         {/if}
       </span>
       <span
-        class="text-xs text-kong-text-secondary relative z-10 font-medium flex-shrink-0"
+        class="text-xs {isMarketResolved(market) && !isWinner ? 'text-kong-text-disabled' : 'text-kong-text-secondary'} relative z-10 font-medium flex-shrink-0"
       >
         {percentage}%
       </span>

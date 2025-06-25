@@ -12,6 +12,7 @@
     MoreVertical,
     Star,
     Dice1,
+    Gift,
   } from "lucide-svelte";
   import Panel from "$lib/components/common/Panel.svelte";
   import CountdownTimer from "$lib/components/common/CountdownTimer.svelte";
@@ -32,12 +33,14 @@
     openBetModal,
     onMarketResolved,
     columns = { mobile: 1, tablet: 2, desktop: 3 },
+    hasClaim = false,
   } = $props<{
     market: any;
     showEndTime?: boolean;
     openBetModal: (market: any, outcomeIndex?: number) => void;
     onMarketResolved: () => Promise<void>;
     columns?: { mobile?: number; tablet?: number; desktop?: number };
+    hasClaim?: boolean;
   }>();
 
   // Convert local state to use $state
@@ -253,7 +256,7 @@
     {#if market.featured}
       <!-- Featured market layout -->
       <div class="flex flex-col h-full">
-        <div class="px-2 pt-4 flex gap-3 items-start">
+        <div class="px-2 pt-4.5 flex gap-3 items-start">
           {#if market.image_url.length != 0}
             <div class="w-12 h-12 flex-shrink-0 rounded overflow-hidden bg-black">
               <img
@@ -377,7 +380,13 @@
                 class="flex items-center gap-1 text-kong-text-secondary text-xs whitespace-nowrap"
               >
                 <Calendar class="w-3 h-3" />
-                <CountdownTimer endTime={market.end_time} />
+                {#if isMarketResolved(market)}
+                  <span>Ended</span>
+                {:else if isMarketVoided(market)}
+                  <span>Voided</span>
+                {:else}
+                  <CountdownTimer endTime={market.end_time} />
+                {/if}
               </span>
             {/if}
             {#if isUserAdmin}
@@ -431,13 +440,13 @@
       </div>
     {:else}
       <!-- Non-featured market layout -->
-      <div class="px-2 pt-4 flex gap-3 items-start">
+      <div class="px-2 pt-5 flex gap-3 items-start">
         {#if market.image_url.length != 0}
           <div class="w-12 h-12 flex-shrink-0 rounded overflow-hidden bg-black">
             <img
               src={market.image_url}
               alt="Category Icon"
-              class="object-cover w-full h-full bg-black bg-blend-overlay opacity-100"
+              class="object-cover w-full h-full opacity-100"
             />
           </div>
         {:else}
@@ -555,7 +564,13 @@
               class="flex items-center gap-1 text-kong-text-secondary text-xs whitespace-nowrap"
             >
               <Calendar class="w-3 h-3" />
-              <CountdownTimer endTime={market.end_time} />
+              {#if isMarketResolved(market)}
+                <span>Ended</span>
+              {:else if isMarketVoided(market)}
+                <span>Voided</span>
+              {:else}
+                <CountdownTimer endTime={market.end_time} />
+              {/if}
             </span>
           {/if}
           {#if isUserAdmin}
@@ -598,6 +613,15 @@
           class="px-1.5 h-5 rounded text-xs bg-kong-accent-yellow text-kong-text-primary/90 flex items-center gap-1"
         >
           <Star class="w-3 h-3" stroke="" strokeWidth="1" fill="currentColor" />
+        </div>
+      {/if}
+      {#if hasClaim}
+        <div
+          class="px-1.5 h-5 rounded text-xs bg-kong-success text-white flex items-center gap-1 animate-pulse"
+          title="You have rewards to claim"
+        >
+          <Gift class="w-3 h-3" />
+          <span>Reward</span>
         </div>
       {/if}
     </div>
