@@ -123,14 +123,6 @@ export const idlFactory = ({ IDL }) => {
     'absolute_time' : IDL.Nat,
     'relative_time' : IDL.Float64,
   });
-  const MarketStatus = IDL.Variant({
-    'Disputed' : IDL.Null,
-    'Closed' : IDL.Vec(IDL.Nat),
-    'Active' : IDL.Null,
-    'ExpiredUnresolved' : IDL.Null,
-    'Voided' : IDL.Null,
-    'PendingActivation' : IDL.Null,
-  });
   const SortDirection = IDL.Variant({
     'Descending' : IDL.Null,
     'Ascending' : IDL.Null,
@@ -140,11 +132,19 @@ export const idlFactory = ({ IDL }) => {
     'CreatedAt' : SortDirection,
     'EndTime' : SortDirection,
   });
-  const GetAllMarketsArgs = IDL.Record({
-    'status_filter' : IDL.Opt(MarketStatus),
+  const GetActiveUserMarketsArgs = IDL.Record({
+    'user' : IDL.Principal,
     'start' : IDL.Nat,
     'length' : IDL.Nat64,
     'sort_option' : IDL.Opt(SortOption),
+  });
+  const MarketStatus = IDL.Variant({
+    'Disputed' : IDL.Null,
+    'Closed' : IDL.Vec(IDL.Nat),
+    'Active' : IDL.Null,
+    'ExpiredUnresolved' : IDL.Null,
+    'Voided' : IDL.Null,
+    'PendingActivation' : IDL.Null,
   });
   const Market = IDL.Record({
     'id' : IDL.Nat,
@@ -169,6 +169,16 @@ export const idlFactory = ({ IDL }) => {
     'rules' : IDL.Text,
     'resolved_by' : IDL.Opt(IDL.Principal),
     'bet_counts' : IDL.Vec(IDL.Nat),
+  });
+  const GetActiveUserMarketsResult = IDL.Record({
+    'markets' : IDL.Vec(Market),
+    'total_count' : IDL.Nat,
+  });
+  const GetAllMarketsArgs = IDL.Record({
+    'status_filter' : IDL.Opt(MarketStatus),
+    'start' : IDL.Nat,
+    'length' : IDL.Nat64,
+    'sort_option' : IDL.Opt(SortOption),
   });
   const GetAllMarketsResult = IDL.Record({
     'markets' : IDL.Vec(Market),
@@ -499,6 +509,11 @@ export const idlFactory = ({ IDL }) => {
     'generate_time_weight_curve' : IDL.Func(
         [IDL.Nat64, IDL.Nat64],
         [IDL.Vec(TimeWeightPoint)],
+        ['query'],
+      ),
+    'get_active_user_markets' : IDL.Func(
+        [GetActiveUserMarketsArgs],
+        [GetActiveUserMarketsResult],
         ['query'],
       ),
     'get_all_categories' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),

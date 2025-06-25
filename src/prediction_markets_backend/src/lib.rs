@@ -39,6 +39,10 @@ use crate::market::update_expired_markets::*;
 pub use crate::market::featured::{get_featured_markets, set_market_featured};
 pub use crate::market::featured::{GetFeaturedMarketsArgs, GetFeaturedMarketsResult};
 
+// Import and re-export active user markets functionality
+pub use crate::market::get_active_user_markets::{get_active_user_markets};
+pub use crate::market::get_active_user_markets::{GetActiveUserMarketsArgs, GetActiveUserMarketsResult};
+
 use crate::market::estimate_return_types::{BetPayoutRecord, EstimatedReturn, TimeWeightPoint};
 use crate::market::get_stats::StatsResult;
 // Standard types

@@ -196,6 +196,16 @@ type FailureDetails = record {
   error_message : text;
   timestamp : nat;
 };
+type GetActiveUserMarketsArgs = record {
+  user : principal;
+  start : nat;
+  length : nat64;
+  sort_option : opt SortOption;
+};
+type GetActiveUserMarketsResult = record {
+  markets : vec Market;
+  total_count : nat;
+};
 type GetAllMarketsArgs = record {
   status_filter : opt MarketStatus;
   start : nat;
@@ -441,6 +451,9 @@ service : () -> {
     ) query;
   force_resolve_market : (ResolutionArgs) -> (ResolutionResult);
   generate_time_weight_curve : (nat64, nat64) -> (vec TimeWeightPoint) query;
+  get_active_user_markets : (GetActiveUserMarketsArgs) -> (
+      GetActiveUserMarketsResult,
+    ) query;
   get_all_categories : () -> (vec text) query;
   get_all_markets : (GetAllMarketsArgs) -> (GetAllMarketsResult) query;
   get_all_transactions : () -> (vec record { nat64; FailedTransaction }) query;
