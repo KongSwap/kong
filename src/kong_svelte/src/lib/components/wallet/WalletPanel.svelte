@@ -142,6 +142,19 @@
     }
   });
 
+  // Ensure pools data is loaded when auth changes, regardless of active tab
+  $effect(() => {
+    if ($auth?.isConnected && $auth?.account?.owner) {
+      // Only initialize if we don't have pools data and store is not loading
+      if (!$currentUserPoolsStore.filteredPools.length && !$currentUserPoolsStore.loading) {
+        currentUserPoolsStore.initialize()
+          .catch(error => {
+            console.error("Error loading pools data for portfolio:", error);
+          });
+      }
+    }
+  });
+
   // User addresses data - Now we don't need this, our WalletAddressesList will get the data directly from auth
   // We keep it for backward compatibility
   const userAddresses = $derived([]);
@@ -177,21 +190,19 @@
 
   // Refresh balances
   function refreshBalances(forceRefresh = true) {
-    isRefreshing = true;
     isLoadingBalances = true;
     
     // Update last refreshed timestamp to trigger reactive updates
     lastRefreshed = Date.now();
     
-    // Add a safety timeout to reset loading state after 30 seconds
+    // Add a safety timeout to reset loading state after 15 seconds
     const safetyTimeout = setTimeout(() => {
-      isRefreshing = false;
       isLoadingBalances = false;
     }, 15000);
     
-    // Refresh pools data if in pools section, without resetting first
+    // Refresh pools data if in pools section
     if (activeSection === 'pools') {
-      currentUserPoolsStore.initialize();
+      refreshPoolsData();
     }
     
     // Refresh token balances
@@ -204,14 +215,8 @@
           console.error("Error refreshing token balances:", err);
         })
         .finally(() => {
-          // Always reset token loading state regardless of pools
+          // Always reset token loading state
           isLoadingBalances = false;
-          
-          // Reset refresh state if this specific operation initiated it
-          if (!(activeSection === 'pools')) {
-            isRefreshing = false;
-          }
-          
           setLastRefreshed(Date.now());
           clearTimeout(safetyTimeout);
 
@@ -229,7 +234,6 @@
     } else {
       // If no wallet ID, just end the loading state for balances
       isLoadingBalances = false;
-      isRefreshing = false;
       clearTimeout(safetyTimeout);
     }
   }
@@ -279,9 +283,6 @@
     // User tokens might not be loaded yet
     userTokens.refreshTokenData();
     
-    // Initialize pool data
-    currentUserPoolsStore.initialize();
-
     // Get the current wallet ID
     if ($auth?.account?.owner) {
       walletId = $auth.account.owner;
@@ -306,22 +307,27 @@
 
   // Add a function to refresh pools data
   function refreshPoolsData() {
-    if (activeSection === 'pools') {
-      isRefreshing = true; // Indicate refresh start
-      
-      // Add a safety timeout to reset loading state after 30 seconds
-      const safetyTimeout = setTimeout(() => {
+    isRefreshing = true; // Indicate refresh start
+    
+    // Add a safety timeout to reset loading state after 30 seconds
+    const safetyTimeout = setTimeout(() => {
+      isRefreshing = false;
+    }, 30000);
+    
+    currentUserPoolsStore.initialize()
+      .then(() => {
+        // Success - pools refreshed
+      })
+      .catch((error) => {
+        // Error occurred during refresh
+        console.error("Error refreshing pools:", error);
+      })
+      .finally(() => {
+        // Always reset refreshing state when pools are done,
+        // regardless of success or error
         isRefreshing = false;
-      }, 30000);
-      
-      currentUserPoolsStore.initialize()
-        .finally(() => {
-          // Always reset refreshing state when pools are done,
-          // regardless of token balance loading state
-          isRefreshing = false;
-          clearTimeout(safetyTimeout);
-        });
-    }
+        clearTimeout(safetyTimeout);
+      });
   }
 </script>
 
@@ -339,7 +345,7 @@
         <div class="flex items-center gap-2">
           <button
             class="p-1 {isRefreshing ? 'text-kong-text-primary bg-kong-primary/10' : 'text-kong-text-primary/60 hover:text-kong-primary hover:bg-kong-primary/10'} rounded-full transition-all"
-            onclick={() => refreshBalances(true)}
+            onclick={() => activeSection === 'pools' ? refreshPoolsData() : refreshBalances(true)}
             disabled={isRefreshing}
           >
             <RefreshCw size={12} class={isRefreshing ? 'animate-spin' : ''} />

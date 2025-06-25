@@ -40,25 +40,25 @@
   // State for user pools from store
   let hasCompletedInitialLoad = $state(false);
   let errorMessage = $state<string | null>(null);
-  let isInitializing = $state(false);
+  let lastRefreshTime = $state(0);
+  const REFRESH_DEBOUNCE_MS = 1000; // 1 second debounce
 
   // Initialize store and handle auth changes
   $effect(() => {
     if ($auth.isConnected) {
-      loadUserPools();
+      // Only load if we don't have data yet and not already loading
+      if (!$currentUserPoolsStore.filteredPools.length && !$currentUserPoolsStore.loading) {
+        loadUserPools();
+      }
     } else {
       currentUserPoolsStore.reset();
       hasCompletedInitialLoad = false;
     }
-
-    // No need for unsubscribe in runes, as $effect cleanup happens automatically
   });
 
   // Function to load user pools
   async function loadUserPools() {
-    if (isInitializing) return; // Prevent multiple simultaneous loads
-    
-    isInitializing = true;
+    errorMessage = null; // Clear any previous errors
     try {
       await currentUserPoolsStore.initialize();
       hasCompletedInitialLoad = true;
@@ -66,40 +66,29 @@
       console.error("Error loading user pools:", error);
       errorMessage =
         "Failed to load your liquidity positions. Please try again.";
-    } finally {
-      isInitializing = false;
-    }
-  }
-
-  // Common function to refresh pools data
-  async function refreshPoolsData(
-    errorMsg = "Failed to refresh your liquidity positions. Please try again.",
-  ) {
-    try {
-      // Don't reset the store until we have new data
-      await currentUserPoolsStore.initialize();
-      if (onRefresh) onRefresh();
-      return true;
-    } catch (error) {
-      console.error("Error refreshing pools:", error);
-      errorMessage = errorMsg;
-      return false;
     }
   }
 
   // Function to refresh user pools with callback
   async function handleRefresh() {
-    if (!$currentUserPoolsStore.loading && !isInitializing) {
-      errorMessage = null;
-      
-      // Refresh the store data
-      await loadUserPools();
-      
-      // Call the parent's refresh callback if provided
-      if (onRefresh) {
-        onRefresh();
-      }
+    const now = Date.now();
+    
+    // Prevent rapid successive calls
+    if ($currentUserPoolsStore.loading || (now - lastRefreshTime) < REFRESH_DEBOUNCE_MS) {
+      return;
     }
+    
+    lastRefreshTime = now;
+    errorMessage = null;
+    
+    // If we have a parent refresh callback, use it instead of doing our own refresh
+    if (onRefresh) {
+      onRefresh();
+      return;
+    }
+    
+    // Otherwise, do our own refresh (only if no parent callback)
+    await loadUserPools();
   }
 
   // Function to handle clicking on a pool item
@@ -155,7 +144,7 @@
 
   // Determine the loading state
   const isLoadingPools = $derived(
-    $currentUserPoolsStore.loading && !hasCompletedInitialLoad,
+    $currentUserPoolsStore.loading && !hasCompletedInitialLoad
   );
 
   // Determine if we should use store data or legacy data
