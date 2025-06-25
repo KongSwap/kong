@@ -132,7 +132,9 @@
   function handleWheel(event: WheelEvent) {
     // Only handle vertical scrolling, allow horizontal scrolling to work normally
     if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
-      event.preventDefault();
+      if(!isMobile) {
+        event.preventDefault();
+      }
       
       const scrollSpeed = 1.5; // Adjust scroll sensitivity
       const deltaY = event.deltaY * scrollSpeed;
@@ -216,11 +218,11 @@
   
   // Generate column templates for scrollable columns
   let scrollableGridTemplateColumns = $derived(scrollableColumns.map(col => {
-    if (col.key === 'price_change_24h') return isMobile ? '100px' : '120px';
-    if (col.key === 'price') return isMobile ? '100px' : '120px';
-    if (col.key === 'volume_24h') return isMobile ? '100px' : '140px';
-    if (col.key === 'market_cap') return isMobile ? '100px' : '140px';
-    if (col.key === 'tvl') return isMobile ? '100px' : '140px';
+    if (col.key === 'price_change_24h') return isMobile ? '110px' : '120px';
+    if (col.key === 'price') return isMobile ? '110px' : '120px';
+    if (col.key === 'volume_24h') return isMobile ? '110px' : '140px';
+    if (col.key === 'market_cap') return isMobile ? '110px' : '140px';
+    if (col.key === 'tvl') return isMobile ? '110px' : '140px';
     return col.width || '120px';
   }).join(' '));
 
@@ -295,7 +297,7 @@
       <div class="scrollable-columns-section">
         <div class="scrollable-content" bind:this={scrollContainer} onscroll={preventVerticalScroll}>
           <!-- Scrollable Header -->
-          <div class="grid-header scrollable-header bg-kong-bg-secondary justify-between gap-2" style="grid-template-columns: {scrollableGridTemplateColumns}">
+          <div class="grid-header scrollable-header bg-kong-bg-secondary justify-between" style="grid-template-columns: {scrollableGridTemplateColumns}">
             {#each scrollableColumns as column (column.key)}
               <div 
                 class="header-cell {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'} {column.sortable ? 'sortable' : ''} {column.sortable && sortColumn === column.key ? 'active' : ''}"
@@ -318,7 +320,7 @@
           </div>
           
           <!-- Scrollable Body -->
-          <div class="grid-body scrollable-body gap-2">
+          <div class="grid-body scrollable-body">
             {#each displayData as row, idx (row[rowKey] || idx)}
               <div
                 class="grid-row scrollable-row justify-between {$panelRoundness} {onRowClick ? 'clickable' : ''} {hoveredRowIndex === idx ? 'hovered' : ''} {isLowTVL(row) ? 'low-tvl' : ''}"
