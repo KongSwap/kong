@@ -4,7 +4,7 @@ import { getAllMarkets, getAllCategories, getMarketsByCreator } from '$lib/api/p
 import { toastStore } from './toastStore';
 
 export type SortOption = 'newest' | 'pool_asc' | 'pool_desc' | 'end_time_asc' | 'end_time_desc';
-export type StatusFilter = 'all' | 'open' | 'expired' | 'resolved' | 'voided' | 'myMarkets';
+export type StatusFilter = 'all' | 'active' | 'pending' | 'closed' | 'disputed' | 'voided' | 'myMarkets';
 
 // New unified interface without categorization
 interface MarketState {
@@ -23,7 +23,7 @@ const initialState: MarketState = {
   categories: ['All'],
   selectedCategory: null,
   sortOption: 'end_time_asc',
-  statusFilter: 'open',
+  statusFilter: 'active',
   loading: true,
   error: null,
   currentUserPrincipal: null
@@ -169,14 +169,17 @@ function createMarketStore() {
         
         // Determine status filter for API
         let apiStatusFilter = undefined;
-        if (statusFilter === 'open') {
+        if (statusFilter === 'active') {
           apiStatusFilter = "Active";
-        } else if (statusFilter === 'resolved') {
+        } else if (statusFilter === 'pending') {
+          apiStatusFilter = "PendingActivation";
+        } else if (statusFilter === 'closed') {
           apiStatusFilter = "Closed";
+        } else if (statusFilter === 'disputed') {
+          apiStatusFilter = "Disputed";
         } else if (statusFilter === 'voided') {
           apiStatusFilter = "Voided";
-        }
-        // Note: 'expired' is handled by filtering open markets with past end_time 
+        } 
                 
         const allMarketsResult = await getAllMarkets({
           start: 0,

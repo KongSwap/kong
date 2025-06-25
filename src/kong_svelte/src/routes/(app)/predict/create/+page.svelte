@@ -38,6 +38,14 @@
   const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
   const MIN_IMAGE_DIMENSION = 200; // pixels
   const DEBOUNCE_DELAY = 300; // ms
+  
+  // Get minimum date (today) in YYYY-MM-DD format
+  const today = new Date();
+  const minDate = today.toISOString().split('T')[0];
+  
+  // Get current time + 1 hour as default
+  const defaultTime = new Date(today.getTime() + 60 * 60 * 1000);
+  const defaultTimeString = defaultTime.toTimeString().slice(0, 5);
 
   // Form state using $state
   const formState = $state<
@@ -85,6 +93,14 @@
       : "",
   );
   const validOutcomes = $derived(formState.outcomes.filter((o) => o.trim()));
+
+  // Set default date/time when switching to SpecificDate
+  $effect(() => {
+    if (formState.endTimeType === "SpecificDate" && !formState.specificDate) {
+      formState.specificDate = minDate;
+      formState.specificTime = defaultTimeString;
+    }
+  });
 
   // Load state and fetch categories
   onMount(async () => {
@@ -154,8 +170,8 @@
     formState.duration = parseInt(
       params.get("duration") || String(DEFAULT_DURATION),
     );
-    formState.specificDate = params.get("specificDate") || "";
-    formState.specificTime = params.get("specificTime") || "";
+    formState.specificDate = params.get("specificDate") || minDate;
+    formState.specificTime = params.get("specificTime") || defaultTimeString;
   });
 
   // Outcome management
@@ -182,6 +198,12 @@
       (!formState.specificDate || !formState.specificTime)
     ) {
       formErrors.specificDate = "Specific date and time are required.";
+    } else if (formState.endTimeType === "SpecificDate" && formState.specificDate && formState.specificTime) {
+      // Validate that the selected date/time is in the future
+      const selectedDateTime = new Date(`${formState.specificDate}T${formState.specificTime}`);
+      if (selectedDateTime <= new Date()) {
+        formErrors.specificDate = "End date and time must be in the future.";
+      }
     } else if (
       formState.endTimeType === "Duration" &&
       formState.duration <= 0
@@ -337,7 +359,10 @@
     />
     <div class="max-w-7xl mx-auto px-4 mt-4">
       <form
-        onsubmit={(e) => e.preventDefault && handleSubmit}
+        onsubmit={(e) => {
+          e.preventDefault();
+          handleSubmit();
+        }}
         class="space-y-4"
       >
         <div class="grid lg:grid-cols-2 gap-8 mb-8">
@@ -752,6 +777,7 @@
                       <input
                         type="date"
                         bind:value={formState.specificDate}
+                        min={minDate}
                         class="flex-1 p-4 bg-kong-bg-primary rounded-lg border border-kong-border text-lg text-kong-text-primary focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200"
                       />
                       <input

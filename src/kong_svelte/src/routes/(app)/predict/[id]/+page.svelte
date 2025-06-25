@@ -8,6 +8,7 @@
     isAdmin,
     voidMarketViaAdmin,
     getSupportedTokens,
+    getUserPendingClaims,
   } from "$lib/api/predictionMarket";
   import { formatBalance, toScaledAmount } from "$lib/utils/numberFormatUtils";
   import Panel from "$lib/components/common/Panel.svelte";
@@ -33,6 +34,7 @@
   import SocialSharePanel from "./SocialSharePanel.svelte";
   import AdminControlsPanel from "./AdminControlsPanel.svelte";
   import InitializeMarketDialog from "./InitializeMarketDialog.svelte";
+  import UserClaimsPanel from "./UserClaimsPanel.svelte";
 
   let market = $state<any>(null);
   let loading = $state(true);
@@ -63,6 +65,8 @@
 let initializing = $state(false);
 
   let marketTokenInfo = $state<TokenInfo | null>(null);
+  let userClaims = $state<any[]>([]);
+  let loadingClaims = $state(false);
 
   // Handle chart tab changes
   function handleChartTabChange(tab: string) {
@@ -378,6 +382,26 @@ let initializing = $state(false);
     }
   });
 
+  // Load user claims when authenticated
+  $effect(() => {
+    if ($auth.isConnected && $auth.account?.owner) {
+      loadingClaims = true;
+      getUserPendingClaims($auth.account.owner)
+        .then((claims) => {
+          userClaims = claims;
+        })
+        .catch((e) => {
+          console.error("Failed to load user claims:", e);
+          userClaims = [];
+        })
+        .finally(() => {
+          loadingClaims = false;
+        });
+    } else {
+      userClaims = [];
+    }
+  });
+
   $effect(() => {
     if (showVoidDialog) {
       document.body.style.overflow = 'hidden';
@@ -417,17 +441,6 @@ let initializing = $state(false);
 
 <div class="min-h-screen text-kong-text-primary px-2 sm:px-4">
   <div class="max-w-6xl mx-auto">
-    <ButtonV2
-    onclick={() => goto("/predict")}
-    variant="transparent"
-    theme="secondary"
-    size="sm"
-    className="mb-4 flex items-center gap-2 -mt-2"
-  >
-    <ArrowLeft class="w-4 h-4" />
-    <span>Back</span>
-  </ButtonV2>
-  
     {#if market && betCounts && betCounts.reduce((acc, curr) => acc + curr, 0) === 0 && market?.creator?.toText() === $auth.account.owner}
       <div
         class="bg-kong-accent-yellow {$panelRoundness} text-black mb-8 p-4 justify-center flex flex-col items-center gap-2"
@@ -525,6 +538,13 @@ let initializing = $state(false);
 
         <!-- Right Column -->
         <div class="space-y-3 sm:space-y-4">
+          <UserClaimsPanel
+            claims={userClaims}
+            loading={loadingClaims}
+            marketId={page.params.id}
+            {marketTokenInfo}
+          />
+          
           <AdminControlsPanel
             {isUserAdmin}
             {loadingAdmin}

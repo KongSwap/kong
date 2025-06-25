@@ -9,16 +9,3 @@
 <div class="container mx-auto !max-w-[1600px] text-kong-text-primary my-4">
   {@render children?.()}
 </div>
-
-<div class="container mx-auto text-kong-text-primary mb-6 flex justify-center">
-  <ButtonV2
-    variant="transparent"
-    size="xs"
-    className="!text-kong-text-secondary"
-    onclick={() => {
-      goto("/predict/tos");
-    }}
-  >
-    Terms of Service
-  </ButtonV2>
-</div>

@@ -12,12 +12,14 @@
     openBetModal,
     onMarketResolved,
     columns = { mobile: 1, tablet: 2, desktop: 3 },
+    userClaims = [],
   } = $props<{
     markets: any[];
     showEndTime?: boolean;
     openBetModal: (market: any, outcomeIndex?: number) => void;
     onMarketResolved: () => Promise<void>;
     columns?: { mobile?: number; tablet?: number; desktop?: number };
+    userClaims?: any[];
   }>();
 
   // Convert local state to use $state
@@ -79,12 +81,6 @@
     <!-- Featured Markets Section -->
     {#if markets.some(m => m.featured)}
       <div>
-        <!-- Featured Markets Heading (professional) -->
-        <h2 class="text-2xl font-bold mb-4 text-kong-text-primary flex items-center gap-2">
-          <Star class="w-5 h-5 text-kong-accent-yellow" />
-          Featured Markets
-        </h2>
-
         <!-- Featured Markets List -->
         <div
           class="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory lg:grid {gridColumnClasses} lg:gap-4 lg:overflow-visible"
@@ -99,6 +95,7 @@
                 {openBetModal}
                 {onMarketResolved}
                 {columns}
+                hasClaim={userClaims.some(claim => claim.market_id === market.id)}
               />
             </div>
           {/each}
@@ -109,7 +106,6 @@
     <!-- Regular Markets Section -->
     {#if markets.some(m => !m.featured)}
       <div>
-        <h2 class="text-xl font-semibold mb-4 text-kong-text-primary">All Markets</h2>
         <div class="grid {gridColumnClasses} gap-3 sm:gap-4">
           {#each markets.filter(m => !m.featured) as market (market.id)}
             <MarketCard
@@ -118,6 +114,7 @@
               {openBetModal}
               {onMarketResolved}
               {columns}
+              hasClaim={userClaims.some(claim => claim.market_id === market.id)}
             />
           {/each}
         </div>
