@@ -52,8 +52,8 @@
   const SECONDARY_TOKEN_IDS = [ICP_CANISTER_ID, CKUSDT_CANISTER_ID];
 
   // Core state
-  let showConfirmModal = false;
-  let isLoading = true;
+  let showConfirmModal = $state(false);
+  let isLoading = $state(true);
 
   // Use composables for cleaner logic separation
   const liquidityPanel = useLiquidityPanel();
@@ -73,14 +73,19 @@
   } = liquidityPanel;
   
   // Subscribe to reactive values
-  $: token0 = $token0Store;
-  $: token1 = $token1Store;
-  $: pool = $poolStore;
-  $: poolExists = $poolExistsStore;
-  $: token0Balance = $token0BalanceStore;
-  $: token1Balance = $token1BalanceStore;
-  $: buttonText = $buttonTextStore;
-  $: buttonTheme = $buttonThemeStore;
+  let token0 = $derived($token0Store);
+  let token1 = $derived($token1Store);
+  let pool = $derived($poolStore);
+  let poolExists = $derived($poolExistsStore);
+  let token0Balance = $derived($token0BalanceStore);
+  let token1Balance = $derived($token1BalanceStore);
+  let buttonText = $derived($buttonTextStore);
+  let buttonTheme = $derived($buttonThemeStore);
+
+  // Derived state for UI organization
+  let isCreatingNewPool = $derived(poolExists === false || pool?.balance_0 === 0n);
+  let hasTokenPair = $derived(token0 && token1);
+  let canProceed = $derived(hasTokenPair && $liquidityStore.amount0 && $liquidityStore.amount1);
   
   // Debounced handlers
   const debouncedPriceChange = debounce((value: string) => {
@@ -97,7 +102,7 @@
     const currentPool = get(poolStore);
     const currentToken0 = get(token0Store);
     const currentToken1 = get(token1Store);
-    
+
     if (currentPoolExists === false || currentPool?.balance_0 === 0n) {
       if ($liquidityStore.initialPrice) {
         const otherIndex = index === 0 ? 1 : 0;
@@ -110,7 +115,9 @@
       try {
         const otherIndex = index === 0 ? 1 : 0;
         const calcFn = index === 0 ? calculateToken1FromPoolRatio : calculateToken0FromPoolRatio;
-        liquidityStore.setAmount(otherIndex, await calcFn(value, currentToken0, currentToken1, currentPool));
+        let amount = await calcFn(value, currentToken0, currentToken1, currentPool);
+
+        liquidityStore.setAmount(otherIndex, amount || "0");
       } catch (error) {
         console.error("Failed to calculate amounts:", error);
       }
@@ -133,14 +140,18 @@
   });
 
   // Update pool state when tokens or pools change
-  $: if ($liquidityStore.token0 && $liquidityStore.token1 && $livePools.length > 0) {
-    updatePoolState($liquidityStore.token0, $liquidityStore.token1, $livePools);
-  }
+  $effect(() => {
+    if ($liquidityStore.token0 && $liquidityStore.token1 && $livePools.length > 0) {
+      updatePoolState($liquidityStore.token0, $liquidityStore.token1, $livePools);
+    }
+  });
 
   // Update balances reactively
-  $: if ($liquidityStore.token0 && $liquidityStore.token1 && $auth?.account?.owner && !isLoading) {
-    loadBalances([$liquidityStore.token0, $liquidityStore.token1], $auth.account.owner);
-  }
+  $effect(() => {
+    if ($liquidityStore.token0 && $liquidityStore.token1 && $auth?.account?.owner && !isLoading) {
+      loadBalances([$liquidityStore.token0, $liquidityStore.token1], $auth.account.owner);
+    }
+  });
 
   // Token selection handler
   async function handleTokenSelect(index: 0 | 1, token: Kong.Token) {
@@ -265,11 +276,6 @@
   onDestroy(() => {
     liquidityStore.resetAmounts();
   });
-
-  // Derived state for UI organization
-  $: isCreatingNewPool = poolExists === false || pool?.balance_0 === 0n;
-  $: hasTokenPair = token0 && token1;
-  $: canProceed = hasTokenPair && $liquidityStore.amount0 && $liquidityStore.amount1;
 </script>
 
 <div class="flex flex-col gap-y-4 w-full">

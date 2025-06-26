@@ -11,21 +11,21 @@ export function getPriceChangeClass(token: Kong.Token): string {
   return '';
 }
 
-export async function formatPoolData(pools: BE.Pool[]): Promise<BE.Pool[]> {
-  if (pools.length === 0) return pools;
-  const poolsMap = await Promise.all(pools.map(async (pool, index) => {
-    const apy = formatToNonZeroDecimal(pool.rolling_24h_apy);
-    const userTokensStore = get(userTokens);
-    const baseToken = userTokensStore.tokens.find(t => t.address === pool.address_1);
-    return {
-      ...pool,
-      price_usd: (Number(pool.price) * Number(baseToken?.metrics.price)).toString(),
-      id: `${pool.symbol_0}-${pool.symbol_1}-${index}`,
-      apy,
-    };
-  }));
-  return poolsMap;
-}
+// export async function formatPoolData(pools: BE.Pool[]): Promise<BE.Pool[]> {
+//   if (pools.length === 0) return pools;
+//   const poolsMap = await Promise.all(pools.map(async (pool, index) => {
+//     const apy = formatToNonZeroDecimal(pool.rolling_24h_apy);
+//     const userTokensStore = get(userTokens);
+//     const baseToken = userTokensStore.tokens.find(t => t.address === pool.address_1);
+//     return {
+//       ...pool,
+//       price_usd: (Number(pool.price) * Number(baseToken?.metrics.price)).toString(),
+//       id: `${pool.symbol_0}-${pool.symbol_1}-${index}`,
+//       apy,
+//     };
+//   }));
+//   return poolsMap;
+// }
 
 export function getPoolPriceUsd(pool: BE.Pool): number {
   if (!pool || !pool.balance_0 || !pool.balance_1) return 0;
