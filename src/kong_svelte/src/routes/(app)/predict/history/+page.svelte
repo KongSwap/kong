@@ -102,14 +102,6 @@
 
 <div class="min-h-screen text-kong-text-primary px-4">
   <div class="max-w-6xl mx-auto">
-    <button
-      onclick={() => goto("/predict")}
-      class="mb-4 flex items-center gap-2 px-3 py-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors rounded-md hover:bg-kong-bg-primary/40"
-    >
-      <ArrowLeft class="w-4 h-4" />
-      <span class="text-sm">Back to Markets</span>
-    </button>
-
     <div class="mb-8">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

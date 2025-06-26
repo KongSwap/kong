@@ -3,7 +3,7 @@
   import { auth } from "$lib/stores/auth";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import { marketStore, filteredMarkets } from "$lib/stores/marketStore";
-  import { ChartBar, ChartLine, ChevronLeft, ChevronRight, HelpCircle, Plus } from "lucide-svelte";
+  import { ChartBar, ChartLine, ChevronLeft, ChevronRight, HelpCircle, Plus, History } from "lucide-svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
 
@@ -205,6 +205,17 @@
             </ButtonV2>
             
             {#if $auth.isConnected}
+              <ButtonV2
+                theme="primary"
+                variant="transparent"
+                size="lg"
+                onclick={() => goto('/predict/history')}
+              >
+                <div class="flex items-center gap-2">
+                  <History class="w-4 h-4" />
+                  <span>My History</span>
+                </div>
+              </ButtonV2>
               <ButtonV2
                 theme="primary"
                 variant="solid"

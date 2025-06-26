@@ -285,7 +285,7 @@
   <div class="px-4 pb-4 pt-2 border-t border-kong-border/20">
     {#if loading}
       <!-- Loading State -->
-      <div class="space-y-2">
+      <div class="space-y-0">
         {#each Array(5) as _, i}
           <div class="flex items-center justify-between py-2">
             <div class="flex items-center gap-2">
@@ -330,13 +330,13 @@
       </div>
     {:else}
       <!-- Actual Content -->
-      <div class="space-y-2">
+      <div class="space-y-0">
         <!-- Market Status -->
         <div class="flex items-center justify-between py-2">
           <div class="flex items-center gap-2 text-kong-text-secondary">
             <span>Status</span>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 text-sm">
             {#if isMarketResolved}
               <span
                 class="px-2 py-0.5 bg-kong-success/20 text-kong-success rounded-full font-medium"
@@ -380,22 +380,6 @@
             </div>
           </div>
         {/each}
-
-        <!-- Creator Information -->
-        <div class="flex items-center justify-between py-2">
-          <div class="flex items-center gap-2 text-kong-text-secondary">
-            <span>Creator</span>
-          </div>
-          <button
-            class="font-medium text-kong-text-primary hover:text-kong-primary transition-colors flex items-center gap-1"
-            onclick={() => goto(`/wallets/${market.creator.toText()}`)}
-          >
-            {#if isCreatorAdmin}
-              <Shield class="w-3 h-3 text-kong-accent-yellow" />
-            {/if}
-            {truncateAddress(market.creator.toText())}
-          </button>
-        </div>
 
         <!-- Social Share -->
         <div class="flex items-center justify-center">

@@ -337,7 +337,7 @@
           <TokenImages
             tokens={[
               $userTokens.tokens.find((t) => t.address === market.token_id),
-            ]}
+            ].filter(Boolean)}
             size={16}
           />
           {toShortNumber(
@@ -345,7 +345,7 @@
               (acc, pool) => acc + Number(pool || 0),
               0,
             ),
-            $userTokens.tokens.find((t) => t.address === market.token_id)
+            $userTokens.tokens.find((t) => t.address === market.token_id) || undefined
           )}
         </span>
       </div>

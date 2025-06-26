@@ -366,6 +366,13 @@
     !isUserAdmin
   );
 
+  // Check if market has ended with zero predictions
+  let isMarketEndedWithNoBets = $derived.by(() => {
+    if (!market || !market.bet_counts) return false;
+    const totalBets = market.bet_counts.reduce((acc: number, curr: any) => acc + Number(curr), 0);
+    return totalBets === 0 && marketEndTime && marketEndTime < Date.now();
+  });
+
   // This duplicate admin check effect has been removed - consolidated into the auth effect above
 
   $effect(() => {
@@ -426,8 +433,24 @@
             <HowItWorksSection />
           {/if}
 
-          <!-- Activate Market Card (shown above charts when needed) -->
-          {#if isMarketNeedsActivation}
+          <!-- Activate Market Card or Ended with No Bets Card -->
+          {#if isMarketEndedWithNoBets}
+            <Card className="p-4 sm:p-6">
+              <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 mt-0.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-kong-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <h3 class="text-base font-semibold text-kong-text-primary mb-1">Market Expired Without Activity</h3>
+                  <p class="text-sm text-kong-text-secondary">
+                    This market has ended without receiving any predictions. Markets with no activity are automatically deleted to maintain system efficiency.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          {:else if isMarketNeedsActivation}
             <ActivateMarketCard
               {market}
               {formattedMinInitialBetString}
@@ -464,9 +487,20 @@
               onMarketResolved={handleMarketResolved}
               isAdmin={isUserAdmin}
             />
-          {:else if !isMarketNeedsActivation && !isMarketEndedForNonResolver}
+          {:else if !isMarketNeedsActivation && !isMarketEndedForNonResolver && !isMarketEndedWithNoBets}
             <OutcomesList {market} {marketBets} onPlacePrediction={handleBet} isAdmin={isUserAdmin} />
           {/if}
+
+          <!-- Recent Predictions -->
+          <RecentPredictions
+            bets={marketBets}
+            outcomes={market?.outcomes}
+            showOutcomes={true}
+            maxHeight="500px"
+            title="Recent Predictions"
+            loading={loadingBets}
+            tokenSymbol={marketTokenInfo?.symbol || "KONG"}
+          />
         </div>
 
         <!-- Right Column -->
@@ -496,17 +530,6 @@
             {market}
             on:closeResolutionModal={() => (showAdminResolutionModal = false)}
             on:marketUpdated={(e) => (market = e.detail.market)}
-          />
-
-          <!-- Restore the simplified RecentPredictions -->
-          <RecentPredictions
-            bets={marketBets}
-            outcomes={market?.outcomes}
-            showOutcomes={true}
-            maxHeight="500px"
-            title="Recent Predictions"
-            loading={loadingBets}
-            tokenSymbol={marketTokenInfo?.symbol || "KONG"}
           />
         </div>
       </div>

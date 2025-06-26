@@ -86,14 +86,6 @@
 
 <div class="min-h-screen text-kong-text-primary px-4">
   <div class="max-w-4xl mx-auto">
-    <button
-      onclick={() => goto("/predict")}
-      class="mb-4 flex items-center gap-2 px-3 py-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors rounded-md hover:bg-kong-bg-primary/40"
-    >
-      <ArrowLeft class="w-4 h-4" />
-      <span class="text-sm">Back to Markets</span>
-    </button>
-
     <div class="mb-8">
       <h1 class="text-2xl md:text-3xl font-bold mb-2">Claim Rewards</h1>
       <p class="text-kong-text-secondary">Claim your prediction market winnings and refunds</p>

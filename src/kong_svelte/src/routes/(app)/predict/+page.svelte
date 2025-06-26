@@ -324,16 +324,17 @@
 
       <!-- Recent Bets column - takes up 1/4 of the space -->
       <div class="mt-6 lg:mt-0 lg:sticky lg:top-0">
-        <div class="lg:max-h-[536px] flex flex-col">
+        <div class="flex flex-col" style="max-height: 720px">
           <!-- User's Unresolved Markets Card -->
           <UserUnresolvedMarketsCard markets={userData.userUnresolvedMarkets} />
           
           <RecentPredictions
             bets={recentBets}
             loading={loadingBets && isInitialLoad}
-            maxHeight="calc(100vh - 10.7rem)"
+            maxHeight="100%"
             showOutcomes={false}
-            className="!bg-kong-bg-secondary"
+            className="!bg-kong-bg-secondary flex-1 min-h-0"
+            title="Recent Activity"
           />
         </div>
       </div>

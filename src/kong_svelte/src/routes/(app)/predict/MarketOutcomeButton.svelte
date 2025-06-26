@@ -63,9 +63,9 @@
   const progressBarColor = $derived(
     isYesNo
       ? index === 0
-        ? "bg-kong-success/50"
-        : "bg-kong-error/50"
-      : "bg-kong-success/50",
+        ? "bg-kong-success/20"
+        : "bg-kong-error/20"
+      : "bg-kong-success/20",
   );
 
   // Determine if the outcome is a winner
@@ -75,8 +75,8 @@
   const bgColor = $derived(
     isYesNo
       ? outcome.toLowerCase() === "yes"
-        ? "bg-kong-success/10 border-kong-success/30 hover:bg-kong-success/20 text-kong-success"
-        : "bg-kong-error/10 border-kong-error/30 hover:bg-kong-error/20 text-kong-error"
+        ? "bg-kong-success/5 border-kong-success/20 hover:bg-kong-success/10 text-kong-text-primary"
+        : "bg-kong-error/5 border-kong-error/20 hover:bg-kong-error/10 text-kong-text-primary"
       : "",
   );
 
@@ -102,8 +102,8 @@
     class="w-full cursor-pointer py-2 px-5 text-center {$panelRoundness} font-medium text-lg group/outcome relative
       border transition-all duration-200
       {isWinner
-      ? 'bg-kong-success/20 text-kong-success font-bold border-kong-success/40'
-      : `${bgColor} border-${outcome.toLowerCase() === 'yes' ? 'kong-success' : 'kong-error'}/20`} 
+      ? 'bg-kong-success/10 text-kong-success font-bold border-kong-success/30'
+      : bgColor} 
       {isMarketExpiredUnresolved(market)
       ? 'opacity-80 cursor-pointer'
       : isMarketResolved(market) && !isWinner
@@ -116,7 +116,6 @@
     <div
       class="relative z-10 flex items-center justify-center gap-1 truncate-text"
     >
-
       <div class="flex items-center justify-center gap-1">
         <span class="truncate {isMarketResolved(market) && !isWinner ? 'text-kong-text-disabled' : ''}">{outcome}</span>
 

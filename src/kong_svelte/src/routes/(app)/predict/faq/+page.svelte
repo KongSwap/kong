@@ -30,8 +30,8 @@
 </script>
 
 <svelte:head>
-  <title>FAQ - Kong Earn Prediction Markets</title>
-  <meta name="description" content="Learn about time-weighted rewards, multi-token support, and dual resolution system in Kong Earn Prediction Markets" />
+  <title>FAQ - KongSwap Prediction Markets</title>
+  <meta name="description" content="Learn about time-weighted rewards, multi-token support, and dual resolution system in KongSwap Prediction Markets" />
 </svelte:head>
 
 <!-- Move outside the overflow constraints -->
@@ -39,7 +39,7 @@
   <!-- Header -->
   <PageHeader 
     title="Prediction Markets FAQ"
-    description="Everything you need to know about Kong Earn Prediction Markets"
+    description="Everything you need to know about KongSwap Prediction Markets"
     icon={HelpCircle}
   />
 
@@ -218,7 +218,7 @@
         <div class="space-y-4">
           <div>
             <h3 class="text-lg font-semibold text-kong-text-primary mb-2">What tokens can I use?</h3>
-            <p class="text-kong-text-secondary mb-4">Kong Earn supports multiple ICRC-compliant tokens:</p>
+            <p class="text-kong-text-secondary mb-4">KongSwap supports multiple ICRC-compliant tokens:</p>
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {#if supportedTokens.length > 0}
                 {#each supportedTokens as token}

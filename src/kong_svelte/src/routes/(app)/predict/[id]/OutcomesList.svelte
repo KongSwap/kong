@@ -127,12 +127,12 @@
   }
 </script>
 
-<Card className="p-4 bg-kong-bg-primary/80 backdrop-blur-sm shadow-lg border-kong-border/10 animate-fadeIn">
+<Card className="p-4 bg-kong-bg-primary/80 backdrop-blur-sm border-kong-border/10 animate-fadeIn">
   <div class="space-y-4">
       <!-- Header for outcomes list -->
       <div class="flex items-center gap-3">
         <div class="p-2 rounded-lg bg-kong-primary/20">
-          <BarChart3 class="w-5 h-5 text-kong-primary" />
+          <BarChart3 class="w-6 h-6 text-kong-primary" />
         </div>
         <div>
           <h2 class="text-lg font-semibold text-kong-text-primary">
