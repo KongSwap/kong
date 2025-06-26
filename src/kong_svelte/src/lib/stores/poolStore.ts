@@ -1,5 +1,6 @@
 import { derived, writable, type Readable, readable } from "svelte/store";
-import { formatPoolData } from "$lib/utils/statsUtils";
+// import { formatPoolData } from "$lib/utils/statsUtils";
+import { Pool } from "$lib/models/Pool";
 import { browser } from "$app/environment";
 import { fetchPools } from "$lib/api/pools";
 
@@ -185,13 +186,12 @@ export const loadPools = async () => {
     }
 
     // Process pools data with price validation
-    const pools = await formatPoolData(allPools);
+    // const pools = Pool.parsePool(allPools);
 
     // Transform pools to include displayTvl
-    const transformedPools = pools.map(pool => ({
-      ...pool,
-      displayTvl: Number(pool.tvl) / 1e6,
-    })) as ExtendedPool[];
+    const transformedPools = allPools.map(pool => ({
+      ...Pool.parsePool(pool),
+    })) as BE.Pool[];
 
     // Update the store
     poolsStore.set(transformedPools);
