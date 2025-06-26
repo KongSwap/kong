@@ -1,10 +1,8 @@
 <script lang="ts">
   import Panel from "$lib/components/common/Panel.svelte";
-  import { ChevronDown } from "lucide-svelte";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { browser } from "$app/environment";
-  import TokenCardMobile from "$lib/components/stats/TokenCardMobile.svelte";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import StatsGrid from "$lib/components/common/StatsGrid.svelte";
   import TokenCell from "$lib/components/stats/TokenCell.svelte";

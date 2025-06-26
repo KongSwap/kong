@@ -101,7 +101,7 @@ export function useBetModal(kongToken: TokenInfo | null) {
   }
 
   return {
-    get state() { return state; },
+    state,
     open,
     close,
     placeBet: placeBetHandler

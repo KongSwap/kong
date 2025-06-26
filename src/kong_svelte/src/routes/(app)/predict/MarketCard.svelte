@@ -19,9 +19,8 @@
   import CountdownTimer from "$lib/components/common/CountdownTimer.svelte";
   import { goto } from "$app/navigation";
   import AdminResolutionModal from "./AdminResolutionModal.svelte";
-  import { auth } from "$lib/stores/auth";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import { isAdmin, setMarketFeatured } from "$lib/api/predictionMarket";
+  import { setMarketFeatured } from "$lib/api/predictionMarket";
   import { voidMarketViaAdmin } from "$lib/api/predictionMarket";
   import { userTokens } from "$lib/stores/userTokens";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
@@ -37,6 +36,7 @@
     hasClaim = false,
     isDropdownOpen = false,
     onDropdownToggle,
+    isUserAdmin = false,
   } = $props<{
     market: any;
     showEndTime?: boolean;
@@ -46,22 +46,12 @@
     hasClaim?: boolean;
     isDropdownOpen?: boolean;
     onDropdownToggle?: () => void;
+    isUserAdmin?: boolean;
   }>();
 
   // Convert local state to use $state
   let showResolutionModal = $state(false);
-  let isUserAdmin = $state(false);
   // Remove local dropdown state - now managed by parent
-
-  // Check if user is admin using $effect
-  $effect(() => {
-    if ($auth.isConnected && $auth.account) {
-      isAdmin($auth.account.owner).then((result) => {
-        console.log("Is user admin:", result);
-        isUserAdmin = result;
-      });
-    }
-  });
 
   // Consolidated market status helpers
   const marketStatus = {

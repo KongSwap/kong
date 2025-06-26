@@ -1,12 +1,10 @@
 <script lang="ts">
-  import { LayoutGrid, RefreshCw } from "lucide-svelte";
+  import { LayoutGrid } from "lucide-svelte";
   import Badge from "$lib/components/common/Badge.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { auth } from "$lib/stores/auth";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
-  import { livePools } from "$lib/stores/poolStore";
   import { goto } from "$app/navigation";
   import WalletListHeader from "./WalletListHeader.svelte";
 
@@ -37,58 +35,56 @@
     onNavigate?: ((path: string) => void) | undefined;
   }>();
 
-  // State for user pools from store
-  let hasCompletedInitialLoad = $state(false);
+  // State
   let errorMessage = $state<string | null>(null);
-  let lastRefreshTime = $state(0);
-  const REFRESH_DEBOUNCE_MS = 1000; // 1 second debounce
+  let hasInitialized = $state(false);
+  let isInitializing = $state(false);
+  let isRefreshingLocal = $state(false);
 
-  // Initialize store and handle auth changes
+  // Initialize store once when connected
   $effect(() => {
-    if ($auth.isConnected) {
-      // Only load if we don't have data yet and not already loading
-      if (!$currentUserPoolsStore.filteredPools.length && !$currentUserPoolsStore.loading) {
-        loadUserPools();
-      }
-    } else {
+    if ($auth.isConnected && !hasInitialized && !isInitializing) {
+      hasInitialized = true;
+      isInitializing = true;
+      currentUserPoolsStore.initialize()
+        .catch(error => {
+          console.error("Error loading user pools:", error);
+          errorMessage = "Failed to load your liquidity positions.";
+        })
+        .finally(() => {
+          isInitializing = false;
+        });
+    } else if (!$auth.isConnected) {
+      hasInitialized = false;
+      isInitializing = false;
       currentUserPoolsStore.reset();
-      hasCompletedInitialLoad = false;
     }
   });
 
-  // Function to load user pools
-  async function loadUserPools() {
-    errorMessage = null; // Clear any previous errors
-    try {
-      await currentUserPoolsStore.initialize();
-      hasCompletedInitialLoad = true;
-    } catch (error) {
-      console.error("Error loading user pools:", error);
-      errorMessage =
-        "Failed to load your liquidity positions. Please try again.";
-    }
-  }
-
-  // Function to refresh user pools with callback
+  // Simple refresh handler
   async function handleRefresh() {
-    const now = Date.now();
+    if (isRefreshingLocal) return;
     
-    // Prevent rapid successive calls
-    if ($currentUserPoolsStore.loading || (now - lastRefreshTime) < REFRESH_DEBOUNCE_MS) {
-      return;
-    }
-    
-    lastRefreshTime = now;
     errorMessage = null;
+    isRefreshingLocal = true;
     
-    // If we have a parent refresh callback, use it instead of doing our own refresh
-    if (onRefresh) {
-      onRefresh();
-      return;
+    try {
+      // Use parent refresh if provided, otherwise refresh ourselves
+      if (onRefresh) {
+        onRefresh();
+        // Give parent time to update its state
+        setTimeout(() => {
+          isRefreshingLocal = false;
+        }, 100);
+      } else {
+        await currentUserPoolsStore.initialize();
+        isRefreshingLocal = false;
+      }
+    } catch (error) {
+      console.error("Error refreshing pools:", error);
+      errorMessage = "Failed to refresh pools.";
+      isRefreshingLocal = false;
     }
-    
-    // Otherwise, do our own refresh (only if no parent callback)
-    await loadUserPools();
   }
 
   // Function to handle clicking on a pool item
@@ -106,29 +102,9 @@
     }
   }
 
-  // Get pool share percentage
-  function getPoolSharePercentage(pool: any): string {
-    const livePool = $livePools.find(
-      (p) => p.address_0 === pool.address_0 && p.address_1 === pool.address_1,
-    );
-
-    return calculateUserPoolPercentage(
-      livePool?.balance_0 + livePool?.lp_fee_0,
-      livePool?.balance_1 + livePool?.lp_fee_1,
-      pool.amount_0,
-      pool.amount_1,
-    );
-  }
-
   // Get APY for a pool
   function getPoolApy(pool: any): string {
-    const livePool = $livePools.find(
-      (p) => p.address_0 === pool.address_0 && p.address_1 === pool.address_1,
-    );
-
-    return livePool?.rolling_24h_apy
-      ? formatToNonZeroDecimal(livePool.rolling_24h_apy)
-      : "0";
+    return pool ? formatToNonZeroDecimal(pool.rolling_24h_apy) : "0";
   }
 
   // Format currency with 2 decimal places
@@ -142,23 +118,16 @@
     }).format(numValue);
   }
 
-  // Determine the loading state
-  const isLoadingPools = $derived(
-    $currentUserPoolsStore.loading && !hasCompletedInitialLoad
-  );
-
-  // Determine if we should use store data or legacy data
-  const usingStoreData = $derived(
-    $auth.isConnected && $currentUserPoolsStore.filteredPools.length > 0,
-  );
+  // Simple derived state - use store data when connected
+  const usingStoreData = $derived($auth.isConnected);
 </script>
 
 <div>
   <!-- Fixed header that doesn't scroll -->
   <WalletListHeader
     title="Your Liquidity Positions"
-    isLoading={isRefreshing || $currentUserPoolsStore.loading}
-    isRefreshing={isRefreshing || $currentUserPoolsStore.loading}
+    isLoading={false}
+    isRefreshing={isRefreshingLocal}
     onRefresh={handleRefresh}
   />
 
@@ -167,7 +136,7 @@
     class="overflow-y-auto scrollbar-thin"
     style="max-height: calc(100vh - 225px);"
   >
-    {#if (isLoadingPools && !$currentUserPoolsStore.filteredPools.length) || (isLoading && !liquidityPools.length)}
+    {#if isInitializing || (isLoading && !usingStoreData)}
       <div class="py-10 text-center">
         <div class="animate-pulse flex flex-col items-center gap-4">
           <div class="w-16 h-16 bg-kong-text-primary/10 rounded-full"></div>
@@ -199,7 +168,7 @@
           Try Again
         </button>
       </div>
-    {:else if (usingStoreData && $currentUserPoolsStore.filteredPools.length === 0) || (!usingStoreData && liquidityPools.length === 0)}
+    {:else if hasInitialized && ((usingStoreData && $currentUserPoolsStore.filteredPools.length === 0) || (!usingStoreData && liquidityPools.length === 0))}
       <div class="py-10 text-center">
         <div
           class="p-5 rounded-full bg-kong-text-primary/5 inline-block mb-3 mx-auto"
@@ -260,91 +229,8 @@
           </div>
         {/each}
       </div>
-    {:else}
-      <!-- Legacy display for static data -->
-      <div class="space-y-0">
-        {#each liquidityPools as pool}
-          <div
-            class="px-4 py-3.5 bg-kong-bg-secondary/5 border-b border-kong-border hover:bg-kong-bg-secondary/10 transition-colors cursor-pointer"
-            onclick={() => handlePoolItemClick(pool)}
-            onkeydown={(e) => e.key === "Enter" && handlePoolItemClick(pool)}
-            role="button"
-            tabindex="0"
-          >
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2.5">
-                <div class="flex -space-x-2 flex-shrink-0">
-                  <div
-                    class="w-7 h-7 rounded-full bg-kong-text-primary/10 flex items-center justify-center border border-kong-border z-10"
-                  >
-                    <span class="text-xs font-bold text-kong-primary"
-                      >{pool.token0.symbol}</span
-                    >
-                  </div>
-                  <div
-                    class="w-7 h-7 rounded-full bg-kong-text-primary/10 flex items-center justify-center border border-kong-border"
-                  >
-                    <span class="text-xs font-bold text-kong-primary"
-                      >{pool.token1.symbol}</span
-                    >
-                  </div>
-                </div>
-                <span class="text-sm font-medium text-kong-text-primary"
-                  >{pool.token0.symbol}/{pool.token1.symbol}</span
-                >
-              </div>
-              <Badge
-                variant="blue"
-                size="xs"
-                class="text-[10px] uppercase tracking-wide font-semibold"
-              >
-                {pool.chain}
-              </Badge>
-            </div>
-
-            <div class="grid grid-cols-3 gap-2 text-xs mt-2">
-              <div>
-                <div class="text-kong-text-secondary">Value</div>
-                <div class="text-kong-text-primary font-medium mt-0.5">
-                  {#if showUsdValues}
-                    {formatCurrency(pool.value)}
-                  {:else}
-                    $****
-                  {/if}
-                </div>
-              </div>
-              <div>
-                <div class="text-kong-text-secondary">Pool Share</div>
-                <div class="text-kong-text-primary font-medium mt-0.5">
-                  {#if showUsdValues}
-                    {getPoolSharePercentage(pool)}%
-                  {:else}
-                    ****%
-                  {/if}
-                </div>
-              </div>
-              <div>
-                <div class="text-kong-text-secondary">APY</div>
-                <div class="text-kong-success font-medium mt-0.5">
-                  {pool.apr}%
-                </div>
-              </div>
-            </div>
-          </div>
-        {/each}
-      </div>
     {/if}
 
-    {#if isRefreshing && hasCompletedInitialLoad}
-      <div class="px-4 py-2 mt-2 flex justify-center">
-        <div
-          class="text-xs text-kong-text-secondary animate-pulse flex items-center gap-1.5"
-        >
-          <RefreshCw size={12} class="animate-spin" />
-          <span>Refreshing pools...</span>
-        </div>
-      </div>
-    {/if}
   </div>
 </div>
 

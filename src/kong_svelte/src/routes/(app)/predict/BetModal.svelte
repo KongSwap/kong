@@ -27,41 +27,47 @@
   import BigNumber from "bignumber.js";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
 
+  interface BetModalState {
+    show: boolean;
+    market: any | null;
+    amount: number;
+    outcome: number | null;
+    error: string | null;
+    isBetting: boolean;
+    isApprovingAllowance: boolean;
+  }
+
   let {
-    showBetModal = false,
-    selectedMarket = null,
-    isBetting = false,
-    isApprovingAllowance = false,
-    betError = null,
-    selectedOutcome = null,
-    betAmount = $bindable(null),
+    modalData,
     onClose = () => {},
     onBet = (amount: number) => {},
   } = $props<{
-    showBetModal: boolean;
-    selectedMarket: any;
-    isBetting: boolean;
-    isApprovingAllowance: boolean;
-    betError: string | null;
-    selectedOutcome: number | null;
-    betAmount: number | null;
+    modalData: BetModalState;
     onClose: () => void;
     onBet: (amount: number) => void;
   }>();
   
+  // Local reference for the amount binding
+  let betAmount = $state<number | null>(modalData.amount || null);
+  
+  // Sync betAmount back to modalData
+  $effect(() => {
+    modalData.amount = betAmount || 0;
+  });
+  
   // Check if market is inactive (not initialized)
   const isMarketInactive = $derived(() => {
-    if (!selectedMarket) return false;
+    if (!modalData.market) return false;
     
     // Check if total_pool is 0 or if all bet_counts are 0
-    const totalPool = Number(selectedMarket.total_pool || 0);
-    const betCounts = selectedMarket.bet_counts?.map(Number) || [];
+    const totalPool = Number(modalData.market.total_pool || 0);
+    const betCounts = modalData.market.bet_counts?.map(Number) || [];
     const totalBets = betCounts.reduce((acc, curr) => acc + curr, 0);
     
     return totalPool === 0 || totalBets === 0;
   });
 
-  const state = $state({
+  const modalState = $state({
     tokenBalance: 0,
     maxAmount: 0,
     modalId: Math.random().toString(36).substr(2, 9),
@@ -78,24 +84,24 @@
 
   // Reset modal state and fetch balance when modal is opened
   $effect(() => {
-    // Always regenerate the modalId when showBetModal changes
-    state.modalId = Math.random().toString(36).substr(2, 9);
+    // Always regenerate the modalId when modal state changes
+    modalState.modalId = Math.random().toString(36).substr(2, 9);
 
-    if (showBetModal) {
-      state.step = 1;
-      state.estimatedReturn = null;
-      state.inputMode = "token";
-      state.usdInputValue = null;
+    if (modalData.show) {
+      modalState.step = 1;
+      modalState.estimatedReturn = null;
+      modalState.inputMode = "token";
+      modalState.usdInputValue = null;
       betAmount = null;
 
       // Update token ID and symbol based on selected market
-      if (selectedMarket && selectedMarket.token_id) {
-        state.tokenId = selectedMarket.token_id;
-        updateTokenSymbol(selectedMarket.token_id);
-        updateTokenPrice(selectedMarket.token_id);
+      if (modalData.market && modalData.market.token_id) {
+        modalState.tokenId = modalData.market.token_id;
+        updateTokenSymbol(modalData.market.token_id);
+        updateTokenPrice(modalData.market.token_id);
       } else {
-        state.tokenId = KONG_LEDGER_CANISTER_ID;
-        state.tokenSymbol = "KONG";
+        modalState.tokenId = KONG_LEDGER_CANISTER_ID;
+        modalState.tokenSymbol = "KONG";
         updateTokenPrice(KONG_LEDGER_CANISTER_ID);
       }
 
@@ -108,10 +114,10 @@
 
   // Update token symbol and ID when market changes
   $effect(() => {
-    if (selectedMarket && selectedMarket.token_id) {
-      state.tokenId = selectedMarket.token_id;
-      updateTokenSymbol(selectedMarket.token_id);
-      updateTokenPrice(selectedMarket.token_id);
+    if (modalData.market && modalData.market.token_id) {
+      modalState.tokenId = modalData.market.token_id;
+      updateTokenSymbol(modalData.market.token_id);
+      updateTokenPrice(modalData.market.token_id);
 
       // Refresh balance when token changes
       if ($auth.isConnected) {
@@ -122,40 +128,40 @@
 
   // Update USD value when bet amount or token price changes in token input mode
   $effect(() => {
-    if (state.inputMode === "token" && betAmount !== null) {
-      state.betAmountUsd = betAmount * state.tokenPriceUsd;
+    if (modalState.inputMode === "token" && betAmount !== null) {
+      modalState.betAmountUsd = betAmount * modalState.tokenPriceUsd;
 
       // Also update USD input value to keep them in sync
-      state.usdInputValue = state.betAmountUsd || null;
-    } else if (state.inputMode === "token") {
-      state.betAmountUsd = 0;
+      modalState.usdInputValue = modalState.betAmountUsd || null;
+    } else if (modalState.inputMode === "token") {
+      modalState.betAmountUsd = 0;
     }
   });
 
   // Update token amount when USD value changes in USD input mode
   $effect(() => {
     if (
-      state.inputMode === "usd" &&
-      state.tokenPriceUsd > 0 &&
-      state.usdInputValue !== null
+      modalState.inputMode === "usd" &&
+      modalState.tokenPriceUsd > 0 &&
+      modalState.usdInputValue !== null
     ) {
       betAmount = Number(
-        (state.usdInputValue / state.tokenPriceUsd).toFixed(8),
+        (modalState.usdInputValue / modalState.tokenPriceUsd).toFixed(8),
       );
-      state.betAmountUsd = state.usdInputValue;
-    } else if (state.inputMode === "usd") {
+      modalState.betAmountUsd = modalState.usdInputValue;
+    } else if (modalState.inputMode === "usd") {
       betAmount = null;
     }
   });
 
   // Toggle between token and USD input modes
   function toggleInputMode() {
-    if (state.inputMode === "token") {
-      state.inputMode = "usd";
-      state.usdInputValue =
-        betAmount !== null ? betAmount * state.tokenPriceUsd : null;
+    if (modalState.inputMode === "token") {
+      modalState.inputMode = "usd";
+      modalState.usdInputValue =
+        betAmount !== null ? betAmount * modalState.tokenPriceUsd : null;
     } else {
-      state.inputMode = "token";
+      modalState.inputMode = "token";
     }
   }
 
@@ -166,13 +172,13 @@
         (token) => token.address === tokenId,
       );
       if (token) {
-        state.tokenSymbol = token.symbol || "KONG";
+        modalState.tokenSymbol = token.symbol || "KONG";
       } else {
-        state.tokenSymbol = "KONG"; // Default fallback
+        modalState.tokenSymbol = "KONG"; // Default fallback
       }
     } catch (error) {
       console.error("Error getting token details:", error);
-      state.tokenSymbol = "KONG"; // Default fallback on error
+      modalState.tokenSymbol = "KONG"; // Default fallback on error
     }
   }
 
@@ -183,35 +189,35 @@
         (token) => token.address === tokenId,
       );
       if (token && token.metrics && token.metrics.price) {
-        state.tokenPriceUsd = Number(token.metrics.price);
+        modalState.tokenPriceUsd = Number(token.metrics.price);
         console.log(
-          `Updated token price: ${state.tokenPriceUsd} USD for ${token.symbol}`,
+          `Updated token price: ${modalState.tokenPriceUsd} USD for ${token.symbol}`,
         );
       } else {
-        state.tokenPriceUsd = 0; // Default fallback
+        modalState.tokenPriceUsd = 0; // Default fallback
       }
     } catch (error) {
       console.error("Error getting token price:", error);
-      state.tokenPriceUsd = 0; // Default fallback on error
+      modalState.tokenPriceUsd = 0; // Default fallback on error
     }
   }
 
   // Function to refresh the token balance (improved with retries)
   function refreshTokenBalance() {
-    if (!$auth.isConnected || !state.tokenId) return;
+    if (!$auth.isConnected || !modalState.tokenId) return;
 
     const token = $userTokens.tokens.find(
-      (token) => token.address === state.tokenId,
+      (token) => token.address === modalState.tokenId,
     );
     console.log(
       "Refreshing balance for token:",
-      token?.symbol || state.tokenId,
+      token?.symbol || modalState.tokenId,
     );
 
     if (token) {
       refreshSingleBalance(token, $auth.account?.owner || "", true);
     } else {
-      console.warn(`Token with ID ${state.tokenId} not found in user tokens`);
+      console.warn(`Token with ID ${modalState.tokenId} not found in user tokens`);
     }
   }
 
@@ -219,31 +225,31 @@
   $effect(() => {
     const balances = $currentUserBalancesStore;
     if ($auth.isConnected && balances) {
-      if (balances[state.tokenId]) {
-        const rawBalance = BigInt(balances[state.tokenId].in_tokens);
+      if (balances[modalState.tokenId]) {
+        const rawBalance = BigInt(balances[modalState.tokenId].in_tokens);
         // Get the correct decimals from the token data
         const token = $userTokens.tokens.find(
-          (token) => token.address === state.tokenId,
+          (token) => token.address === modalState.tokenId,
         );
         const decimals = token?.decimals || 8; // Use token's decimals, fallback to 8
         const tokenFee = token?.fee_fixed;
-        state.tokenBalance = Number(rawBalance) / Math.pow(10, decimals);
-        state.maxAmount = calculateMaxAmount(
+        modalState.tokenBalance = Number(rawBalance) / Math.pow(10, decimals);
+        modalState.maxAmount = calculateMaxAmount(
           rawBalance,
           decimals,
           BigInt(tokenFee),
         );
       } else {
-        console.warn(`No balance found for token ID: ${state.tokenId}`);
-        state.tokenBalance = 0;
-        state.maxAmount = 0;
+        console.warn(`No balance found for token ID: ${modalState.tokenId}`);
+        modalState.tokenBalance = 0;
+        modalState.maxAmount = 0;
 
         // Force refresh balance since it wasn't found
         refreshTokenBalance();
       }
     } else {
-      state.tokenBalance = 0;
-      state.maxAmount = 0;
+      modalState.tokenBalance = 0;
+      modalState.maxAmount = 0;
     }
   });
 
@@ -265,21 +271,21 @@
   // Update estimated return when bet amount or selected outcome changes
   $effect(() => {
     if (
-      selectedMarket &&
-      selectedOutcome !== null &&
+      modalData.market &&
+      modalData.outcome !== null &&
       betAmount !== null &&
       betAmount > 0
     ) {
       updateEstimatedReturn();
     } else {
-      state.estimatedReturn = null;
+      modalState.estimatedReturn = null;
     }
   });
 
   // Get potential win from estimated return
   const potentialWin = $derived(
-    state.estimatedReturn
-      ? getBestScenarioReturn(state.estimatedReturn)
+    modalState.estimatedReturn
+      ? getBestScenarioReturn(modalState.estimatedReturn)
       : new BigNumber(0),
   );
 
@@ -301,7 +307,7 @@
     );
 
     const token = $userTokens.tokens.find(
-      (token) => token.address === selectedMarket.token_id,
+      (token) => token.address === modalData.market.token_id,
     );
 
     return new BigNumber(bestScenario.expected_return).div(
@@ -311,19 +317,19 @@
 
   async function updateEstimatedReturn() {
     if (
-      !selectedMarket ||
-      selectedOutcome === null ||
+      !modalData.market ||
+      modalData.outcome === null ||
       betAmount === null ||
       betAmount <= 0
     )
       return;
 
     try {
-      state.isLoadingEstimate = true;
+      modalState.isLoadingEstimate = true;
       // Convert bet amount to token units (multiply by 10^8)
       const betAmountScaled = BigInt(toFixed(betAmount, 8));
-      const marketId = BigInt(selectedMarket.id);
-      const outcomeIdx = BigInt(selectedOutcome);
+      const marketId = BigInt(modalData.market.id);
+      const outcomeIdx = BigInt(modalData.outcome);
 
       const estimation = await estimateBetReturn(
         marketId,
@@ -331,11 +337,11 @@
         betAmountScaled,
       );
 
-      state.estimatedReturn = estimation;
+      modalState.estimatedReturn = estimation;
     } catch (error) {
       console.error("Error estimating return:", error);
     } finally {
-      state.isLoadingEstimate = false;
+      modalState.isLoadingEstimate = false;
     }
   }
 
@@ -345,14 +351,14 @@
 
   function setPercentage(percentage: number) {
     // Use tokenBalance directly if maxAmount is negative or zero
-    if (state.maxAmount <= 0 && state.tokenBalance > 0) {
+    if (modalState.maxAmount <= 0 && modalState.tokenBalance > 0) {
       console.log(
         "Using tokenBalance instead of maxAmount for percentage calculation",
       );
       // Apply percentage to token balance but reserve some for fees (~10%)
       const reservedPercent = 10;
       const availablePercent = 100 - reservedPercent;
-      const adjustedBalance = state.tokenBalance * (availablePercent / 100);
+      const adjustedBalance = modalState.tokenBalance * (availablePercent / 100);
       const calculatedAmount = (adjustedBalance * percentage) / 100;
       betAmount = Number(calculatedAmount.toFixed(8));
       console.log(
@@ -360,22 +366,22 @@
       );
 
       // Ensure USD mode is also updated
-      if (state.inputMode === "usd" && state.tokenPriceUsd > 0) {
-        state.usdInputValue = Number(
-          (betAmount * state.tokenPriceUsd).toFixed(2),
+      if (modalState.inputMode === "usd" && modalState.tokenPriceUsd > 0) {
+        modalState.usdInputValue = Number(
+          (betAmount * modalState.tokenPriceUsd).toFixed(2),
         );
       }
-    } else if (state.maxAmount > 0) {
-      const calculatedAmount = (state.maxAmount * percentage) / 100;
+    } else if (modalState.maxAmount > 0) {
+      const calculatedAmount = (modalState.maxAmount * percentage) / 100;
       betAmount = Number(calculatedAmount.toFixed(8));
       console.log(
-        `Set bet amount to ${betAmount} (${percentage}% of max ${state.maxAmount})`,
+        `Set bet amount to ${betAmount} (${percentage}% of max ${modalState.maxAmount})`,
       );
 
       // Ensure USD mode is also updated
-      if (state.inputMode === "usd" && state.tokenPriceUsd > 0) {
-        state.usdInputValue = Number(
-          (betAmount * state.tokenPriceUsd).toFixed(2),
+      if (modalState.inputMode === "usd" && modalState.tokenPriceUsd > 0) {
+        modalState.usdInputValue = Number(
+          (betAmount * modalState.tokenPriceUsd).toFixed(2),
         );
       }
     } else {
@@ -386,26 +392,26 @@
   }
 
   function goToNextStep() {
-    if (selectedOutcome !== null && betAmount !== null && betAmount > 0) {
-      state.step = 2;
+    if (modalData.outcome !== null && betAmount !== null && betAmount > 0) {
+      modalState.step = 2;
     }
   }
 
   function goBack() {
-    state.step = 1;
+    modalState.step = 1;
   }
 </script>
 
 <Dialog
-  open={showBetModal}
+  open={modalData.show}
   transparent={true}
   onClose={handleClose}
   title={"Make Your Prediction"}
   showClose={false}
 >
-  {#if selectedMarket}
+  {#if modalData.market}
     <!-- Step 1: Input Bet Amount -->
-    {#if state.step === 1}
+    {#if modalState.step === 1}
       <div
         class="px-3 pb-3 sm:px-4 space-y-3 sm:space-y-5 flex-1 overflow-y-auto"
       >
@@ -425,17 +431,17 @@
         {/if}
         
         <!-- Simplified Betting Summary Section -->
-        {#if selectedOutcome !== null}
+        {#if modalData.outcome !== null}
           <div
             class="bg-kong-success/10 border-2 border-kong-success p-4 rounded relative"
           >
             <p class="text-sm">You are predicting this outcome:</p>
 
             <span class="font-bold text-base sm:text-lg flex justify-between">
-              {selectedMarket.outcomes[selectedOutcome]}
+              {modalData.market.outcomes[modalData.outcome]}
             </span>
             <div class="mt-2 text-kong-text-secondary text-sm">
-              {#if selectedMarket.uses_time_weighting}
+              {#if modalData.market.uses_time_weighting}
                 <div
                   class="flex items-center justify-end gap-1 mt-1 text-xs text-kong-success"
                 >
@@ -470,36 +476,36 @@
                 <TokenImages
                   tokens={[
                     $userTokens.tokens.find(
-                      (token) => token.address === state.tokenId,
+                      (token) => token.address === modalState.tokenId,
                     ),
                   ]}
                   size={14}
                 />
                 <span class="font-medium"
-                  >{formatToNonZeroDecimal(state.tokenBalance)}
-                  {state.tokenSymbol}</span
+                  >{formatToNonZeroDecimal(modalState.tokenBalance)}
+                  {modalState.tokenSymbol}</span
                 >
               </div>
             </div>
 
             <!-- Token Input Mode -->
-            {#if state.inputMode === "token"}
+            {#if modalState.inputMode === "token"}
               <div class="relative">
                 <input
                   type="number"
                   bind:value={betAmount}
                   min="0"
-                  max={state.maxAmount}
+                  max={modalState.maxAmount}
                   step="0.1"
                   class="w-full p-2.5 sm:p-3 bg-kong-bg-secondary rounded border border-kong-border focus:border-kong-accent-blue focus:ring-1 focus:ring-kong-accent-blue mb-2 {isMarketInactive() ? 'opacity-50 cursor-not-allowed' : ''}"
                   placeholder="Enter token amount"
                   disabled={isMarketInactive()}
                 />
-                {#if state.tokenPriceUsd > 0 && betAmount !== null && betAmount > 0}
+                {#if modalState.tokenPriceUsd > 0 && betAmount !== null && betAmount > 0}
                   <div
                     class="absolute right-3 top-[43%] transform -translate-y-1/2 text-xs text-kong-text-secondary"
                   >
-                    ≈ {formatUsd(state.betAmountUsd)}
+                    ≈ {formatUsd(modalState.betAmountUsd)}
                   </div>
                 {/if}
               </div>
@@ -509,7 +515,7 @@
               <div class="relative">
                 <input
                   type="number"
-                  bind:value={state.usdInputValue}
+                  bind:value={modalState.usdInputValue}
                   min="0"
                   step="0.01"
                   class="w-full p-2.5 sm:p-3 !pl-7 bg-kong-bg-secondary rounded border border-kong-border focus:border-kong-accent-blue focus:ring-1 focus:ring-kong-accent-blue mb-2 {isMarketInactive() ? 'opacity-50 cursor-not-allowed' : ''}"
@@ -521,14 +527,14 @@
                 >
                   $
                 </div>
-                {#if state.usdInputValue !== null}
+                {#if modalState.usdInputValue !== null}
                   <div
                     class="absolute right-3 top-[43%] transform -translate-y-1/2 text-xs text-kong-text-secondary"
                   >
                     ≈ {betAmount !== null
                       ? formatToNonZeroDecimal(betAmount)
                       : ""}
-                    {state.tokenSymbol}
+                    {modalState.tokenSymbol}
                   </div>
                 {/if}
               </div>
@@ -541,7 +547,7 @@
                 variant="solid"
                 size="xs"
                 onclick={() => setPercentage(25)}
-                isDisabled={!$auth.isConnected || state.tokenBalance <= 0 || isMarketInactive()}
+                isDisabled={!$auth.isConnected || modalState.tokenBalance <= 0 || isMarketInactive()}
                 className="sm:text-sm"
               />
               <ButtonV2
@@ -550,7 +556,7 @@
                 variant="solid"
                 size="xs"
                 onclick={() => setPercentage(50)}
-                isDisabled={!$auth.isConnected || state.tokenBalance <= 0 || isMarketInactive()}
+                isDisabled={!$auth.isConnected || modalState.tokenBalance <= 0 || isMarketInactive()}
                 className="sm:text-sm"
               />
               <ButtonV2
@@ -559,7 +565,7 @@
                 variant="solid"
                 size="xs"
                 onclick={() => setPercentage(75)}
-                isDisabled={!$auth.isConnected || state.tokenBalance <= 0 || isMarketInactive()}
+                isDisabled={!$auth.isConnected || modalState.tokenBalance <= 0 || isMarketInactive()}
                 className="sm:text-sm"
               />
               <ButtonV2
@@ -568,19 +574,19 @@
                 variant="solid"
                 size="xs"
                 onclick={() => setPercentage(100)}
-                isDisabled={!$auth.isConnected || state.tokenBalance <= 0 || isMarketInactive()}
+                isDisabled={!$auth.isConnected || modalState.tokenBalance <= 0 || isMarketInactive()}
                 className="sm:text-sm"
               />
             </div>
             <!-- Token/USD Input Toggle -->
-            {#if state.tokenPriceUsd > 0}
+            {#if modalState.tokenPriceUsd > 0}
               <div class="flex justify-end mt-2">
                 <button
                   class="flex items-center text-xs text-kong-text-secondary hover:text-kong-text-primary transition-colors"
                   onclick={toggleInputMode}
                 >
                   <RefreshCw class="w-3 h-3 mr-1" />
-                  Switch to {state.inputMode === "token" ? "USD" : "token"} input
+                  Switch to {modalState.inputMode === "token" ? "USD" : "token"} input
                 </button>
               </div>
             {/if}
@@ -588,12 +594,12 @@
         {/if}
 
         <!-- Error Message -->
-        {#if betError}
+        {#if modalData.error}
           <div
             class="p-2.5 sm:p-3 bg-kong-error/20 border border-kong-error/40 rounded text-kong-error flex items-center gap-2"
           >
             <AlertTriangle class="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-            <span class="text-sm">{betError}</span>
+            <span class="text-sm">{modalData.error}</span>
           </div>
         {/if}
       </div>
@@ -615,14 +621,14 @@
             variant="solid"
             size="lg"
             onclick={goToNextStep}
-            isDisabled={selectedOutcome === null || !betAmount || isMarketInactive()}
+            isDisabled={modalData.outcome === null || !betAmount || isMarketInactive()}
             className="flex-1 font-bold sm:text-base"
           />
         </div>
       </div>
 
       <!-- Step 2: Confirmation Screen -->
-    {:else if state.step === 2}
+    {:else if modalState.step === 2}
       <div class="px-3 pb-3 sm:px-4 flex-1 overflow-y-auto">
         <div class="py-6 flex flex-col items-center">
           <!-- Confirmation Message -->
@@ -635,30 +641,30 @@
 
             <p class="text-center text-base leading-relaxed">
               You are placing <span class="font-bold"
-                >{formatToNonZeroDecimal(betAmount)} {state.tokenSymbol}</span
+                >{formatToNonZeroDecimal(betAmount)} {modalState.tokenSymbol}</span
               >
-              {#if state.tokenPriceUsd > 0}
+              {#if modalState.tokenPriceUsd > 0}
                 <span class="text-kong-text-secondary"
-                  >({formatUsd(state.betAmountUsd)})</span
+                  >({formatUsd(modalState.betAmountUsd)})</span
                 >
               {/if}
               on the outcome
               <span class="font-bold"
-                >{selectedMarket.outcomes[selectedOutcome]}</span
+                >{modalData.market.outcomes[modalData.outcome]}</span
               >. The market ends in
               <span class="font-bold"
-                ><CountdownTimer endTime={selectedMarket.end_time} /></span
+                ><CountdownTimer endTime={modalData.market.end_time} /></span
               >.
             </p>
 
-            {#if state.isLoadingEstimate}
+            {#if modalState.isLoadingEstimate}
               <div class="text-center mt-4">
                 <div
                   class="inline-block w-5 h-5 border-2 border-kong-success border-t-transparent rounded-full animate-spin"
                 ></div>
                 <p class="mt-2">Calculating potential return...</p>
               </div>
-            {:else if state.estimatedReturn}
+            {:else if modalState.estimatedReturn}
               <div class="text-center mt-4">
                 <p class="text-base leading-relaxed">
                   If the market resolves to this outcome, you will receive
@@ -666,19 +672,19 @@
                     >{potentialWin.isZero()
                       ? "0"
                       : formatToNonZeroDecimal(potentialWin.toNumber())}
-                    {state.tokenSymbol}</span
+                    {modalState.tokenSymbol}</span
                   >
-                  {#if state.tokenPriceUsd > 0}
+                  {#if modalState.tokenPriceUsd > 0}
                     <span class="text-kong-success"
                       >({formatUsd(
-                        potentialWin.toNumber() * state.tokenPriceUsd,
+                        potentialWin.toNumber() * modalState.tokenPriceUsd,
                       )})</span
                     >
                   {/if}
                   based on the current pool size.
                 </p>
 
-                {#if selectedMarket.uses_time_weighting && state.estimatedReturn.time_weight_alpha}
+                {#if modalData.market.uses_time_weighting && modalState.estimatedReturn.time_weight_alpha}
                   <div class="mt-3 text-sm bg-kong-bg-secondary p-2 rounded">
                     <div
                       class="flex items-center justify-center gap-1 text-kong-success mb-1"
@@ -688,12 +694,12 @@
                     </div>
                     <p class="text-kong-text-secondary">
                       Early betters receive higher rewards. <br />
-                      {#if state.estimatedReturn.scenarios[0]?.time_weight}
+                      {#if modalState.estimatedReturn.scenarios[0]?.time_weight}
                         Your time weight factor:
                         <span class="font-medium"
                           >{(
                             Number(
-                              state.estimatedReturn.scenarios[0].time_weight,
+                              modalState.estimatedReturn.scenarios[0].time_weight,
                             ) * 100
                           ).toFixed(1)}%</span
                         >
@@ -719,12 +725,12 @@
         </div>
 
         <!-- Error Message -->
-        {#if betError}
+        {#if modalData.error}
           <div
             class="p-2.5 sm:p-3 bg-kong-error/20 border border-kong-error/40 rounded text-kong-error flex items-center gap-2 mt-3"
           >
             <AlertTriangle class="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-            <span class="text-sm">{betError}</span>
+            <span class="text-sm">{modalData.error}</span>
           </div>
         {/if}
       </div>
@@ -737,7 +743,7 @@
             variant="solid"
             size="lg"
             onclick={goBack}
-            isDisabled={isBetting}
+            isDisabled={modalData.isBetting}
             className="flex-1 font-bold sm:text-base flex items-center justify-center"
           >
             <div class="flex items-center justify-center gap-2">
@@ -750,15 +756,15 @@
             variant="solid"
             size="lg"
             onclick={() => onBet(betAmount)}
-            isDisabled={isBetting}
+            isDisabled={modalData.isBetting}
             className="flex-1 font-bold sm:text-base flex items-center justify-center gap-2"
           >
             <div class="flex gap-1">
-              {#if isBetting}
+              {#if modalData.isBetting}
                 <div
                   class="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin"
                 ></div>
-                {#if isApprovingAllowance}
+                {#if modalData.isApprovingAllowance}
                   Approving...
                 {:else}
                   Placing...

@@ -162,7 +162,7 @@
             fullWidth
             onclick={() => !marketStatus.isClosed && !marketStatus.isPendingResolution && handleSelectOutcome(i)}
             disabled={marketStatus.isClosed || marketStatus.isPendingResolution || uiState.placingPrediction}
-            className="!justify-start !text-left group {isWinner && marketStatus.isClosed ? '!bg-kong-success !border-kong-success' : marketStatus.isClosed && !isWinner ? 'opacity-40 grayscale' : uiState.selectedOutcome === i ? '!bg-kong-primary/10' : ''}"
+            className="!justify-start !text-left group {isWinner && marketStatus.isClosed ? '!bg-kong-success/70 !border-kong-success' : marketStatus.isClosed && !isWinner ? 'opacity-40 grayscale' : uiState.selectedOutcome === i ? '!bg-kong-primary/10' : ''}"
           >
             <div class="flex items-center justify-between w-full">
               <div class="flex items-center gap-3">
@@ -174,8 +174,8 @@
                   {/if}
                 {/if}
                 <div class="flex-1">
-                  <span class="font-medium {isWinner && marketStatus.isClosed ? 'text-white' : ''}">{outcome}</span>
-                  <div class="flex items-center gap-2 mt-0.5 text-xs {isWinner && marketStatus.isClosed ? 'text-white/90' : 'opacity-70'}">
+                  <span class="font-medium {isWinner && marketStatus.isClosed ? 'text-kong-text-primary' : ''}">{outcome}</span>
+                  <div class="flex items-center gap-2 mt-0.5 text-xs {isWinner && marketStatus.isClosed ? 'text-kong-text-primary/90' : 'opacity-70'}">
                     <span>{marketData.outcomePercentages[i].toFixed(1)}%</span>
                     <span>•</span>
                     <span>{marketData.betCounts[i]} predictions</span>
@@ -192,8 +192,8 @@
                 </div>
               </div>
               {#if isWinner && marketStatus.isClosed}
-                <div class="flex items-center gap-2 font-semibold">
-                  <Trophy class="w-5 h-5 text-white" /> Winner
+                <div class="flex items-center gap-2 font-semibold text-kong-text-primary">
+                  <Trophy class="w-5 h-5 text-kong-text-primary" /> Winner
                 </div>
               {/if}
             </div>

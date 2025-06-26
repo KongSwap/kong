@@ -49,7 +49,6 @@
   let selectedTokenForAction = $state<any>(null);
   let isLoadingBalances = $state(false);
   let lastRefreshed = $state(Date.now());
-  let isRefreshing = $state(false);
   let hasCopiedPrincipal = $state(false);
   let walletId = $state("");
   let showUsdValues = $state(true);
@@ -85,11 +84,7 @@
     pools: {
       component: WalletPoolsList,
       props: () => ({
-        liquidityPools: $currentUserPoolsStore?.filteredPools || [],
-        isLoading: isLoadingBalances || $currentUserPoolsStore?.loading,
-        onRefresh: refreshPoolsData,
         showUsdValues,
-        isRefreshing,
         onNavigate: navigateAndClose
       })
     },
@@ -200,10 +195,7 @@
       isLoadingBalances = false;
     }, 15000);
     
-    // Refresh pools data if in pools section
-    if (activeSection === 'pools') {
-      refreshPoolsData();
-    }
+    // Pools component handles its own refresh
     
     // Refresh token balances
     if (walletId) {
@@ -305,30 +297,6 @@
     showUsdValues = !showUsdValues;
   }
 
-  // Add a function to refresh pools data
-  function refreshPoolsData() {
-    isRefreshing = true; // Indicate refresh start
-    
-    // Add a safety timeout to reset loading state after 30 seconds
-    const safetyTimeout = setTimeout(() => {
-      isRefreshing = false;
-    }, 30000);
-    
-    currentUserPoolsStore.initialize()
-      .then(() => {
-        // Success - pools refreshed
-      })
-      .catch((error) => {
-        // Error occurred during refresh
-        console.error("Error refreshing pools:", error);
-      })
-      .finally(() => {
-        // Always reset refreshing state when pools are done,
-        // regardless of success or error
-        isRefreshing = false;
-        clearTimeout(safetyTimeout);
-      });
-  }
 </script>
 
 <!-- Fixed portfolio overview section -->
@@ -344,11 +312,11 @@
         }}>Total Portfolio Value</span>
         <div class="flex items-center gap-2">
           <button
-            class="p-1 {isRefreshing ? 'text-kong-text-primary bg-kong-primary/10' : 'text-kong-text-primary/60 hover:text-kong-primary hover:bg-kong-primary/10'} rounded-full transition-all"
-            onclick={() => activeSection === 'pools' ? refreshPoolsData() : refreshBalances(true)}
-            disabled={isRefreshing}
+            class="p-1 {isLoadingBalances ? 'text-kong-text-primary bg-kong-primary/10' : 'text-kong-text-primary/60 hover:text-kong-primary hover:bg-kong-primary/10'} rounded-full transition-all"
+            onclick={() => refreshBalances(true)}
+            disabled={isLoadingBalances}
           >
-            <RefreshCw size={12} class={isRefreshing ? 'animate-spin' : ''} />
+            <RefreshCw size={12} class={isLoadingBalances ? 'animate-spin' : ''} />
           </button>
           <button
             class="p-1 text-kong-text-primary/60 hover:text-kong-primary rounded-full hover:bg-kong-bg-secondary/20 transition-all"

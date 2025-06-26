@@ -343,13 +343,7 @@
 
 <!-- Betting Modal -->
 <BetModal
-  showBetModal={betModal.state.show}
-  selectedMarket={betModal.state.market}
-  isBetting={betModal.state.isBetting}
-  isApprovingAllowance={betModal.state.isApprovingAllowance}
-  betError={betModal.state.error}
-  selectedOutcome={betModal.state.outcome}
-  bind:betAmount={betModal.state.amount}
+  modalData={betModal.state}
   onClose={betModal.close}
   onBet={betModal.placeBet}
 />

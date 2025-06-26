@@ -1,7 +1,7 @@
 <script lang="ts">
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
   import { calculatePercentage } from "$lib/utils/numberFormatUtils";
-  import { Check, CheckCircle, ThumbsDown, ThumbsUp, X } from "lucide-svelte";
+  import { Check, CheckCircle } from "lucide-svelte";
 
   let {
     outcome,
@@ -59,27 +59,6 @@
     ).toFixed(1),
   );
 
-  // Determine button classes based on type and state
-  const buttonClasses = $derived(
-    isYesNo
-      ? `flex-1 h-10 rounded transition-colors relative ${
-          index === 0
-            ? "bg-kong-success/20 hover:bg-kong-success/30 text-kong-text-primary border border-kong-success/30"
-            : "bg-kong-error/20 hover:bg-kong-error/30 text-kong-text-primary border border-kong-error/30"
-        } ${
-          isMarketResolved(market) && isWinningOutcome(market, index)
-            ? index === 0
-              ? "border-2 border-kong-success shadow-[0_0_5px_rgba(0,203,160,0.3)]"
-              : "border-2 border-kong-error shadow-[0_0_5px_rgba(203,0,0,0.3)]"
-            : ""
-        }`
-      : `h-8 sm:h-8 hover:bg-white/10 ${panelRoundness} px-2 py-5 transition-colors relative w-full ${
-          isMarketResolved(market) && isWinningOutcome(market, index)
-            ? "border-2 border-kong-success/30 bg-kong-success/5 shadow-[0_0_5px_rgba(0,203,160,0.3)]"
-            : ""
-        }`,
-  );
-
   // Determine progress bar color based on type
   const progressBarColor = $derived(
     isYesNo
@@ -120,17 +99,17 @@
 {#if isYesNo}
   <!-- Yes/No outcome button -->
   <button
-    class="w-full py-2 px-5 text-center {$panelRoundness} font-medium text-lg group/outcome relative
+    class="w-full cursor-pointer py-2 px-5 text-center {$panelRoundness} font-medium text-lg group/outcome relative
       border transition-all duration-200
       {isWinner
       ? 'bg-kong-success/20 text-kong-success font-bold border-kong-success/40'
       : `${bgColor} border-${outcome.toLowerCase() === 'yes' ? 'kong-success' : 'kong-error'}/20`} 
       {isMarketExpiredUnresolved(market)
-      ? 'opacity-80 cursor-default'
+      ? 'opacity-80 cursor-pointer'
       : isMarketResolved(market) && !isWinner
-      ? 'opacity-40 cursor-default grayscale'
+      ? 'opacity-40 cursor-pointer grayscale'
       : isMarketResolved(market) && isWinner
-      ? 'opacity-100 cursor-default'
+      ? 'opacity-100 cursor-pointer'
       : 'hover:opacity-100 hover:shadow-sm transform hover:translate-y-[0.5px]'}"
     onclick={handleOutcomeClick}
   >
@@ -161,11 +140,11 @@
       ? 'bg-kong-success/10 text-kong-success font-bold border-kong-success/30'
       : 'border-kong-border/20 hover:border-kong-border/40 bg-kong-bg-tertiary hover:bg-kong-primary/40'} 
       {isMarketExpiredUnresolved(market)
-      ? 'opacity-80 cursor-default'
+      ? 'opacity-80 cursor-pointer'
       : isMarketResolved(market) && !isWinner
-      ? 'opacity-40 cursor-default grayscale'
+      ? 'opacity-40 cursor-pointer grayscale'
       : isMarketResolved(market) && isWinner
-      ? 'opacity-100 cursor-default'
+      ? 'opacity-100 cursor-pointer'
       : 'hover:opacity-100 hover:shadow-sm'}"
     onclick={handleOutcomeClick}
   >

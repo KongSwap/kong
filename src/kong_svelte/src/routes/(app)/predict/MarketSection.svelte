@@ -121,6 +121,7 @@
                 onDropdownToggle={() => {
                   openDropdownMarketId = openDropdownMarketId === market.id ? null : market.id;
                 }}
+                {isUserAdmin}
               />
             </div>
           {/each}
@@ -144,6 +145,7 @@
               onDropdownToggle={() => {
                 openDropdownMarketId = openDropdownMarketId === market.id ? null : market.id;
               }}
+              {isUserAdmin}
             />
           {/each}
         </div>
