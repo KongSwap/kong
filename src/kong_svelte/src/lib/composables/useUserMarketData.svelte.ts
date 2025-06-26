@@ -36,13 +36,12 @@ export function useUserMarketData() {
         sortByCreationTime: true
       });
       
-      const currentTime = BigInt(Date.now() * 1_000_000);
       userUnresolvedMarkets = result.markets.filter(market => {
-        const isActive = 'Active' in market.status;
         const isExpiredUnresolved = 'ExpiredUnresolved' in market.status;
-        const hasExpired = BigInt(market.end_time) <= currentTime;
         
-        return (isActive && hasExpired) || isExpiredUnresolved;
+        // Only show ExpiredUnresolved markets that were actually activated (have bets)
+        // This excludes markets that somehow ended up as ExpiredUnresolved without being activated
+        return isExpiredUnresolved && market.total_pool > 0n;
       });
     } catch (e) {
       console.error("Failed to load user's unresolved markets:", e);

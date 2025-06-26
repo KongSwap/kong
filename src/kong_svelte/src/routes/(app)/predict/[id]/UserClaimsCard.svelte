@@ -155,7 +155,11 @@
 
       {#if loading}
         <div class="flex items-center justify-center py-4">
-          <div class="animate-spin w-6 h-6 border-2 border-kong-primary rounded-full border-t-transparent" />
+          <div class="flex items-center gap-1">
+            <div class="w-2 h-2 bg-kong-primary rounded-full animate-bounce-dot" style="animation-delay: 0ms"></div>
+            <div class="w-2 h-2 bg-kong-primary rounded-full animate-bounce-dot" style="animation-delay: 150ms"></div>
+            <div class="w-2 h-2 bg-kong-primary rounded-full animate-bounce-dot" style="animation-delay: 300ms"></div>
+          </div>
         </div>
       {:else}
         <div class="space-y-2 mb-3">
@@ -195,8 +199,12 @@
         >
           <div class="flex items-center justify-center gap-2">
             {#if isClaiming}
-              <div class="animate-spin w-4 h-4 border-2 border-white rounded-full border-t-transparent" />
-              <span>Claiming...</span>
+              <div class="flex items-center gap-1">
+                <div class="w-1.5 h-1.5 bg-white rounded-full animate-bounce-dot" style="animation-delay: 0ms"></div>
+                <div class="w-1.5 h-1.5 bg-white rounded-full animate-bounce-dot" style="animation-delay: 150ms"></div>
+                <div class="w-1.5 h-1.5 bg-white rounded-full animate-bounce-dot" style="animation-delay: 300ms"></div>
+              </div>
+              <span>Claiming</span>
             {:else}
               <span>Claim Rewards</span>
             {/if}
@@ -215,9 +223,12 @@
 >
   <div class="text-center space-y-4">
     <div class="relative">
-      <div class="w-16 h-16 mx-auto">
-        <div class="absolute inset-0 border-4 border-kong-success/20 rounded-full"></div>
-        <div class="absolute inset-0 border-4 border-kong-success border-t-transparent rounded-full animate-spin"></div>
+      <div class="w-16 h-16 mx-auto flex items-center justify-center">
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 bg-kong-success rounded-full animate-bounce-dot" style="animation-delay: 0ms"></div>
+          <div class="w-3 h-3 bg-kong-success rounded-full animate-bounce-dot" style="animation-delay: 150ms"></div>
+          <div class="w-3 h-3 bg-kong-success rounded-full animate-bounce-dot" style="animation-delay: 300ms"></div>
+        </div>
       </div>
     </div>
     <div class="space-y-2">
@@ -247,5 +258,20 @@
   
   :global(.animate-pulse-border) {
     animation: pulse-border 2s ease-in-out infinite;
+  }
+
+  @keyframes bounce-dot {
+    0%, 80%, 100% {
+      transform: scale(0.8);
+      opacity: 0.5;
+    }
+    40% {
+      transform: scale(1.2);
+      opacity: 1;
+    }
+  }
+
+  :global(.animate-bounce-dot) {
+    animation: bounce-dot 1.4s ease-in-out infinite;
   }
 </style>

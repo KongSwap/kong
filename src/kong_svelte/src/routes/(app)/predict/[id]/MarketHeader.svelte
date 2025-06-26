@@ -1,25 +1,45 @@
 <script lang="ts">
-  import { CircleHelp } from "lucide-svelte";
+  import { CircleHelp, Wand } from "lucide-svelte";
 
   let { market } = $props();
+  
+  let imageError = $state(false);
+
+  // Handle image load error
+  function handleImageError() {
+    imageError = true;
+  }
+
+  // Validate image URL
+  function isValidImageUrl(url: string): boolean {
+    if (!url || url.length === 0) return false;
+    try {
+      const urlObj = new URL(url);
+      return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
 </script>
 
 <div class="mb-8">
   <div class="flex items-center justify-center flex-col gap-3 sm:gap-4 max-w-full">
     <div
-      class={market.image_url
+      class={isValidImageUrl(market.image_url) && !imageError
         ? "rounded-kong-roundness"
-        : "p-3 bg-kong-bg-secondary/50 rounded-lg flex items-center justify-center"}
+        : "mb-2 rounded-lg flex items-center justify-center"}
     >
-      {#if market.image_url && market.image_url.length > 0}
+      {#if isValidImageUrl(market.image_url) && !imageError}
         <img
           src={market.image_url}
-          alt="Market Icon"
-          class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg"
+          alt={market.category || "Market"}
+          class="w-24 h-24 sm:w-20 sm:h-20 object-cover rounded-lg"
+          loading="lazy"
+          onerror={handleImageError}
         />
       {:else}
-        <CircleHelp
-          class="text-kong-text-secondary/60 w-10 h-10 sm:w-12 sm:h-12"
+        <Wand
+          class="text-kong-text-secondary/60 w-24 h-24 sm:w-20 sm:h-20 bg-kong-bg-tertiary p-4 rounded-lg"
         />
       {/if}
     </div>

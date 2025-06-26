@@ -327,7 +327,7 @@
     try {
       modalState.isLoadingEstimate = true;
       // Convert bet amount to token units (multiply by 10^8)
-      const betAmountScaled = BigInt(toFixed(betAmount, 8));
+      const betAmountScaled = BigInt(toFixed(betAmount.toString(), 8));
       const marketId = BigInt(modalData.market.id);
       const outcomeIdx = BigInt(modalData.outcome);
 
@@ -448,11 +448,11 @@
                   <Clock class="w-3 h-3" />
                   <span
                     ><span class="font-medium"
-                      >{state?.estimatedReturn?.scenarios[0]?.time_weight
+                      >{modalState.estimatedReturn?.scenarios[0]?.time_weight
                         ? "Time-weight factor " +
                           (
                             Number(
-                              state?.estimatedReturn?.scenarios[0]?.time_weight,
+                              modalState.estimatedReturn?.scenarios[0]?.time_weight,
                             ) * 100
                           ).toFixed(1) +
                           "%"

@@ -30,6 +30,7 @@
   import UserClaimsCard from "./UserClaimsCard.svelte";
   import ActivateMarketCard from "./ActivateMarketCard.svelte";
   import HowItWorksSection from "./HowItWorksSection.svelte";
+  import Card from "$lib/components/common/Card.svelte";
 
   let market = $state<any>(null);
   let loading = $state(true);
@@ -356,6 +357,15 @@
   let isUserCreatedPendingResolution = $derived(resolutionStatus.isUserCreated);
   let isAdminPendingResolution = $derived(resolutionStatus.isAdminPending);
 
+  // Check if the market has ended but user cannot resolve it
+  let isMarketEndedForNonResolver = $derived(
+    isPendingResolution &&
+    market &&
+    $auth.isConnected &&
+    $auth.account?.owner !== market.creator?.toText() &&
+    !isUserAdmin
+  );
+
   // This duplicate admin check effect has been removed - consolidated into the auth effect above
 
   $effect(() => {
@@ -428,6 +438,25 @@
             />
           {/if}
 
+          <!-- Market Ended Message for Non-Resolvers -->
+          {#if isMarketEndedForNonResolver}
+            <Card className="p-4 sm:p-6">
+              <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 mt-0.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-kong-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <h3 class="text-base font-semibold text-kong-text-primary mb-1">Market Has Ended</h3>
+                  <p class="text-sm text-kong-text-secondary">
+                    This market has reached its end time and is awaiting resolution. The market creator will determine the winning outcome soon.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          {/if}
+
           <!-- Outcomes Panel or Resolution Panel -->
           {#if isUserCreatedPendingResolution || isAdminPendingResolution}
             <ResolutionCard
@@ -435,7 +464,7 @@
               onMarketResolved={handleMarketResolved}
               isAdmin={isUserAdmin}
             />
-          {:else if !isMarketNeedsActivation}
+          {:else if !isMarketNeedsActivation && !isMarketEndedForNonResolver}
             <OutcomesList {market} {marketBets} onPlacePrediction={handleBet} isAdmin={isUserAdmin} />
           {/if}
         </div>

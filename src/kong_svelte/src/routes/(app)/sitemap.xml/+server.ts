@@ -23,23 +23,6 @@ const staticPages: SitemapPage[] = [
   // Add other static routes here as needed
 ];
 
-// TODO: In the future, you can fetch dynamic pages like prediction markets
-// const fetchDynamicPages = async () => {
-//   try {
-//     // Fetch prediction market IDs and other dynamic content
-//     const markets = await fetch(`${SITEMAP_URL}/api/prediction-markets`);
-//     return markets.map(market => ({
-//       url: `/predict/${market.id}`,
-//       changefreq: 'daily',
-//       priority: '0.6',
-//       lastmod: market.updated_at
-//     }));
-//   } catch (error) {
-//     console.error('Error fetching dynamic pages for sitemap:', error);
-//     return [];
-//   }
-// };
-
 export async function GET() {
   // For static adapter compatibility, generate at build time
   const buildTime = new Date().toISOString();

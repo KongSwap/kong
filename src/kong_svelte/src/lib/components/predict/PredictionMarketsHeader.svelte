@@ -3,8 +3,9 @@
   import { auth } from "$lib/stores/auth";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import { marketStore, filteredMarkets } from "$lib/stores/marketStore";
-  import { ChevronLeft, ChevronRight } from "lucide-svelte";
+  import { ChartBar, ChartLine, ChevronLeft, ChevronRight, HelpCircle, Plus } from "lucide-svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
 
   interface Props {
     openBetModal: (market: any, outcomeIndex?: number) => void;
@@ -22,8 +23,8 @@
   // Get featured markets (active markets sorted by volume)
   const featuredMarkets = $derived(
     $filteredMarkets
-      .filter(m => m.status === "Active")
-      .sort((a, b) => Number(b.total_volume) - Number(a.total_volume))
+      .filter(m => 'Active' in m.status)
+      .sort((a, b) => Number(b.total_pool) - Number(a.total_pool))
       .slice(0, 6)
   );
 
@@ -69,17 +70,17 @@
     <div class="relative z-10 md:pb-4">
       <div class="max-w-7xl mx-auto">
         <!-- Main headline -->
-        <div class="text-center mb-6">
+        <div class="text-center mb-4">
           <h1 class="text-4xl md:text-5xl font-bold text-kong-text-primary mb-4">
-            Predict the <span
-              class="text-transparent font-black bg-clip-text bg-gradient-to-r from-kong-primary to-kong-accent-blue animate-shine"
-              >Future</span
-            > and Earn
+            Put Your <span
+              class="text-transparent font-black bg-clip-text bg-gradient-to-r from-kong-primary via-kong-accent-blue to-kong-primary animate-shine"
+              >Knowledge</span
+            > to Work
           </h1>
-          <p class="text-lg md:text-base text-kong-text-secondary !max-w-2xl mx-auto">
-            Trade on real-world outcomes. Create markets, place predictions, and
+          <p class="text-lg md:text-base text-kong-text-secondary !max-w-3xl mx-auto">
+            Turn your predictions into <span class="text-kong-text-primary font-semibold">profit</span>. Stake on outcomes you believe in and
             <span class="text-kong-text-primary font-semibold"
-              >earn rewards from your insights.</span
+              >earn when you're right.</span
             >
           </p>
         </div>
@@ -126,7 +127,7 @@
                                 hover:border-kong-primary/30 transition-all duration-200 h-full">
                       <!-- Market Title -->
                       <h3 class="font-semibold text-kong-text-primary mb-3 line-clamp-2">
-                        {market.title}
+                        {market.question}
                       </h3>
 
                       <!-- Outcomes Grid -->
@@ -141,13 +142,13 @@
                             <div class="relative z-10">
                               <div class="text-xs text-kong-text-secondary mb-1">{outcome}</div>
                               <div class="text-lg font-bold text-kong-text-primary">
-                                {((Number(market.odds[outcomeIndex]) / Number(market.total_odds)) * 100).toFixed(1)}%
+                                {market.outcome_percentages[outcomeIndex]?.toFixed(1) || '0.0'}%
                               </div>
                             </div>
                             <!-- Background fill based on percentage -->
                             <div 
                               class="absolute inset-0 bg-gradient-to-r from-kong-primary/20 to-kong-primary/10"
-                              style="width: {(Number(market.odds[outcomeIndex]) / Number(market.total_odds)) * 100}%"
+                              style="width: {market.outcome_percentages[outcomeIndex] || 0}%"
                             ></div>
                           </button>
                         {/each}
@@ -158,11 +159,11 @@
                         <div class="flex items-center gap-3">
                           <span class="text-kong-text-secondary">Pool:</span>
                           <span class="font-medium text-kong-text-primary">
-                            {formatPoolSize(market.total_volume)} KONG
+                            {formatPoolSize(market.total_pool)} KONG
                           </span>
                         </div>
                         <span class="text-xs text-kong-text-secondary">
-                          {market.bets_placed} bets
+                          {market.bet_counts.reduce((sum, count) => sum + Number(count), 0)} bets
                         </span>
                       </div>
                     </div>
@@ -174,40 +175,59 @@
         {/if}
 
         <!-- CTA section -->
-        <div class="mt-6 text-center">
-          <div class="flex items-center justify-center gap-4 text-sm text-kong-text-secondary">
-            <div class="flex items-center gap-1">
-              <svg class="w-4 h-4 text-kong-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>{$marketStore.markets.length} Total Markets</span>
-            </div>  
-            <div class="hidden sm:block w-px h-4 bg-kong-border"></div>
-            <div class="flex items-center gap-1">
-              <span class="text-kong-success">●</span>
-              <span>Binary Outcomes</span>
-            </div>
-            <div class="hidden sm:block w-px h-4 bg-kong-border"></div>
+        <div class="text-center">
+          <!-- Total Markets -->
+          <div class="flex items-center justify-center gap-1 text-sm text-kong-text-secondary mb-4">
+            <svg class="w-4 h-4 text-kong-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span><span class="font-semibold text-kong-text-primary">{$marketStore.markets.length}</span> Total Markets</span>
+            <div class="hidden sm:block w-px mx-2 h-4 bg-kong-border"></div>
+            <ChartLine class="w-4 h-4 text-kong-primary" />
+            <span><span class="font-semibold text-kong-text-primary">20k+</span> Predictions</span>
+            <div class="hidden sm:block w-px mx-2 h-4 bg-kong-border"></div>
+            <ChartBar class="w-4 h-4 text-kong-primary" />
+            <span><span class="font-semibold text-kong-text-primary">$1.41M</span> Total Volume</span>
+          </div>
+          
+          <!-- Action Buttons -->
+          <div class="flex items-center justify-center gap-3 pt-2">
+            <ButtonV2
+              theme="primary"
+              variant="transparent"
+              size="lg"
+              onclick={() => goto('/predict/faq')}
+            >
+              <div class="flex items-center gap-2">
+                <HelpCircle class="w-4 h-4" />
+                <span>Learn More</span>
+              </div>
+            </ButtonV2>
+            
             {#if $auth.isConnected}
-              <button
+              <ButtonV2
+                theme="primary"
+                variant="solid"
+                size="lg"
                 onclick={() => goto('/predict/create')}
-                class="flex items-center gap-1.5 px-3 py-1.5 text-base bg-kong-primary/10 hover:bg-kong-primary/20 text-kong-primary rounded-lg transition-all duration-200"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                <span class="font-medium">Create Market</span>
-              </button>
+              > 
+                <div class="flex items-center gap-2">
+                  <Plus class="w-4 h-4" />
+                  <span>Create Market</span>
+                </div>
+              </ButtonV2>
             {:else}
-              <button
+              <ButtonV2
+                theme="primary"
+                variant="solid"
+                size="lg"
                 onclick={() => walletProviderStore.open()}
-                class="flex items-center gap-1.5 px-3 py-1.5 text-base bg-kong-primary/10 hover:bg-kong-primary/20 text-kong-primary rounded-lg transition-all duration-200"
               >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-                <span class="font-medium">Connect Wallet</span>
-              </button>
+                <div class="flex items-center gap-2">
+                  <Plus class="w-4 h-4" />
+                  <span>Connect Wallet</span>
+                </div>
+              </ButtonV2>
             {/if}
           </div>
         </div>
@@ -227,15 +247,22 @@
     display: none;
   }
 
-  /* Shine animation for gradient text */
+  /* Enhanced shine animation for gradient text */
   :global(.animate-shine) {
-    background-size: 200% auto;
-    animation: shine 3s linear infinite;
+    background-size: 400% 100%;
+    background-position: 0% 50%;
+    animation: shine 4s ease-in-out infinite;
   }
 
   @keyframes shine {
-    to {
-      background-position: 200% center;
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
     }
   }
 </style>

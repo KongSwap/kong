@@ -3,7 +3,7 @@
   import { auth } from "$lib/stores/auth";
   import { isAdmin } from "$lib/api/predictionMarket";
   import MarketCard from "./MarketCard.svelte";
-  import { Star } from "lucide-svelte";
+  import { marketStore } from "$lib/stores/marketStore";
 
   // Convert props to use $props
   let {
@@ -115,7 +115,6 @@
                 {showEndTime}
                 {openBetModal}
                 {onMarketResolved}
-                {columns}
                 hasClaim={userClaims.some(claim => claim.market_id === market.id)}
                 isDropdownOpen={openDropdownMarketId === market.id}
                 onDropdownToggle={() => {
@@ -139,7 +138,6 @@
               {showEndTime}
               {openBetModal}
               {onMarketResolved}
-              {columns}
               hasClaim={userClaims.some(claim => claim.market_id === market.id)}
               isDropdownOpen={openDropdownMarketId === market.id}
               onDropdownToggle={() => {
@@ -154,12 +152,85 @@
   {/if}
 </div>
 
-<style>
-  /* Smooth hover transitions */
-  .group\/outcome:hover :global(.bg-kong-success\/40) {
-    @apply bg-kong-success/60;
-  }
+<!-- Pagination Controls -->
+{#if $marketStore.totalPages > 1 && markets.length > 0}
+  <div class="mt-8">
+    <!-- Pagination Container -->
+    <div class="bg-kong-bg-secondary rounded-kong-roundness border border-kong-border/60 p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 w-full">
+      <!-- Page Info -->
+      <div class="text-sm text-kong-text-secondary order-2 sm:order-1">
+        <span class="hidden sm:inline">Page </span>
+        <span class="font-medium text-kong-text-primary">{$marketStore.currentPage + 1}</span>
+        <span class="text-kong-text-secondary/60 mx-1">/</span>
+        <span class="font-medium text-kong-text-primary">{$marketStore.totalPages}</span>
+        {#if $marketStore.totalCount > 0}
+          <span class="hidden sm:inline text-kong-text-secondary/60 mx-2">•</span>
+          <span class="hidden sm:inline">{$marketStore.totalCount} markets</span>
+        {/if}
+      </div>
+      
+      <!-- Pagination Buttons -->
+      <div class="flex items-center gap-1 sm:gap-2 order-1 sm:order-2">
+        <!-- Previous Button -->
+        <button 
+          class="flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto sm:px-4 sm:py-2 text-sm font-medium rounded-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed
+                 {($marketStore.currentPage > 0) 
+                   ? 'hover:bg-kong-bg-tertiary text-kong-text-primary hover:shadow-sm' 
+                   : 'text-kong-text-secondary'}"
+          on:click={() => marketStore.goToPage($marketStore.currentPage - 1)}
+          disabled={$marketStore.currentPage <= 0 || $marketStore.loading}
+          aria-label="Previous page"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          <span class="hidden sm:inline">Previous</span>
+        </button>
+        
+        <!-- Page Numbers -->
+        <div class="flex items-center gap-1">
+          {#each Array.from({ length: Math.min(7, $marketStore.totalPages) }, (_, i) => {
+            const startPage = Math.max(0, Math.min($marketStore.totalPages - 7, $marketStore.currentPage - 3));
+            const pageNum = startPage + i;
+            if (pageNum >= $marketStore.totalPages) return null;
+            return pageNum;
+          }).filter(p => p !== null) as pageNum}
+            <button 
+              class="min-w-[36px] h-9 px-2 text-sm font-medium rounded-lg transition-all duration-200 disabled:opacity-40
+                     {(pageNum === $marketStore.currentPage)
+                       ? 'bg-kong-accent-blue text-white shadow-md hover:bg-kong-accent-blue/90' 
+                       : 'bg-kong-bg-tertiary text-kong-text-secondary hover:bg-kong-bg-tertiary hover:text-kong-text-primary border border-kong-border/40 hover:border-kong-border/60'}"
+              on:click={() => marketStore.goToPage(pageNum)}
+              disabled={$marketStore.loading}
+              aria-label="Go to page {pageNum + 1}"
+              aria-current={pageNum === $marketStore.currentPage ? 'page' : undefined}
+            >
+              {pageNum + 1}
+            </button>
+          {/each}
+        </div>
+        
+        <!-- Next Button -->
+        <button 
+          class="flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto sm:px-4 sm:py-2 text-sm font-medium rounded-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed
+                 {($marketStore.currentPage < $marketStore.totalPages - 1) 
+                   ? 'hover:bg-kong-bg-tertiary text-kong-text-primary hover:shadow-sm' 
+                   : 'text-kong-text-secondary'}"
+          on:click={() => marketStore.goToPage($marketStore.currentPage + 1)}
+          disabled={$marketStore.currentPage >= $marketStore.totalPages - 1 || $marketStore.loading}
+          aria-label="Next page"
+        >
+          <span class="hidden sm:inline">Next</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
+<style>
   /* Custom scrollbar styling */
   .scrollbar-thin {
     scrollbar-width: thin;

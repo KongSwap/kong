@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import type { Market } from "../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
+  import type { Market } from "../../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
 
   let { markets = [] }: { markets: Market[] } = $props();
 

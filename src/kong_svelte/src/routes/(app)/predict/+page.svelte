@@ -231,9 +231,9 @@
         <div class="flex flex-wrap gap-2 items-center">
           {#each $marketStore.categories as category}
             <button
-              class="px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200
+              class="px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 hover:shadow-md
                      {($marketStore.selectedCategory === category || (category === "All" && $marketStore.selectedCategory === null))
-                       ? 'bg-kong-accent-blue/20 text-kong-accent-blue border border-kong-accent-blue/30'
+                       ? 'bg-kong-primary/20 text-kong-text-primary border border-kong-primary shadow-md'
                        : 'bg-kong-bg-secondary text-kong-text-secondary hover:bg-kong-bg-tertiary hover:text-kong-text-primary border border-kong-text-primary/10'}"
               onclick={() => marketStore.setCategory(category === "All" ? null : category)}
             >

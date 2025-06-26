@@ -1,16 +1,10 @@
 <script lang="ts">
   import {
-    formatCategory,
-    calculatePercentage,
-    formatBalance,
     toShortNumber,
   } from "$lib/utils/numberFormatUtils";
   import {
-    Coins,
     Calendar,
     CircleHelp,
-    Folder,
-    MoreVertical,
     Star,
     Dice1,
     Gift,
@@ -32,7 +26,6 @@
     showEndTime = true,
     openBetModal,
     onMarketResolved,
-    columns = { mobile: 1, tablet: 2, desktop: 3 },
     hasClaim = false,
     isDropdownOpen = false,
     onDropdownToggle,
@@ -42,7 +35,6 @@
     showEndTime?: boolean;
     openBetModal: (market: any, outcomeIndex?: number) => void;
     onMarketResolved: () => Promise<void>;
-    columns?: { mobile?: number; tablet?: number; desktop?: number };
     hasClaim?: boolean;
     isDropdownOpen?: boolean;
     onDropdownToggle?: () => void;
@@ -51,6 +43,7 @@
 
   // Convert local state to use $state
   let showResolutionModal = $state(false);
+  let imageError = $state(false);
   // Remove local dropdown state - now managed by parent
 
   // Consolidated market status helpers
@@ -217,26 +210,48 @@
 
   // Reactive status info
   const statusInfo = $derived(getMarketStatusInfo(market));
+
+  // Handle image load error
+  function handleImageError() {
+    imageError = true;
+  }
+
+  // Validate image URL
+  function isValidImageUrl(url: string): boolean {
+    if (!url || url.length === 0) return false;
+    try {
+      const urlObj = new URL(url);
+      return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
 </script>
 
 <!-- Snippet Components -->
 {#snippet marketIcon()}
-  {#if market.image_url.length != 0}
-    <div class="w-10 h-10 flex-shrink-0 rounded-lg overflow-hidden">
+  {#if isValidImageUrl(market.image_url) && !imageError}
+    <div class="w-10 h-10 flex-shrink-0 rounded-lg overflow-hidden bg-kong-bg-primary">
       <img
         src={market.image_url}
-        alt="Category Icon"
+        alt={market.category || "Market"}
         class="object-cover w-full h-full"
+        loading="lazy"
+        onerror={handleImageError}
       />
     </div>
   {:else}
     <div
-      class="w-12 h-12 flex-shrink-0 bg-kong-bg-primary rounded-lg flex items-center justify-center"
+      class="w-10 h-10 flex-shrink-0 bg-kong-bg-primary rounded-lg flex items-center justify-center"
     >
-      {#if market.featured}
-        <CircleHelp class="w-6 h-6 text-kong-text-secondary/60" />
+      {#if market.category === "Sports"}
+        <Gift class="w-5 h-5 text-kong-text-secondary/60" />
+      {:else if market.category === "Crypto"}
+        <Star class="w-5 h-5 text-kong-text-secondary/60" />
+      {:else if market.featured}
+        <CircleHelp class="w-5 h-5 text-kong-text-secondary/60" />
       {:else}
-        <Dice1 class="w-6 h-6 text-kong-text-secondary/60" />
+        <Dice1 class="w-5 h-5 text-kong-text-secondary/60" />
       {/if}
     </div>
   {/if}

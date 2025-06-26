@@ -16,6 +16,11 @@ interface MarketState {
   loading: boolean;
   error: string | null;
   currentUserPrincipal: string | null; // Add current user principal
+  // Pagination state
+  currentPage: number;
+  pageSize: number;
+  totalPages: number;
+  totalCount: number;
 }
 
 const initialState: MarketState = {
@@ -26,7 +31,12 @@ const initialState: MarketState = {
   statusFilter: 'active',
   loading: true,
   error: null,
-  currentUserPrincipal: null
+  currentUserPrincipal: null,
+  // Pagination state
+  currentPage: 0,
+  pageSize: 20,
+  totalPages: 0,
+  totalCount: 0
 };
 
 function createMarketStore() {
@@ -78,6 +88,7 @@ function createMarketStore() {
         ...state,
         selectedCategory: category === 'All' ? null : category
       }));
+      this.resetPagination();
       this.refreshMarkets();
     },
     
@@ -87,6 +98,7 @@ function createMarketStore() {
         ...state,
         sortOption
       }));
+      this.resetPagination();
       this.refreshMarkets();
     },
 
@@ -96,7 +108,122 @@ function createMarketStore() {
         ...state,
         statusFilter
       }));
+      this.resetPagination();
       this.refreshMarkets();
+    },
+
+    // Reset pagination state
+    resetPagination() {
+      update(state => ({
+        ...state,
+        currentPage: 0,
+        totalPages: 0,
+        totalCount: 0
+      }));
+    },
+
+    // Go to specific page
+    async goToPage(page: number) {
+      update(state => ({ ...state, loading: true }));
+      
+      try {
+        const { sortOption, statusFilter, currentUserPrincipal, pageSize } = await new Promise<MarketState>(resolve => {
+          subscribe(state => resolve(state))();
+        });
+
+        // Check if we need to filter by current user
+        if (statusFilter === 'myMarkets') {
+          if (!currentUserPrincipal) {
+            update(state => ({ ...state, loading: false }));
+            return;
+          }
+
+          // Use getMarketsByCreator for user's markets
+          const marketsResult = await getMarketsByCreator(currentUserPrincipal, {
+            start: page * pageSize,
+            length: pageSize,
+            sortByCreationTime: sortOption === 'newest'
+          });
+
+          update(state => ({
+            ...state,
+            markets: marketsResult.markets,
+            currentPage: page,
+            totalPages: Math.ceil(marketsResult.markets.length / pageSize),
+            totalCount: marketsResult.markets.length,
+            loading: false
+          }));
+          return;
+        }
+
+        // Use the regular getAllMarkets for other filters
+        let backendSortOption = undefined;
+        if (sortOption === 'pool_asc') {
+          backendSortOption = {
+            type: 'TotalPool',
+            direction: 'Ascending'
+          };
+        } else if (sortOption === 'pool_desc') {
+          backendSortOption = {
+            type: 'TotalPool',
+            direction: 'Descending'
+          };
+        } else if (sortOption === 'newest') {
+          backendSortOption = {
+            type: 'CreatedAt',
+            direction: 'Descending'
+          };
+        } else if (sortOption === 'end_time_asc' || sortOption === 'end_time_desc') {
+          backendSortOption = {
+            type: 'EndTime',
+            direction: sortOption === 'end_time_asc' ? 'Ascending' : 'Descending'
+          };
+        }
+        
+        // Determine status filter for API
+        let apiStatusFilter = undefined;
+        if (statusFilter === 'active') {
+          apiStatusFilter = "Active";
+        } else if (statusFilter === 'pending') {
+          apiStatusFilter = "ExpiredUnresolved";
+        } else if (statusFilter === 'closed') {
+          apiStatusFilter = "Closed";
+        } else if (statusFilter === 'disputed') {
+          apiStatusFilter = "Disputed";
+        } else if (statusFilter === 'voided') {
+          apiStatusFilter = "Voided";
+        }
+                
+        const allMarketsResult = await getAllMarkets({
+          start: page * pageSize,
+          length: pageSize,
+          sortOption: backendSortOption,
+          statusFilter: statusFilter === 'all' ? undefined : apiStatusFilter
+        });
+        
+        const totalCount = Number(allMarketsResult.total_count || 0);
+        const totalPages = Math.ceil(totalCount / pageSize);
+        
+        update(state => ({
+          ...state,
+          markets: allMarketsResult.markets || [],
+          currentPage: page,
+          totalPages,
+          totalCount,
+          loading: false
+        }));
+      } catch (error) {
+        console.error('Failed to load page:', error);
+        toastStore.add({
+          title: "Error",
+          message: "Failed to load markets",
+          type: "error"
+        });
+        update(state => ({
+          ...state,
+          loading: false
+        }));
+      }
     },
 
     // Refresh markets
@@ -104,7 +231,7 @@ function createMarketStore() {
       update(state => ({ ...state, loading: true }));
       
       try {
-        const { sortOption, statusFilter, currentUserPrincipal } = await new Promise<MarketState>(resolve => {
+        const { sortOption, statusFilter, currentUserPrincipal, pageSize } = await new Promise<MarketState>(resolve => {
           subscribe(state => resolve(state))();
         });
 
@@ -118,7 +245,10 @@ function createMarketStore() {
               ...state,
               markets: [],
               loading: false,
-              error: null
+              error: null,
+              currentPage: 0,
+              hasMorePages: false,
+              totalCount: 0
             }));
             return;
           }
@@ -126,7 +256,7 @@ function createMarketStore() {
           // Use getMarketsByCreator for user's markets
           marketsResult = await getMarketsByCreator(currentUserPrincipal, {
             start: 0,
-            length: 100,
+            length: pageSize,
             sortByCreationTime: sortOption === 'newest'
           });
 
@@ -137,7 +267,10 @@ function createMarketStore() {
             ...state,
             markets: transformedMarkets,
             loading: false,
-            error: null
+            error: null,
+            currentPage: 1,
+            hasMorePages: transformedMarkets.length === pageSize,
+            totalCount: transformedMarkets.length
           }));
           return;
         }
@@ -183,18 +316,23 @@ function createMarketStore() {
                 
         const allMarketsResult = await getAllMarkets({
           start: 0,
-          length: 100, // Fetch a reasonable number of markets
+          length: pageSize,
           sortOption: backendSortOption,
           // Only apply API status filter if not showing all
           statusFilter: statusFilter === 'all' ? undefined : apiStatusFilter
         });
         
+        const totalCount = Number(allMarketsResult.total_count || 0);
+        const totalPages = Math.ceil(totalCount / pageSize);
         
         update(state => ({
           ...state,
           markets: allMarketsResult.markets || [],
           loading: false,
-          error: null
+          error: null,
+          currentPage: 0,
+          totalPages,
+          totalCount
         }));
       } catch (error) {
         console.error('Failed to refresh markets:', error);
