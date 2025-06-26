@@ -29,7 +29,7 @@
     className?: string;
     element?: HTMLButtonElement | null;
     animationIterations?: number;
-    onclick?: () => void;
+    onclick?: (e: MouseEvent) => void;
   }>();
   
   // Convert state to runes
@@ -64,9 +64,9 @@
   };
 
   const outlineThemeClasses = {
-    primary: "border border-kong-primary text-kong-text-primary hover:bg-kong-primary/20",
-    secondary: "border border-white/10 text-white/90 hover:bg-white/5",
-    "accent-green": "border border-kong-success text-kong-success hover:bg-kong-success/10",
+    primary: "border border-kong-primary !text-kong-primary hover:bg-kong-primary/20",
+    secondary: "border !border-kong-border text-kong-text-primary hover:!bg-kong-bg-tertiary",
+    "accent-green": "border border-kong-success hover:bg-kong-success/10 !text-kong-success",
     "accent-blue": "border border-kong-accent-blue text-kong-accent-blue hover:bg-kong-accent-blue/10",
     "accent-red": "border border-kong-error text-kong-error hover:bg-kong-error/10",
     success: "border border-kong-success text-kong-success hover:bg-kong-success/10",
@@ -166,7 +166,6 @@
 <style>
   button {
     background-clip: padding-box;
-    border: none;
     outline: none;
   }
   

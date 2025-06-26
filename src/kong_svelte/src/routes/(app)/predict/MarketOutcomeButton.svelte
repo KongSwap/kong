@@ -7,21 +7,49 @@
     outcome,
     index,
     market,
-    isWinningOutcome,
-    isMarketResolved,
-    isMarketExpiredUnresolved,
     openBetModal,
     isYesNo = false,
   } = $props<{
     outcome: string;
     index: number;
     market: any;
-    isWinningOutcome: (market: any, index: number) => boolean;
-    isMarketResolved: (market: any) => boolean;
-    isMarketExpiredUnresolved: (market: any) => boolean;
     openBetModal: (market: any, outcomeIndex?: number) => void;
     isYesNo?: boolean;
   }>();
+
+  // Helper functions to check market status
+  function isMarketResolved(market: any): boolean {
+    return market && market.status && "Closed" in market.status;
+  }
+
+  function isMarketExpiredUnresolved(market: any): boolean {
+    if (!market) return false;
+    if (market.status && "Closed" in market.status) return false;
+    return BigInt(market.end_time) <= BigInt(Date.now()) * BigInt(1_000_000);
+  }
+
+  function isWinningOutcome(market: any, outcomeIndex: number): boolean {
+    try {
+      if (market.winning_outcomes) {
+        return market.winning_outcomes.some(
+          (winningIndex: any) => Number(winningIndex) === outcomeIndex,
+        );
+      }
+
+      if (market.status && typeof market.status === "object") {
+        if ("Closed" in market.status && Array.isArray(market.status.Closed)) {
+          return market.status.Closed.some(
+            (winningIndex: any) => Number(winningIndex) === outcomeIndex,
+          );
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.error("Error in isWinningOutcome:", error, market);
+      return false;
+    }
+  }
 
   // Calculate the percentage for this outcome
   const percentage = $derived(
@@ -131,7 +159,7 @@
       relative border transition-all duration-200
       {isWinner
       ? 'bg-kong-success/10 text-kong-success font-bold border-kong-success/30'
-      : 'border-kong-border/20 hover:border-kong-border/40 hover:bg-kong-bg-secondary/20'} 
+      : 'border-kong-border/20 hover:border-kong-border/40 bg-kong-bg-tertiary hover:bg-kong-primary/40'} 
       {isMarketExpiredUnresolved(market)
       ? 'opacity-80 cursor-default'
       : isMarketResolved(market) && !isWinner

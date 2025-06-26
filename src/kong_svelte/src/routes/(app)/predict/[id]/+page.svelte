@@ -1,5 +1,5 @@
 <script lang="ts">
-	import {page } from '$app/state';
+  import { page } from "$app/state";
   import {
     getMarket,
     getMarketBets,
@@ -10,30 +10,26 @@
     getUserPendingClaims,
   } from "$lib/api/predictionMarket";
   import { formatBalance, toScaledAmount } from "$lib/utils/numberFormatUtils";
-  import Panel from "$lib/components/common/Panel.svelte";
-  import { TriangleAlert } from "lucide-svelte";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
-  import RecentBets from "../RecentBets.svelte";
-  import BetModal from "../BetModal.svelte";
+  import RecentPredictions from "../RecentPredictions.svelte";
   import { toastStore } from "$lib/stores/toastStore";
   import { auth } from "$lib/stores/auth";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
-  import { userTokens } from "$lib/stores/userTokens";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import type { TokenInfo } from "$lib/types/predictionMarket";
 
   // Import our new components
   import MarketHeader from "./MarketHeader.svelte";
-  import ChartPanel from "./ChartPanel.svelte";
   import OutcomesList from "./OutcomesList.svelte";
   import MarketDetailsCard from "./MarketDetailsCard.svelte";
-  import ResolutionPanel from "./ResolutionPanel.svelte";
-  import { panelRoundness } from "$lib/stores/derivedThemeStore";
+  import ResolutionCard from "./ResolutionCard.svelte";
   import Dialog from "$lib/components/common/Dialog.svelte";
   import AdminControlsPanel from "./AdminControlsPanel.svelte";
   import InitializeMarketDialog from "./InitializeMarketDialog.svelte";
-  import UserClaimsPanel from "./UserClaimsPanel.svelte";
+  import UserClaimsCard from "./UserClaimsCard.svelte";
+  import ActivateMarketCard from "./ActivateMarketCard.svelte";
+  import HowItWorksSection from "./HowItWorksSection.svelte";
 
   let market = $state<any>(null);
   let loading = $state(true);
@@ -43,16 +39,9 @@
   let betError = $state<string | null>(null);
   let isBetting = $state(false);
   let isApprovingAllowance = $state(false);
-  let timeLeftInterval = $state<ReturnType<typeof setInterval> | undefined>(undefined);
-  let timeLeft = $state("");
-  // Betting state
-  let showBetModal = $state(false);
-  let betAmount = $state(0);
-  let selectedOutcome = $state<number | null>(null);
-  let selectedChartTab = $state("percentageChance");
-
-  // Store pending outcome for after authentication
-  let pendingOutcome = $state<number | null>(null);
+  // Removed timeLeftInterval - MarketDetailsCard handles time display updates
+  // Chart tab state
+  let selectedTab = $state("percentageChance");
 
   let isUserAdmin = $state(false);
   let loadingAdmin = $state(false);
@@ -61,96 +50,119 @@
   let voiding = $state(false);
 
   let showInitializeDialog = $state(false);
-let initializing = $state(false);
+  let initializing = $state(false);
+  let selectedInitializeOutcome = $state<number | null>(null);
 
   let marketTokenInfo = $state<TokenInfo | null>(null);
   let userClaims = $state<any[]>([]);
   let loadingClaims = $state(false);
-
-  // Handle chart tab changes
-  function handleChartTabChange(tab: string) {
-    selectedChartTab = tab;
+  
+  // Consolidated function to refresh market data
+  async function refreshMarketData() {
+    const marketId = BigInt(page.params.id);
+    const marketData = await getMarket(marketId);
+    market = marketData[0];
+    
+    // Reload bets with a small delay to allow backend to update
+    setTimeout(async () => {
+      await loadMarketBets();
+    }, 500);
   }
 
-  function formatTimeLeft(endTime: string | undefined): string {
-    if (!endTime) return "Unknown";
-    const end = Number(endTime) / 1_000_000; // Convert from nanoseconds to milliseconds
-    const now = Date.now();
-    const diff = end - now;
-
-    if (diff <= 0) return "Ended";
-
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-    if (days > 0) return `${days}d ${hours}h ${minutes}m ${seconds}s`;
-    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
-    if (minutes > 0) return `${minutes}m ${seconds}s`;
-    return `${seconds}s`;
+  // Handle tab changes
+  function handleTabChange(tab: string) {
+    selectedTab = tab;
   }
 
-  function updateTimeLeft() {
-    if (market?.end_time) {
-      timeLeft = formatTimeLeft(market.end_time);
-    }
-  }
+  // Removed formatTimeLeft - MarketDetailsCard handles time formatting
+
+  // Removed updateTimeLeft - MarketDetailsCard handles countdown display
 
   async function loadMarketBets() {
     if (loadingBets) return;
     try {
       loadingBets = true;
       const allBets = await getMarketBets(BigInt(page.params.id));
-
-      // Create a completely new array with deep copies to avoid any reference issues
-      // Make sure to process BigInt values to prevent reactivity issues
-      marketBets = allBets.map((bet) => {
-        const newBet = { ...bet };
-
-        // Process every property that might be a BigInt
-        for (const key in newBet) {
-          if (typeof newBet[key] === "bigint") {
-            newBet[key] = Number(newBet[key].toString());
-          }
-        }
-
-        return newBet;
-      });
+      
+      // Optimize BigInt conversion - only convert fields we actually use
+      marketBets = allBets.map((bet) => ({
+        ...bet,
+        // Convert only the BigInt fields that are displayed or used in calculations
+        amount: typeof bet.amount === "bigint" ? Number(bet.amount) : bet.amount,
+        outcome_index: typeof bet.outcome_index === "bigint" ? Number(bet.outcome_index) : bet.outcome_index,
+        timestamp: typeof bet.timestamp === "bigint" ? Number(bet.timestamp) : bet.timestamp,
+      }));
     } catch (e) {
       console.error("Failed to load market bets:", e);
-      // Set an empty array on error to avoid undefined issues
       marketBets = [];
     } finally {
       loadingBets = false;
     }
   }
 
+  // Consolidated admin status check
+  async function checkAdminStatus() {
+    if (!$auth.isConnected || !$auth.account?.owner) {
+      isUserAdmin = false;
+      return;
+    }
+    
+    try {
+      loadingAdmin = true;
+      isUserAdmin = await isAdmin($auth.account.owner);
+    } catch (error) {
+      console.error("Failed to check admin status:", error);
+      isUserAdmin = false;
+    } finally {
+      loadingAdmin = false;
+    }
+  }
+  
+  // Single effect for auth-related updates
+  $effect(() => {
+    checkAdminStatus();
+    
+    // Load user claims when authenticated
+    if ($auth.isConnected && $auth.account?.owner) {
+      loadingClaims = true;
+      getUserPendingClaims($auth.account.owner)
+        .then((claims) => {
+          userClaims = claims;
+        })
+        .catch((e) => {
+          console.error("Failed to load user claims:", e);
+          userClaims = [];
+        })
+        .finally(() => {
+          loadingClaims = false;
+        });
+    } else {
+      userClaims = [];
+    }
+  })
+
+  // Main data loading effect - optimized to run only once
   $effect(() => {
     const fetchData = async () => {
       try {
+        loading = true;
         const marketId = BigInt(page.params.id);
-        const marketData = await getMarket(marketId);
-        console.log(marketData);
+        const [marketData, backendTokens] = await Promise.all([
+          getMarket(marketId),
+          getSupportedTokens()
+        ]);
+        
         market = marketData[0];
-
-        if (market && market.token_id) {
-          // Fetch supported tokens from backend
-          const backendTokens = await getSupportedTokens();
-          marketTokenInfo = backendTokens.find(t => t.id === market.token_id) || null;
+        
+        if (market?.token_id) {
+          marketTokenInfo = backendTokens.find((t) => t.id === market.token_id) || null;
         }
 
-        try {
-          await loadMarketBets();
-        } catch (betError) {
+        // Load bets without blocking
+        loadMarketBets().catch(betError => {
           console.error("Error loading bets:", betError);
-          // Continue with the rest of the page even if bets fail to load
           marketBets = [];
-        }
-
-        // Start countdown timer
-        updateTimeLeft();
-        timeLeftInterval = setInterval(updateTimeLeft, 1000);
+        });
       } catch (e) {
         error = "Failed to load market";
         console.error(e);
@@ -160,12 +172,6 @@ let initializing = $state(false);
     };
 
     fetchData();
-
-    return () => {
-      if (timeLeftInterval) {
-        clearInterval(timeLeftInterval);
-      }
-    };
   });
 
   async function handleBet(outcomeIndex: number, amount: number) {
@@ -183,7 +189,10 @@ let initializing = $state(false);
       }
 
       // Convert bet amount to scaled token units
-      const scaledAmount = toScaledAmount(amount.toString(), kongToken.decimals);
+      const scaledAmount = toScaledAmount(
+        amount.toString(),
+        kongToken.decimals,
+      );
       await placeBet(
         kongToken,
         BigInt(market.id),
@@ -191,25 +200,13 @@ let initializing = $state(false);
         scaledAmount,
       );
 
-      // Reset betting state
-      betAmount = 0;
-      selectedOutcome = null;
-
-      // Refresh market data
-      const marketId = BigInt(page.params.id);
-      const marketData = await getMarket(marketId);
-      market = marketData[0];
-      showBetModal = false;
       toastStore.add({
-        title: "Bet Placed",
-        message: `You bet ${amount} KONG on ${market.outcomes[outcomeIndex]}`,
+        title: "Prediction Placed",
+        message: `You predicted ${amount} KONG on ${market.outcomes[outcomeIndex]}`,
         type: "success",
       });
-
-      // Reload bets with a small delay to allow backend to update
-      setTimeout(async () => {
-        await loadMarketBets();
-      }, 500);
+      
+      await refreshMarketData();
     } catch (e) {
       console.error("Bet error:", e);
       betError = e instanceof Error ? e.message : "Failed to place bet";
@@ -218,45 +215,15 @@ let initializing = $state(false);
     }
   }
 
-  function handleOutcomeSelect(outcomeIndex: number) {
-    // Check if user is authenticated
-    if (!$auth.isConnected) {
-      // Store the outcome to open after authentication
-      pendingOutcome = outcomeIndex;
-      walletProviderStore.open(handleWalletLogin);
-      return;
-    }
-
-    // User is authenticated, proceed with opening bet modal
-    selectedOutcome = outcomeIndex;
-    showBetModal = false;
-    // Force a repaint cycle before opening modal again
-    setTimeout(() => {
-      showBetModal = true;
-    }, 0);
-  }
-
-  function handleWalletLogin() {
-    // If we have a pending outcome, open the bet modal after authentication
-    if (pendingOutcome !== null) {
-      selectedOutcome = pendingOutcome;
-      showBetModal = true;
-      pendingOutcome = null;
-    }
-  }
-
   async function handleVoidMarket() {
     try {
       await voidMarketViaAdmin(BigInt(market.id));
       toastStore.add({
         title: "Market Voided",
-        message: `Market has been voided successfully` ,
+        message: `Market has been voided successfully`,
         type: "success",
       });
-      // Refresh market data
-      const marketId = BigInt(page.params.id);
-      const marketData = await getMarket(marketId);
-      market = marketData[0];
+      await refreshMarketData();
     } catch (e) {
       toastStore.add({
         title: "Error",
@@ -264,10 +231,6 @@ let initializing = $state(false);
         type: "error",
       });
     }
-  }
-
-  function openVoidDialog() {
-    showVoidDialog = true;
   }
 
   async function confirmVoidMarket() {
@@ -282,42 +245,34 @@ let initializing = $state(false);
     try {
       // Get the market ID from the page parameters
       const marketId = BigInt(page.params.id);
-      
+
       // Get the token information from marketTokenInfo
       if (!marketTokenInfo) {
         throw new Error("Token information is not available");
       }
-      
+
       // First fetch the token details from userTokens
       const tokens = await fetchTokensByCanisterId([marketTokenInfo.id]);
       const token = tokens[0];
-      
+
       if (!token) {
         throw new Error("Failed to fetch token information");
       }
-      
+
       // Use the minimum initial bet amount from marketTokenInfo
       const minBetAmount = marketTokenInfo.activation_fee;
-      
+
       // Place the bet to initialize the market
       await placeBet(
         token,
         marketId,
         BigInt(outcomeIndex),
-        minBetAmount.toString()
+        minBetAmount.toString(),
       );
-      
+
       showInitializeDialog = false;
-      
-      // Refresh market data
-      const marketData = await getMarket(marketId);
-      market = marketData[0];
-      
-      // Reload bets with a small delay to allow backend to update
-      setTimeout(async () => {
-        await loadMarketBets();
-      }, 500);
-      
+      await refreshMarketData();
+
       toastStore.add({
         title: "Market Initialized",
         message: `You have initialized the market with ${formattedMinInitialBetString} bet on "${market.outcomes[outcomeIndex]}".`,
@@ -334,155 +289,93 @@ let initializing = $state(false);
       initializing = false;
     }
   }
-  
+
   async function handleMarketResolved() {
-    // Refresh market data after resolution
-    const marketId = BigInt(page.params.id);
-    const marketData = await getMarket(marketId);
-    market = marketData[0];
-    
-    // Reload bets
-    await loadMarketBets();
+    await refreshMarketData();
   }
 
-  let token = $derived(market ? $userTokens.tokens.find(t => t.address === market.token_id) : null);
-
-  let totalPool = $derived(Number(market?.total_pool || 0));
-  let outcomes = $derived(market?.outcomes || []);
-  let betCounts = $derived(market?.bet_counts?.map(Number) || []);
-  let betCountPercentages = $derived(market?.bet_count_percentages || []);
-  let outcomePercentages = $derived(market?.outcome_percentages || []);
-  let isMarketClosed = $derived(market?.status?.Closed !== undefined);
-  let winningOutcomes = $derived(isMarketClosed ? market.status.Closed : []);
+  // Optimize derived computations with $derived.by for complex logic
+  let marketStatus = $derived.by(() => {
+    if (!market) return null;
+    return {
+      isClosed: market.status?.Closed !== undefined,
+      isVoided: market.status?.Voided !== undefined,
+      endTime: market.end_time ? Number(market.end_time) / 1_000_000 : null
+    };
+  });
+  
+  let isMarketClosed = $derived(marketStatus?.isClosed ?? false);
   let isMarketResolved = $derived(isMarketClosed);
-  let isMarketVoided = $derived(market?.status?.Voided !== undefined);
-  let marketEndTime = $derived(market?.end_time
-    ? Number(market.end_time) / 1_000_000
-    : null);
+  let isMarketVoided = $derived(marketStatus?.isVoided ?? false);
+  let marketEndTime = $derived(marketStatus?.endTime);
+  
   let isPendingResolution = $derived(
     !isMarketResolved &&
     !isMarketVoided &&
     marketEndTime &&
-    marketEndTime < Date.now());
+    marketEndTime < Date.now()
+  );
+
+  let marketActivationStatus = $derived.by(() => {
+    if (!market || !market.bet_counts || !$auth.account?.owner) return false;
+    const totalBets = market.bet_counts.reduce((acc: number, curr: any) => acc + Number(curr), 0);
+    return totalBets === 0 && market.creator?.toText() === $auth.account.owner;
+  });
+  
+  let isMarketNeedsActivation = $derived(marketActivationStatus);
 
   // Calculate the formatted minimum initial bet string
-  let formattedMinInitialBetString = $derived(
-    marketTokenInfo && 
-    typeof marketTokenInfo.activation_fee !== 'undefined' && 
-    typeof marketTokenInfo.decimals !== 'undefined' && 
-    marketTokenInfo.symbol
-      ? `${formatBalance(Number(marketTokenInfo.activation_fee), marketTokenInfo.decimals)} ${marketTokenInfo.symbol}`
-      : "the required minimum" // Fallback string
-  );
+  let formattedMinInitialBetString = $derived.by(() => {
+    if (!marketTokenInfo || 
+        typeof marketTokenInfo.activation_fee === "undefined" ||
+        typeof marketTokenInfo.decimals === "undefined" ||
+        !marketTokenInfo.symbol) {
+      return "the required minimum";
+    }
+    return `${formatBalance(Number(marketTokenInfo.activation_fee), marketTokenInfo.decimals)} ${marketTokenInfo.symbol}`;
+  });
+
+  // Resolution status checks
+  let resolutionStatus = $derived.by(() => {
+    const isUserCreated = isPendingResolution &&
+      market &&
+      $auth.isConnected &&
+      $auth.account?.owner === market.creator?.toText() &&
+      !isUserAdmin;
+      
+    const isAdminPending = isPendingResolution &&
+      market &&
+      $auth.isConnected &&
+      isUserAdmin &&
+      market.resolution_proposal?.length > 0 &&
+      market.resolution_proposal[0]?.status?.AwaitingAdminVote !== undefined;
+      
+    return { isUserCreated, isAdminPending };
+  });
   
-  // Check if this is a user-created market pending resolution
-  let isUserCreatedPendingResolution = $derived(
-    isPendingResolution && 
-    market && 
-    $auth.isConnected && 
-    $auth.account?.owner === market.creator?.toText() &&
-    !isUserAdmin
-  );
+  let isUserCreatedPendingResolution = $derived(resolutionStatus.isUserCreated);
+  let isAdminPendingResolution = $derived(resolutionStatus.isAdminPending);
 
-  $effect(() => {
-    if ($auth.isConnected && $auth.account?.owner) {
-      loadingAdmin = true;
-      isAdmin($auth.account.owner)
-        .then((result) => {
-          isUserAdmin = result;
-        })
-        .catch((e) => {
-          isUserAdmin = false;
-        })
-        .finally(() => {
-          loadingAdmin = false;
-        });
-    }
-  });
-
-  // Load user claims when authenticated
-  $effect(() => {
-    if ($auth.isConnected && $auth.account?.owner) {
-      loadingClaims = true;
-      getUserPendingClaims($auth.account.owner)
-        .then((claims) => {
-          userClaims = claims;
-        })
-        .catch((e) => {
-          console.error("Failed to load user claims:", e);
-          userClaims = [];
-        })
-        .finally(() => {
-          loadingClaims = false;
-        });
-    } else {
-      userClaims = [];
-    }
-  });
+  // This duplicate admin check effect has been removed - consolidated into the auth effect above
 
   $effect(() => {
     if (showVoidDialog) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     }
-    
+
     // Clean up in case the component is destroyed
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     };
   });
 </script>
 
-<svelte:head>
-  <title>{market?.question} - KongSwap</title>
-  <meta name="description" content={market?.question} />
-  <meta
-    property="og:title"
-    content="{market?.question} - KongSwap Prediction Market"
-  />
-  <meta
-    property="og:description"
-    content="Make your predictions on future events at KongSwap!"
-  />
-  <meta
-    property="og:image"
-    content="https://kongswap.io/images/predictionmarket-og.jpg"
-  />
-  <meta
-    property="og:url"
-    content="{page.url.origin}/predict/{page.params.id}"
-  />
-  <meta property="og:type" content="website" />
-  <meta name="twitter:card" content="summary_large_image" />
-</svelte:head>
-
-<div class="min-h-screen text-kong-text-primary px-2 sm:px-4">
+<div
+  class="min-h-screen text-kong-text-primary px-2 sm:px-4 mx-auto !max-w-[1300px]"
+>
   <div class="max-w-6xl mx-auto">
-    {#if market && betCounts && betCounts.reduce((acc, curr) => acc + curr, 0) === 0 && market?.creator?.toText() === $auth.account.owner}
-      <div
-        class="bg-kong-accent-yellow {$panelRoundness} text-black mb-8 p-4 justify-center flex flex-col items-center gap-2"
-      >
-        <div class="flex items-center gap-x-2">
-          <TriangleAlert class="w-6 h-6 text-orange-800" />
-          <span class="text-lg font-medium">Market Not Initialized</span>
-        </div>
-
-        <span class="text-center">
-          You must place a <strong>{formattedMinInitialBetString}</strong> bet to initialize the market. 
-          <br/> 
-          This market will not be publicly visible until the market is initialized.
-          </span>
-        <ButtonV2
-          theme="warning"
-          onclick={() => showInitializeDialog = true}
-        >
-          Activate Market
-        </ButtonV2>
-      </div>
-    {/if}
-
-
     {#if error}
       <div class="text-center py-8 sm:py-12">
         <p class="text-kong-error text-base sm:text-lg" role="alert">
@@ -513,94 +406,78 @@ let initializing = $state(false);
         ></div>
       </div>
     {:else if market}
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+      <!-- Market Info Panel -->
+      <MarketHeader {market} />
+      <div class="flex flex-col lg:flex-row gap-3 sm:gap-4 lg:gap-6 mt-4">
         <!-- Left Column -->
-        <div class="lg:col-span-3 space-y-3 sm:space-y-4">
-          <!-- Chart Panel with Tabs -->
-          <Panel
-            variant="transparent"
-            className="backdrop-blur-sm !rounded shadow-lg border border-kong-border/10 animate-fadeIn"
-          >
-            <!-- Market Info Panel -->
-            <MarketHeader
-              {market}
-            />
+        <div class="flex-1 space-y-3 sm:space-y-4">
+          <!-- How it works section (moved from MarketHeader) -->
+          {#if !isMarketResolved && !isMarketVoided && !isPendingResolution}
+            <HowItWorksSection />
+          {/if}
 
-            <!-- Re-enable the simplified ChartPanel -->
-            <ChartPanel
+          <!-- Activate Market Card (shown above charts when needed) -->
+          {#if isMarketNeedsActivation}
+            <ActivateMarketCard
               {market}
-              {marketBets}
-              {selectedChartTab}
-              onTabChange={handleChartTabChange}
+              {formattedMinInitialBetString}
+              onSelectOutcome={(outcomeIndex) => {
+                selectedInitializeOutcome = outcomeIndex;
+                showInitializeDialog = true;
+              }}
             />
-          </Panel>
+          {/if}
 
           <!-- Outcomes Panel or Resolution Panel -->
-          {#if isUserCreatedPendingResolution}
-            <ResolutionPanel
+          {#if isUserCreatedPendingResolution || isAdminPendingResolution}
+            <ResolutionCard
               {market}
-              {outcomes}
               onMarketResolved={handleMarketResolved}
+              isAdmin={isUserAdmin}
             />
-          {:else}
-            <OutcomesList
-              {market}
-              {token}
-              {outcomes}
-              {outcomePercentages}
-              {betCountPercentages}
-              {betCounts}
-              {isMarketResolved}
-              {isPendingResolution}
-              {isMarketClosed}
-              {winningOutcomes}
-              onSelectOutcome={handleOutcomeSelect}
-            />
+          {:else if !isMarketNeedsActivation}
+            <OutcomesList {market} {marketBets} onPlacePrediction={handleBet} isAdmin={isUserAdmin} />
           {/if}
         </div>
 
         <!-- Right Column -->
-        <div class="space-y-3 sm:space-y-4">
-          <UserClaimsPanel
+        <div
+          class="w-full lg:w-[450px] lg:flex-shrink-0 space-y-3 sm:space-y-4"
+        >
+          <UserClaimsCard
             claims={userClaims}
             loading={loadingClaims}
             marketId={page.params.id}
             {marketTokenInfo}
           />
-          
+
+          <!-- Market Stats Panel with Tabs -->
+          <MarketDetailsCard
+            {market}
+            {loading}
+            {marketBets}
+            {selectedTab}
+            onTabChange={handleTabChange}
+          />
+
           <AdminControlsPanel
             {isUserAdmin}
             {loadingAdmin}
-            {isMarketResolved}
-            {isMarketVoided}
-            onOpenVoidDialog={openVoidDialog}
+            onOpenVoidDialog={() => (showVoidDialog = true)}
             {market}
-            on:closeResolutionModal={() => showAdminResolutionModal = false}
-            on:marketUpdated={e => market = e.detail.market}
-          />
-          <!-- Market Stats Panel -->
-          <MarketDetailsCard
-            {totalPool}
-            {betCounts}
-            {timeLeft}
-            {market}
-            {isMarketResolved}
-            {isPendingResolution}
-            {isMarketVoided}
-            marketEndTime={market.end_time}
-            loading={loading}
+            on:closeResolutionModal={() => (showAdminResolutionModal = false)}
+            on:marketUpdated={(e) => (market = e.detail.market)}
           />
 
-          <!-- Restore the simplified RecentBets -->
-          <RecentBets
+          <!-- Restore the simplified RecentPredictions -->
+          <RecentPredictions
             bets={marketBets}
             outcomes={market?.outcomes}
             showOutcomes={true}
             maxHeight="500px"
-            panelVariant="transparent"
             title="Recent Predictions"
             loading={loadingBets}
-            tokenSymbol={token?.symbol}
+            tokenSymbol={marketTokenInfo?.symbol || "KONG"}
           />
         </div>
       </div>
@@ -609,67 +486,47 @@ let initializing = $state(false);
 </div>
 
 <Dialog
-title="Confirm Void Market"
-open={showVoidDialog}
-onClose={() => showVoidDialog = false}
-showClose={false}
+  title="Confirm Void Market"
+  open={showVoidDialog}
+  onClose={() => (showVoidDialog = false)}
+  showClose={false}
 >
-<div class="flex flex-col gap-4">
-  <div class="text-kong-text-primary text-lg font-semibold">Are you sure you want to void this market?</div>
-  <div class="text-kong-text-secondary text-sm">Voiding a market is <span class="font-bold text-kong-error">irreversible</span> and will refund all user bets. This action cannot be undone.</div>
-  <div class="flex gap-3 justify-end">
-    <ButtonV2
-      theme="secondary"
-      onclick={() => showVoidDialog = false}
-      disabled={voiding}
-    >
-      Cancel
-    </ButtonV2>
-    <ButtonV2
-      theme="warning"
-      onclick={confirmVoidMarket}
-      disabled={voiding}
-    >
-      {voiding ? 'Voiding...' : 'Void Market'}
-    </ButtonV2>
+  <div class="flex flex-col gap-4">
+    <div class="text-kong-text-primary text-lg font-semibold">
+      Are you sure you want to void this market?
+    </div>
+    <div class="text-kong-text-secondary text-sm">
+      Voiding a market is <span class="font-bold text-kong-error"
+        >irreversible</span
+      > and will refund all user bets. This action cannot be undone.
+    </div>
+    <div class="flex gap-3 justify-end">
+      <ButtonV2
+        theme="secondary"
+        onclick={() => (showVoidDialog = false)}
+        disabled={voiding}
+      >
+        Cancel
+      </ButtonV2>
+      <ButtonV2 theme="warning" onclick={confirmVoidMarket} disabled={voiding}>
+        {voiding ? "Voiding..." : "Void Market"}
+      </ButtonV2>
+    </div>
   </div>
-</div>
 </Dialog>
 
 <InitializeMarketDialog
   open={showInitializeDialog}
   onClose={() => {
-    showInitializeDialog = false; 
-    selectedOutcome = null;
+    showInitializeDialog = false;
+    selectedInitializeOutcome = null;
   }}
   onInitialize={initializeMarket}
   outcomes={market?.outcomes || []}
   activating={initializing}
   {formattedMinInitialBetString}
+  preselectedOutcome={selectedInitializeOutcome}
 />
-
-{#if showBetModal}
-  <BetModal
-    {showBetModal}
-    selectedMarket={market}
-    {isBetting}
-    {isApprovingAllowance}
-    {betError}
-    {selectedOutcome}
-    {betAmount}
-    onClose={() => {
-      // First set the selected outcome and amount to null
-      selectedOutcome = null;
-      betAmount = 0;
-      betError = null;
-      // Then close modal in the next tick to ensure clean state
-      setTimeout(() => {
-        showBetModal = false;
-      }, 0);
-    }}
-    onBet={(amount) => handleBet(selectedOutcome!, amount)}
-  />
-{/if}
 
 <style lang="postcss" scoped>
   @keyframes fadeIn {

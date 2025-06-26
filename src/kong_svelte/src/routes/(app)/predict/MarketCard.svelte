@@ -3,6 +3,7 @@
     formatCategory,
     calculatePercentage,
     formatBalance,
+    toShortNumber,
   } from "$lib/utils/numberFormatUtils";
   import {
     Coins,
@@ -14,11 +15,12 @@
     Dice1,
     Gift,
   } from "lucide-svelte";
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import CountdownTimer from "$lib/components/common/CountdownTimer.svelte";
   import { goto } from "$app/navigation";
   import AdminResolutionModal from "./AdminResolutionModal.svelte";
   import { auth } from "$lib/stores/auth";
+  import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import { isAdmin, setMarketFeatured } from "$lib/api/predictionMarket";
   import { voidMarketViaAdmin } from "$lib/api/predictionMarket";
   import { userTokens } from "$lib/stores/userTokens";
@@ -61,35 +63,32 @@
     }
   });
 
-  // Check if market is expired but not resolved
-  function isMarketExpiredUnresolved(market: any): boolean {
-    if (!market) return false;
-    if (market.status && "Closed" in market.status) return false;
-    return BigInt(market.end_time) <= BigInt(Date.now()) * BigInt(1_000_000);
-  }
-
-  // Check if market is resolved
-  function isMarketResolved(market: any): boolean {
-    return market && market.status && "Closed" in market.status;
-  }
-
-  // Check if market is open
-  function showResolveVoid(market: any): boolean {
-    return (
-      market &&
-      ((market.status && "Open" in market.status) ||
-        (market.status && "Pending" in market.status))
-    );
-  }
-
-  // Check if market is voided
-  function isMarketVoided(market: any): boolean {
-    return market && market.status && "Voided" in market.status;
-  }
-
-  function isMarketPending(market: any): boolean {
-    return market && market.status && "Pending" in market.status;
-  }
+  // Consolidated market status helpers
+  const marketStatus = {
+    isExpiredUnresolved: (market: any): boolean => {
+      if (!market) return false;
+      if (market.status && "Closed" in market.status) return false;
+      return BigInt(market.end_time) <= BigInt(Date.now()) * BigInt(1_000_000);
+    },
+    isResolved: (market: any): boolean => {
+      return market && market.status && "Closed" in market.status;
+    },
+    isVoided: (market: any): boolean => {
+      return market && market.status && "Voided" in market.status;
+    },
+    isPending: (market: any): boolean => {
+      return market && market.status && "Pending" in market.status;
+    },
+    isOpen: (market: any): boolean => {
+      return market && market.status && "Open" in market.status;
+    },
+    canResolveOrVoid: (market: any): boolean => {
+      return (
+        market &&
+        (marketStatus.isOpen(market) || marketStatus.isPending(market))
+      );
+    },
+  };
 
   // Helper function to check if an outcome is a winner
   function isWinningOutcome(market: any, outcomeIndex: number): boolean {
@@ -179,22 +178,23 @@
     }
   }
 
-  // Get status color based on market state
-  function getMarketStatusColor(market: any): string {
-    if (isMarketResolved(market)) return "bg-kong-accent-blue";
-    if (isMarketVoided(market)) return "bg-kong-error";
-    if (isMarketPending(market)) return "bg-kong-accent-yellow";
-    if (isMarketExpiredUnresolved(market)) return "bg-indigo-400";
-    return "bg-kong-success";
-  }
-
-  // Get status text based on market state
-  function getMarketStatusText(market: any): string {
-    if (isMarketResolved(market)) return "Resolved";
-    if (isMarketVoided(market)) return "Voided";
-    if (isMarketPending(market)) return "Pending";
-    if (isMarketExpiredUnresolved(market)) return "Unresolved";
-    return "Active";
+  // Get status color and text
+  function getMarketStatusInfo(market: any): { color: string; text: string } {
+    if (marketStatus.isResolved(market))
+      return {
+        color: "bg-kong-bg-secondary text-kong-text-secondary",
+        text: "Resolved",
+      };
+    if (marketStatus.isVoided(market))
+      return { color: "bg-kong-error/10 text-kong-error", text: "Voided" };
+    if (marketStatus.isPending(market))
+      return {
+        color: "bg-kong-accent-yellow/10 text-kong-accent-yellow",
+        text: "Pending",
+      };
+    if (marketStatus.isExpiredUnresolved(market))
+      return { color: "bg-indigo-400/10 text-indigo-400", text: "Unresolved" };
+    return { color: "bg-kong-success/10 text-kong-success", text: "Active" };
   }
 
   // Check if it's a Yes/No market
@@ -224,7 +224,167 @@
   }
 
   // Click outside handling is now managed by parent component
+
+  // Reactive status info
+  const statusInfo = $derived(getMarketStatusInfo(market));
 </script>
+
+<!-- Snippet Components -->
+{#snippet marketIcon()}
+  {#if market.image_url.length != 0}
+    <div class="w-10 h-10 flex-shrink-0 rounded-lg overflow-hidden">
+      <img
+        src={market.image_url}
+        alt="Category Icon"
+        class="object-cover w-full h-full"
+      />
+    </div>
+  {:else}
+    <div
+      class="w-12 h-12 flex-shrink-0 bg-kong-bg-primary rounded-lg flex items-center justify-center"
+    >
+      {#if market.featured}
+        <CircleHelp class="w-6 h-6 text-kong-text-secondary/60" />
+      {:else}
+        <Dice1 class="w-6 h-6 text-kong-text-secondary/60" />
+      {/if}
+    </div>
+  {/if}
+{/snippet}
+
+{#snippet marketHeader()}
+  <div class="flex gap-2 items-start">
+    {@render marketIcon()}
+    <div class="flex-1 min-w-0 pr-8">
+      <h3
+        class="font-semibold leading-tight line-clamp-2 text-kong-text-primary"
+        title={market.question}
+      >
+        {market.question}
+      </h3>
+    </div>
+  </div>
+{/snippet}
+
+{#snippet marketOutcomes()}
+  <div class="flex-1 flex flex-col">
+    {#if isYesNoMarket(market)}
+      <!-- Yes/No buttons side by side, centered vertically -->
+      <div class="flex-1 flex items-center">
+        <div class="w-full flex gap-2 justify-center">
+          {#if getYesNoIndices(market).yesIndex !== -1}
+            {@const yesIndex = getYesNoIndices(market).yesIndex}
+            <MarketOutcomeButton
+              outcome="Yes"
+              index={yesIndex}
+              {market}
+              {openBetModal}
+              isYesNo={true}
+            />
+          {/if}
+          {#if getYesNoIndices(market).noIndex !== -1}
+            {@const noIndex = getYesNoIndices(market).noIndex}
+            <MarketOutcomeButton
+              outcome="No"
+              index={noIndex}
+              {market}
+              {openBetModal}
+              isYesNo={true}
+            />
+          {/if}
+        </div>
+      </div>
+    {:else}
+      <div class="flex-1 flex items-center">
+        <div class="w-full space-y-1.5">
+          <div
+            class="flex flex-col max-h-[120px] gap-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-kong-border"
+          >
+            {#each market.outcomes as outcome, i}
+              <MarketOutcomeButton
+                {outcome}
+                index={i}
+                {market}
+                {openBetModal}
+              />
+            {/each}
+          </div>
+        </div>
+      </div>
+    {/if}
+  </div>
+{/snippet}
+
+{#snippet marketFooter()}
+  <div class="mt-auto pt-2 border-t border-kong-border/20">
+    <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        {#if !marketStatus.isResolved(market)}
+          <span
+            class="px-1.5 py-0.5 rounded text-[10px] font-medium {statusInfo.color}"
+          >
+            {statusInfo.text}
+          </span>
+        {/if}
+        <span
+          class="text-kong-text-secondary text-xs whitespace-nowrap flex items-center gap-1"
+        >
+          <TokenImages
+            tokens={[
+              $userTokens.tokens.find((t) => t.address === market.token_id),
+            ]}
+            size={16}
+          />
+          {toShortNumber(
+            market.outcome_pools.reduce(
+              (acc, pool) => acc + Number(pool || 0),
+              0,
+            ),
+            $userTokens.tokens.find((t) => t.address === market.token_id)
+          )}
+        </span>
+      </div>
+      <div class="flex items-center gap-2">
+        {#if showEndTime}
+          <span
+            class="flex items-center gap-1 text-kong-text-secondary text-xs whitespace-nowrap"
+          >
+            <Calendar class="w-3 h-3" />
+            {#if marketStatus.isResolved(market)}
+              <span>Ended</span>
+            {:else if marketStatus.isVoided(market)}
+              <span>Voided</span>
+            {:else}
+              <CountdownTimer endTime={market.end_time} />
+            {/if}
+          </span>
+        {/if}
+        {#if isUserAdmin}
+          <AdminDropdownButton
+            isOpen={isDropdownOpen}
+            onToggle={(e) => {
+              e.stopPropagation();
+              toggleDropdown();
+            }}
+            onSetFeatured={() => {
+              handleSetFeatured(market, !market.featured);
+              onDropdownToggle?.();
+            }}
+            onResolve={() => {
+              openResolutionModal(market);
+              onDropdownToggle?.();
+            }}
+            onVoid={() => {
+              handleVoidMarket(market);
+              onDropdownToggle?.();
+            }}
+            isFeatured={market.featured}
+          />
+        {/if}
+      </div>
+    </div>
+  </div>
+{/snippet}
 
 <AdminResolutionModal
   isOpen={showResolutionModal}
@@ -233,389 +393,77 @@
   onResolved={handleResolved}
 />
 
-<Panel
-  className="relative !bg-kong-bg-secondary !p-2 {isMarketResolved(market)
-    ? 'opacity-100'
-    : ''} group hover:bg-kong-bg-primary/10 transition-all duration-200 flex flex-col {market.featured
-    ? '!h-[260px]'
-    : '!h-[260px]'}"
+<Card
+  className="relative !p-0 group transition-all duration-200 h-[230px] overflow-visible {marketStatus.isResolved(
+    market,
+  ) && !hasClaim
+    ? 'grayscale opacity-40 hover:opacity-60'
+    : ''}"
+  onClick={() => goto(`/predict/${market.id}`)}
 >
   <!-- Card content -->
-  <div class="relative flex flex-col justify-between h-full">
-    {#if market.featured}
-      <!-- Featured market layout -->
-      <div class="flex flex-col h-full">
-        <div class="px-2 pt-4.5 flex gap-3 items-start">
-          {#if market.image_url.length != 0}
-            <div class="w-12 h-12 flex-shrink-0 rounded overflow-hidden bg-black">
-              <img
-                src={market.image_url}
-                alt="Category Icon"
-                class="object-cover w-full h-full bg-black bg-blend-overlay opacity-100"
-              />
-            </div>
-          {:else}
-            <div
-              class="w-12 h-12 flex-shrink-0 bg-kong-accent/10 rounded-lg bg-kong-bg-primary flex items-center justify-center"
-            >
-              <CircleHelp class="w-8 h-8 text-kong-bg-secondary/80" />
-            </div>
-          {/if}
-          <button
-            class="flex-1 text-left group-hover:text-kong-primary transition-colors"
-            title={market.question}
-            onclick={() => {
-              goto(`/predict/${market.id}`);
-            }}
-          >
-            <span
-              class="font-bold text-base sm:text-lg tracking-tight block line-clamp-2 overflow-hidden text-ellipsis"
-            >
-              {market.question}
-            </span>
-          </button>
+  <div class="relative flex flex-col h-full p-3">
+    <div class="flex flex-col h-full">
+      <!-- Market header -->
+      {#if market.featured}
+        <div class="mb-1">
+          {@render marketHeader()}
         </div>
-        <!-- Outcomes section vertically centered -->
-        <div class="flex-1 flex flex-col justify-center px-2">
-          <div class="flex flex-col justify-center">
-            {#if isYesNoMarket(market)}
-              <!-- Yes/No buttons side by side -->
-              <div class="h-full items-center flex gap-2 justify-center">
-                {#if getYesNoIndices(market).yesIndex !== -1}
-                  {@const yesIndex = getYesNoIndices(market).yesIndex}
-                  <MarketOutcomeButton
-                    outcome="Yes"
-                    index={yesIndex}
-                    {market}
-                    {isWinningOutcome}
-                    {isMarketResolved}
-                    {isMarketExpiredUnresolved}
-                    {openBetModal}
-                    isYesNo={true}
-                  />
-                {/if}
-                {#if getYesNoIndices(market).noIndex !== -1}
-                  {@const noIndex = getYesNoIndices(market).noIndex}
-                  <MarketOutcomeButton
-                    outcome="No"
-                    index={noIndex}
-                    {market}
-                    {isWinningOutcome}
-                    {isMarketResolved}
-                    {isMarketExpiredUnresolved}
-                    {openBetModal}
-                    isYesNo={true}
-                  />
-                {/if}
-              </div>
-            {:else}
-              <div
-                class="flex flex-col max-h-[135px] gap-0.5 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-kong-border"
-              >
-                {#each market.outcomes as outcome, i}
-                  <div
-                    class="relative rounded {!isMarketExpiredUnresolved(market) &&
-                    !isMarketResolved(market)
-                      ? 'hover:bg-kong-bg-secondary/40 cursor-pointer'
-                      : ''}"
-                  >
-                    <MarketOutcomeButton
-                      {outcome}
-                      index={i}
-                      {market}
-                      {isWinningOutcome}
-                      {isMarketResolved}
-                      {isMarketExpiredUnresolved}
-                      {openBetModal}
-                    />
-                  </div>
-                {/each}
-              </div>
-            {/if}
-          </div>
-        </div>
-        <!-- Category and time information moved to bottom -->
+      {:else}
+        {@render marketHeader()}
+      {/if}
+
+      <!-- Market outcomes -->
+      {@render marketOutcomes()}
+
+      <!-- Market footer -->
+      {@render marketFooter()}
+    </div>
+
+    <!-- Featured badge positioned at top right -->
+    {#if market.featured && !marketStatus.isResolved(market)}
+      <div class="absolute top-2 right-2">
         <div
-          class="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-2 pb-2"
+          class="px-1.5 py-0.5 rounded text-[10px] bg-kong-accent-yellow text-black font-medium flex items-center gap-0.5"
         >
-          <div class="flex items-center gap-1">
-            <span
-              class="text-kong-text-secondary text-xs whitespace-nowrap flex items-center gap-1"
-            >
-              <TokenImages
-                tokens={[
-                  $userTokens.tokens.find((t) => t.address === market.token_id),
-                ]}
-                size={20}
-              />
-              {formatBalance(
-                market.outcome_pools.reduce(
-                  (acc, pool) => acc + Number(pool || 0),
-                  0,
-                ),
-                8,
-              )}
-            </span>
-            <span
-              class="py-0.5 px-1.5 flex items-center gap-1 text-kong-text-secondary bg-kong-accent/10 text-kong-accent rounded text-xs font-medium"
-            >
-              <Folder class="w-3 h-3" />
-              {formatCategory(market.category)}
-            </span>
-          </div>
-          <div class="flex items-center justify-end gap-2">
-            {#if showEndTime}
-              <span
-                class="flex items-center gap-1 text-kong-text-secondary text-xs whitespace-nowrap"
-              >
-                <Calendar class="w-3 h-3" />
-                {#if isMarketResolved(market)}
-                  <span>Ended</span>
-                {:else if isMarketVoided(market)}
-                  <span>Voided</span>
-                {:else}
-                  <CountdownTimer endTime={market.end_time} />
-                {/if}
-              </span>
-            {/if}
-            {#if isUserAdmin}
-              <AdminDropdownButton
-                isOpen={isDropdownOpen}
-                onToggle={(e) => {
-                  e.stopPropagation();
-                  toggleDropdown();
-                }}
-                onSetFeatured={() => {
-                  handleSetFeatured(market, !market.featured);
-                  onDropdownToggle?.();
-                }}
-                onResolve={() => {
-                  openResolutionModal(market);
-                  onDropdownToggle?.();
-                }}
-                onVoid={() => {
-                  handleVoidMarket(market);
-                  onDropdownToggle?.();
-                }}
-                isFeatured={market.featured}
-              />
-            {/if}
-          </div>
-        </div>
-        <!-- Card Footer -->
-        {#if showResolveVoid(market)}
-          <div class="px-4 py-3 border-t border-kong-border">
-            <div class="text-center text-xs text-kong-text-secondary">
-              Awaiting resolution
-            </div>
-          </div>
-        {:else if isMarketResolved(market)}
-          <div class="px-4 py-3 border-t border-kong-border">
-            <div class="text-center text-xs text-kong-text-secondary">
-              Resolved on {new Date(
-                Number(market.end_time) / 1_000_000,
-              ).toLocaleDateString()}
-            </div>
-          </div>
-        {:else if isMarketVoided(market)}
-          <div class="px-4 py-3 border-t border-kong-border">
-            <div class="text-center text-xs text-kong-text-secondary">
-              Market voided on {new Date(
-                Number(market.end_time) / 1_000_000,
-              ).toLocaleDateString()}
-            </div>
-          </div>
-        {/if}
-      </div>
-    {:else}
-      <!-- Non-featured market layout -->
-      <div class="px-2 pt-5 flex gap-3 items-start">
-        {#if market.image_url.length != 0}
-          <div class="w-12 h-12 flex-shrink-0 rounded overflow-hidden bg-black">
-            <img
-              src={market.image_url}
-              alt="Category Icon"
-              class="object-cover w-full h-full opacity-100"
-            />
-          </div>
-        {:else}
-          <div
-            class="w-16 h-16 flex-shrink-0 bg-kong-accent/10 rounded-lg bg-kong-bg-primary flex items-center justify-center"
-          >
-            <Dice1 class="w-10 h-10 text-kong-bg-secondary/80" />
-          </div>
-        {/if}
-        <button
-          class="flex-1 text-left group-hover:text-kong-primary transition-colors"
-          title={market.question}
-          onclick={() => {
-            goto(`/predict/${market.id}`);
-          }}
-        >
-          <span
-            class="font-bold text-base sm:text-lg tracking-tight block !line-clamp-2 overflow-hidden text-ellipsis"
-          >
-            {market.question}
-          </span>
-        </button>
-      </div>
-
-      <!-- Add outcomes section to non-featured cards -->
-      <div class="flex-1 flex flex-col justify-center px-2">
-        <div class="flex flex-col justify-center">
-          {#if isYesNoMarket(market)}
-            <!-- Yes/No buttons side by side -->
-            <div class="h-full items-center flex gap-2 justify-center">
-              {#if getYesNoIndices(market).yesIndex !== -1}
-                {@const yesIndex = getYesNoIndices(market).yesIndex}
-                <MarketOutcomeButton
-                  outcome="Yes"
-                  index={yesIndex}
-                  {market}
-                  {isWinningOutcome}
-                  {isMarketResolved}
-                  {isMarketExpiredUnresolved}
-                  {openBetModal}
-                  isYesNo={true}
-                />
-              {/if}
-              {#if getYesNoIndices(market).noIndex !== -1}
-                {@const noIndex = getYesNoIndices(market).noIndex}
-                <MarketOutcomeButton
-                  outcome="No"
-                  index={noIndex}
-                  {market}
-                  {isWinningOutcome}
-                  {isMarketResolved}
-                  {isMarketExpiredUnresolved}
-                  {openBetModal}
-                  isYesNo={true}
-                />
-              {/if}
-            </div>
-          {:else}
-            <div
-              class="max-h-[135px] flex flex-col gap-0.5 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-kong-border"
-            >
-              {#each market.outcomes as outcome, i}
-                <div
-                  class="relative rounded {!isMarketExpiredUnresolved(market) &&
-                  !isMarketResolved(market)
-                    ? 'hover:bg-kong-bg-secondary/40 cursor-pointer'
-                    : ''}"
-                >
-                  <MarketOutcomeButton
-                    {outcome}
-                    index={i}
-                    {market}
-                    {isWinningOutcome}
-                    {isMarketResolved}
-                    {isMarketExpiredUnresolved}
-                    {openBetModal}
-                  />
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
-      </div>
-
-      <!-- Add footer info similar to featured cards -->
-      <div class="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-2 pb-2 mt-auto">
-        <div class="flex items-center gap-1">
-          <span
-            class="text-kong-text-secondary text-xs whitespace-nowrap flex items-center gap-1"
-          >
-            <TokenImages
-              tokens={[
-                $userTokens.tokens.find((t) => t.address === market.token_id),
-              ]}
-              size={20}
-            />
-            {formatBalance(
-              market.outcome_pools.reduce(
-                (acc, pool) => acc + Number(pool || 0),
-                0,
-              ),
-              8,
-            )}
-          </span>
-          <span
-            class="py-0.5 px-1.5 flex items-center gap-1 text-kong-text-secondary bg-kong-accent/10 text-kong-accent rounded text-xs font-medium"
-          >
-            <Folder class="w-3 h-3" />
-            {formatCategory(market.category)}
-          </span>
-        </div>
-        <div class="flex items-center justify-end gap-2">
-          {#if showEndTime}
-            <span
-              class="flex items-center gap-1 text-kong-text-secondary text-xs whitespace-nowrap"
-            >
-              <Calendar class="w-3 h-3" />
-              {#if isMarketResolved(market)}
-                <span>Ended</span>
-              {:else if isMarketVoided(market)}
-                <span>Voided</span>
-              {:else}
-                <CountdownTimer endTime={market.end_time} />
-              {/if}
-            </span>
-          {/if}
-          {#if isUserAdmin}
-            <AdminDropdownButton
-              isOpen={isDropdownOpen}
-              onToggle={(e) => {
-                e.stopPropagation();
-                toggleDropdown();
-              }}
-              onSetFeatured={() => {
-                handleSetFeatured(market, !market.featured);
-                onDropdownToggle?.();
-              }}
-              onResolve={() => {
-                openResolutionModal(market);
-                onDropdownToggle?.();
-              }}
-              onVoid={() => {
-                handleVoidMarket(market);
-                onDropdownToggle?.();
-              }}
-              isFeatured={market.featured}
-            />
-          {/if}
+          <Star class="w-2.5 h-2.5" fill="currentColor" />
         </div>
       </div>
     {/if}
 
-    <!-- Status badge (moved to top right) -->
-    <div class="absolute top-0 right-0 flex items-center gap-1">
+    <!-- Resolved overlay - show text only when not hovered -->
+    {#if marketStatus.isResolved(market) && !hasClaim}
       <div
-        class="px-1.5 py-0.5 rounded text-xs text-kong-bg-secondary {getMarketStatusColor(
-          market,
-        )}"
+        class="absolute inset-0 flex items-center justify-center z-10 bg-black/30 {hasClaim ? 'backdrop-blur-sm' : 'backdrop-blur-[1px] group-hover:backdrop-blur-none'} rounded-kong-roundness transition-all duration-200 group-hover:opacity-0"
       >
-        {getMarketStatusText(market)}
+        <span class="text-white/50 font-semibold text-lg">RESOLVED</span>
       </div>
-      {#if market.featured}
-        <div
-          class="px-1.5 h-5 rounded text-xs bg-kong-accent-yellow text-kong-text-primary/90 flex items-center gap-1"
+    {/if}
+    
+    <!-- Claim overlay for resolved markets with rewards -->
+    {#if marketStatus.isResolved(market) && hasClaim}
+      <div
+        class="absolute inset-0 flex items-center justify-center z-10 bg-black/30 backdrop-blur-sm rounded-kong-roundness"
+      >
+        <ButtonV2
+          theme="accent-green"
+          variant="shine"
+          size="lg"
+          onclick={(e) => {
+            e.stopPropagation();
+            goto(`/predict/${market.id}`);
+          }}
+          className="shadow-xl hover:scale-102"
         >
-          <Star class="w-3 h-3" stroke="" strokeWidth="1" fill="currentColor" />
-        </div>
-      {/if}
-      {#if hasClaim}
-        <div
-          class="px-1.5 h-5 rounded text-xs bg-kong-success text-white flex items-center gap-1 animate-pulse"
-          title="You have rewards to claim"
-        >
-          <Gift class="w-3 h-3" />
-          <span>Reward</span>
-        </div>
-      {/if}
-    </div>
+          <div class="flex items-center gap-2">
+            <Gift class="w-5 h-5" />
+            <span>Claim Rewards</span>
+          </div>
+        </ButtonV2>
+      </div>
+    {/if}
   </div>
-</Panel>
+</Card>
 
 <style>
   /* Smooth hover transitions */

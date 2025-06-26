@@ -108,7 +108,7 @@ function createMarketStore() {
           subscribe(state => resolve(state))();
         });
 
-        let marketsResult;
+        let marketsResult: { markets: Market[], total_count?: bigint, total?: bigint };
 
         // Check if we need to filter by current user
         if (statusFilter === 'myMarkets') {
@@ -172,14 +172,14 @@ function createMarketStore() {
         if (statusFilter === 'active') {
           apiStatusFilter = "Active";
         } else if (statusFilter === 'pending') {
-          apiStatusFilter = "PendingActivation";
+          apiStatusFilter = "ExpiredUnresolved";
         } else if (statusFilter === 'closed') {
           apiStatusFilter = "Closed";
         } else if (statusFilter === 'disputed') {
           apiStatusFilter = "Disputed";
         } else if (statusFilter === 'voided') {
           apiStatusFilter = "Voided";
-        } 
+        }
                 
         const allMarketsResult = await getAllMarkets({
           start: 0,
@@ -189,7 +189,7 @@ function createMarketStore() {
           statusFilter: statusFilter === 'all' ? undefined : apiStatusFilter
         });
         
-        // No transformation needed for legacy backend
+        
         update(state => ({
           ...state,
           markets: allMarketsResult.markets || [],
@@ -232,6 +232,8 @@ export const filteredMarkets = derived(marketStore, $marketStore => {
         return selectedCategory in market.category;
       })
     : markets;
+  
+  // No additional client-side filtering needed since backend handles it correctly
     
   return filtered;
 });
@@ -248,16 +250,18 @@ export const groupedFilteredMarkets = derived(marketStore, $marketStore => {
         return selectedCategory in market.category;
       })
     : markets;
-    
-  // Group markets by their status
-  // Handle both 'Active' and 'Open' status variants for compatibility
+  
+  // Active markets: have 'Active' status
   const active = filtered.filter(market => 
-    'Active' in market.status || 'Open' in market.status
+    'Active' in market.status
   );
+  
+  // Expired but unresolved: have 'ExpiredUnresolved' status
   const expired_unresolved = filtered.filter(market => 
-    ('Active' in market.status || 'Open' in market.status) && 
-    BigInt(market.end_time) <= BigInt(Date.now() * 1_000_000)
+    'ExpiredUnresolved' in market.status
   );
+  
+  // Resolved markets: either Closed or Voided
   const resolved = filtered.filter(market => 
     'Closed' in market.status || 'Voided' in market.status
   );

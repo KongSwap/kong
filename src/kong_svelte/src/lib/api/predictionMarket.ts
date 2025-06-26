@@ -15,7 +15,7 @@ export async function getAllMarkets(
   options: {
     start?: number;
     length?: number;
-    statusFilter?: "Open" | "Closed" | "Disputed" | "Voided";
+    statusFilter?: "Active" | "Closed" | "Disputed" | "Voided" | "ExpiredUnresolved" | "PendingActivation";
     sortOption?: {
       type: "CreatedAt" | "TotalPool" | "EndTime";
       direction: "Ascending" | "Descending";
@@ -26,10 +26,12 @@ export async function getAllMarkets(
 
   const statusFilterValue: [] | [MarketStatus] = options.statusFilter
     ? [
-        options.statusFilter === "Open" ? { Active: null } as MarketStatus :
+        options.statusFilter === "Active" ? { Active: null } as MarketStatus :
         options.statusFilter === "Closed" ? { Closed: [] } as MarketStatus :
         options.statusFilter === "Disputed" ? { Disputed: null } as MarketStatus :
         options.statusFilter === "Voided" ? { Voided: null } as MarketStatus :
+        options.statusFilter === "ExpiredUnresolved" ? { ExpiredUnresolved: null } as MarketStatus :
+        options.statusFilter === "PendingActivation" ? { PendingActivation: null } as MarketStatus :
         undefined
       ].filter(Boolean) as [MarketStatus]
     : [];
@@ -408,6 +410,7 @@ export async function getUserPendingClaims(principal: string) {
   const actor = predictionActor({anon: true});
   try {
     const pendingClaims = await actor.get_user_pending_claims(principal);
+    console.log("pendingClaims", pendingClaims)
     return pendingClaims;
   } catch (error) {
     console.error("Error in getUserPendingClaims:", error);

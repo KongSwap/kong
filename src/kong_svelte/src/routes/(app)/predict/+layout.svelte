@@ -6,6 +6,6 @@
 </script>
 
 <!-- Regular prediction markets content -->
-<div class="container mx-auto !max-w-[1600px] text-kong-text-primary my-4 px-4">
+<div class="container mx-auto text-kong-text-primary my-4 px-4">
   {@render children?.()}
 </div>

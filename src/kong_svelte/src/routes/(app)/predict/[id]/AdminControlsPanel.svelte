@@ -1,18 +1,24 @@
 <script lang="ts">
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import AdminResolutionModal from "../AdminResolutionModal.svelte";
   import { createEventDispatcher } from "svelte";
   import { getMarket } from "$lib/api/predictionMarket";
   import { page } from "$app/stores";
   import { get } from "svelte/store";
+  import { Shield } from "lucide-svelte";
 
-  export let isUserAdmin: boolean;
-  export let loadingAdmin: boolean;
-  export let adminError: string | null = null;
-  export let isMarketResolved: boolean;
-  export let isMarketVoided: boolean;
-  export let onOpenVoidDialog: () => void;
-  export let market: any;
+  let { isUserAdmin, loadingAdmin, adminError = null, onOpenVoidDialog, market } = $props<{
+    isUserAdmin: boolean;
+    loadingAdmin: boolean;
+    adminError?: string | null;
+    onOpenVoidDialog: () => void;
+    market: any;
+  }>();
+  
+  // Derive values from market
+  let isMarketClosed = $derived(market?.status?.Closed !== undefined);
+  let isMarketResolved = $derived(isMarketClosed);
+  let isMarketVoided = $derived(market?.status?.Voided !== undefined);
 
   let showAdminResolutionModal = false;
 
@@ -24,41 +30,51 @@
     const marketData = await getMarket(marketId);
     dispatch('marketUpdated', { market: marketData[0] });
   }
-
-  function openResolutionModal() {
-    showAdminResolutionModal = true;
-  }
-  function closeResolutionModal() {
-    showAdminResolutionModal = false;
-  }
 </script>
 
 {#if loadingAdmin}
-  <Panel variant="transparent" className="backdrop-blur-sm !rounded shadow-lg border border-kong-border/10 animate-fadeIn">
-    <div class="text-sm text-kong-text-secondary">Checking admin status...</div>
-  </Panel>
+  <Card>
+    <div class="p-4 text-sm text-kong-text-secondary">Checking admin status...</div>
+  </Card>
 {:else if isUserAdmin}
-  <Panel variant="transparent" className="backdrop-blur-sm !rounded shadow-lg border border-kong-border/10 animate-fadeIn">
-    <h3 class="text-sm font-bold text-kong-error mb-2">Admin Controls</h3>
-    <div class="text-xs text-kong-text-secondary mb-2">You are an admin. Use these tools with caution.</div>
-    <!-- Admin actions -->
-    {#if !isMarketResolved && !isMarketVoided}
-      <button class="bg-kong-accent-yellow text-kong-text-on-primary px-3 py-2 rounded mb-2 hover:bg-yellow-700 transition-colors w-full" onclick={openResolutionModal}>
-        Resolve Market
-      </button>
-      <button class="bg-kong-error text-kong-text-on-primary px-3 py-2 rounded hover:bg-red-400 transition-colors w-full" onclick={onOpenVoidDialog}>
-        Void Market
-      </button>
-    {/if}
-  </Panel>
+  <Card hasHeader={true}>
+    <svelte:fragment slot="header">
+      <div class="flex items-center gap-2">
+        <Shield class="w-5 h-5 text-kong-error" />
+        <h3 class="text-base font-semibold text-kong-text-primary">Admin Controls</h3>
+      </div>
+      <span class="text-xs text-kong-error bg-kong-error/10 px-2 py-1 rounded-full">
+        Admin Only
+      </span>
+    </svelte:fragment>
+    
+    <div class="p-4">
+      <div class="text-xs text-kong-text-secondary mb-3">Use these tools with caution.</div>
+      <!-- Admin actions -->
+      {#if !isMarketResolved && !isMarketVoided}
+        <div class="space-y-2">
+          <button class="bg-kong-accent-yellow text-kong-text-on-primary px-3 py-2 rounded hover:bg-yellow-700 transition-colors w-full text-sm font-medium" onclick={() => showAdminResolutionModal = true}>
+            Propose Resolution
+          </button>
+          <button class="bg-kong-error text-kong-text-on-primary px-3 py-2 rounded hover:bg-red-400 transition-colors w-full text-sm font-medium" onclick={onOpenVoidDialog}>
+            Void Market
+          </button>
+        </div>
+      {:else}
+        <div class="text-sm text-kong-text-secondary text-center">
+          Market already {isMarketResolved ? 'resolved' : 'voided'}
+        </div>
+      {/if}
+    </div>
+  </Card>
   <AdminResolutionModal
     isOpen={showAdminResolutionModal}
     {market}
-    onClose={closeResolutionModal}
+    onClose={() => showAdminResolutionModal = false}
     onResolved={handleAdminResolved}
   />
 {:else if adminError}
-  <Panel variant="transparent" className="backdrop-blur-sm !rounded shadow-lg border border-kong-border/10 animate-fadeIn">
-    <div class="text-sm text-kong-error">{adminError}</div>
-  </Panel>
+  <Card>
+    <div class="p-4 text-sm text-kong-error">{adminError}</div>
+  </Card>
 {/if} 

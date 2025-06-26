@@ -1,17 +1,15 @@
 <script lang="ts">
   import {
-    TrendingUp,
-    Clock,
-    Users,
     Shield,
-    User,
-    Activity,
+    Info,
   } from "lucide-svelte";
-  import Panel from "$lib/components/common/Panel.svelte";
+  import BetBarChart from "./BetBarChart.svelte";
+  import ChanceLineChart from "./ChanceLineChart.svelte";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import type { Market } from "$lib/types/predictionMarket";
   import { userTokens } from "$lib/stores/userTokens";
-  import { formatTimeLeft } from "$lib/utils/timeFormatUtils";
   import { isAdmin } from "$lib/api/predictionMarket";
   import { goto } from "$app/navigation";
   import { truncateAddress } from "$lib/utils/principalUtils";
@@ -22,33 +20,67 @@
     shareToReddit,
     shareToTikTok,
     shareToTelegram,
-    copyLinkToClipboard,
   } from "$lib/utils/socialShareUtils";
 
   let {
-    totalPool,
-    betCounts,
-    timeLeft,
-    isMarketResolved,
-    marketEndTime,
     market,
-    isPendingResolution,
-    isMarketVoided,
     loading = false,
+    marketBets = [],
+    selectedTab = 'percentageChance',
+    onTabChange,
   } = $props<{
-    totalPool: number;
-    betCounts: any[];
-    timeLeft: string;
-    isMarketResolved: boolean;
-    marketEndTime: string;
     market: Market;
-    isPendingResolution: boolean;
-    isMarketVoided: boolean;
     loading?: boolean;
+    marketBets?: any[];
+    selectedTab?: string;
+    onTabChange?: (tab: string) => void;
   }>();
+  
+  // Only derive what we actually need multiple times
+  let isMarketResolved = $derived(market?.status?.Closed !== undefined);
+  let marketEndTime = $derived(
+    market?.end_time ? Number(market.end_time) / 1_000_000 : null
+  );
+  // Calculate time left dynamically
+  let timeLeft = $derived(() => {
+    if (!market?.end_time || !marketEndTime) return "";
+    
+    // Force recalculation when currentTime changes
+    const now = currentTime;
+    const diff = marketEndTime - now;
+    
+    if (diff <= 0) return "Ended";
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    
+    if (days > 0) return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+  });
 
   let isCreatorAdmin = $state(false);
   let checkingAdmin = $state(true);
+  let currentTime = $state(Date.now());
+
+  // Update current time every second for countdown
+  $effect(() => {
+    const isActive = !isMarketResolved && 
+                    market?.status?.Voided === undefined && 
+                    marketEndTime && 
+                    marketEndTime > Date.now();
+    
+    if (isActive) {
+      const interval = setInterval(() => {
+        currentTime = Date.now();
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  });
 
   // Check if the market creator is an admin
   $effect(() => {
@@ -72,41 +104,27 @@
     $userTokens.tokens.find((t) => t.address === market.token_id),
   );
 
-  const timeLeftValue = $derived(
-    isMarketResolved
-      ? "Market Closed"
-      : timeLeft || formatTimeLeft(marketEndTime),
-  );
-
-  const totalPredictionsValue = $derived(
-    `${betCounts.reduce((a, b) => a + b, 0).toLocaleString()} predictions`,
-  );
-
-  const totalPoolValue = $derived(
-    `${formatBalance(totalPool, 8)} ${token?.symbol}`,
-  );
-  const totalPoolLogoUrl = $derived(token?.logo_url);
-
-  const marketStats = $derived([
-    {
-      label: "Total Pool",
-      value: totalPoolValue,
-      icon: null,
-      logoUrl: totalPoolLogoUrl,
-    },
-    {
-      label: "Time Left",
-      value: timeLeftValue,
-      icon: Clock,
-      logoUrl: null,
-    },
-    {
-      label: "Total Predictions",
-      value: totalPredictionsValue,
-      icon: Users,
-      logoUrl: null,
-    },
-  ]);
+  const marketStats = $derived(() => {
+    const totalBets = market?.bet_counts?.reduce((a, b) => a + Number(b), 0) || 0;
+    
+    return [
+      {
+        label: "Total Pool",
+        value: `${formatBalance(Number(market?.total_pool || 0), 8)} ${token?.symbol}`,
+        token: token,
+      },
+      {
+        label: "Time Left",
+        value: isMarketResolved ? "Market Closed" : timeLeft(),
+        token: null,
+      },
+      {
+        label: "Total Predictions",
+        value: `${totalBets.toLocaleString()}`,
+        token: null,
+      },
+    ];
+  });
 
   // Build market URL
   const marketUrl = $derived(() => {
@@ -116,185 +134,324 @@
     return "";
   });
 
-  // Social share handlers
-  function handleShareToTwitter() {
-    shareToTwitter(marketUrl(), market.question);
+  // Check if there's chart data available
+  const hasChartData = $derived(marketBets && marketBets.length > 0);
+  
+  // Track error states for charts
+  let betChartError = $state(false);
+  let chanceChartError = $state(false);
+  let marketBetsSnapshot = $state<any[]>([]);
+
+  // When marketBets changes, update the snapshot and reset chart errors
+  $effect(() => {
+    if (marketBets) {
+      // Create a new array to break any reactivity issues
+      marketBetsSnapshot = [...marketBets];
+      // Reset error states when data changes
+      betChartError = false;
+      chanceChartError = false;
+    }
+  });
+
+  // Error handler functions
+  function handleBetChartError() {
+    betChartError = true;
   }
-  function handleShareToFacebook() {
-    shareToFacebook(marketUrl());
-  }
-  function handleShareToReddit() {
-    shareToReddit(marketUrl(), market.question);
-  }
-  function handleShareToTikTok() {
-    shareToTikTok(marketUrl());
-  }
-  function handleShareToTelegram() {
-    shareToTelegram(marketUrl(), market.question);
+
+  function handleChanceChartError() {
+    chanceChartError = true;
   }
 </script>
 
-<Panel
-  variant="transparent"
-  className="bg-kong-bg-primary/80 backdrop-blur-sm !rounded shadow-lg border border-kong-border/10 animate-fadeIn"
->
-  <h2 class="text-sm font-medium text-kong-text-secondary mb-4">
-    Market Details
-  </h2>
+<Card hasHeader={false}>
+  <!-- Tabs at the top -->
+  <div class="flex border-b border-kong-border overflow-x-auto scrollbar-none">
+    <button
+      onclick={() => onTabChange?.("percentageChance")}
+      class="px-4 py-2.5 focus:outline-none transition-colors relative whitespace-nowrap flex-1 {selectedTab ===
+      'percentageChance'
+        ? 'text-kong-primary font-semibold'
+        : 'text-kong-text-secondary hover:text-kong-text-primary'}"
+      disabled={!hasChartData}
+    >
+      <span>Odds</span>
+      {#if selectedTab === "percentageChance"}
+        <div
+          class="absolute bottom-0 left-0 w-full h-0.5 bg-kong-primary rounded-t-full"
+        ></div>
+      {/if}
+    </button>
+    <button
+      onclick={() => onTabChange?.("betHistory")}
+      class="px-4 py-2.5 focus:outline-none transition-colors relative whitespace-nowrap flex-1 {selectedTab ===
+      'betHistory'
+        ? 'text-kong-primary font-semibold'
+        : 'text-kong-text-secondary hover:text-kong-text-primary'}"
+      disabled={!hasChartData}
+    >
+      <span>History</span>
+      {#if selectedTab === "betHistory"}
+        <div
+          class="absolute bottom-0 left-0 w-full h-0.5 bg-kong-primary rounded-t-full"
+        ></div>
+      {/if}
+    </button>
+    <button
+      onclick={() => onTabChange?.("rules")}
+      class="px-4 py-2.5 focus:outline-none transition-colors relative whitespace-nowrap flex-1 {selectedTab ===
+      'rules'
+        ? 'text-kong-primary font-semibold'
+        : 'text-kong-text-secondary hover:text-kong-text-primary'}"
+    >
+      <span>Rules</span>
+      {#if selectedTab === "rules"}
+        <div
+          class="absolute bottom-0 left-0 w-full h-0.5 bg-kong-primary rounded-t-full"
+        ></div>
+      {/if}
+    </button>
+  </div>
 
-  {#if loading}
-    <!-- Loading State -->
-    <div class="space-y-2">
-      {#each Array(5) as _, i}
-        <div class="flex items-center justify-between py-2">
-          <div class="flex items-center gap-2">
+  <!-- Chart Content -->
+  <div class="px-4 py-3">
+    {#if selectedTab === "percentageChance"}
+      {#if market && marketBetsSnapshot.length > 0}
+        {#if chanceChartError}
+          <div
+            class="h-[200px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
+          >
+            <p class="text-kong-text-secondary text-xs">
+              Unable to display chart
+            </p>
+          </div>
+        {:else}
+          <div class="chart-wrapper h-[200px]">
+            <ChanceLineChart
+              {market}
+              marketBets={marketBetsSnapshot}
+              on:error={handleChanceChartError}
+            />
+          </div>
+        {/if}
+      {:else}
+        <div
+          class="h-[200px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
+        >
+          <p class="text-kong-text-secondary text-xs">No data available</p>
+        </div>
+      {/if}
+    {:else if selectedTab === "betHistory"}
+      {#if market && marketBetsSnapshot.length > 0}
+        {#if betChartError}
+          <div
+            class="h-[200px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
+          >
+            <p class="text-kong-text-secondary text-xs">
+              Unable to display history
+            </p>
+          </div>
+        {:else}
+          <div class="chart-wrapper h-[200px]">
+            <BetBarChart
+              {market}
+              marketBets={marketBetsSnapshot}
+              on:error={handleBetChartError}
+            />
+          </div>
+        {/if}
+      {:else}
+        <div
+          class="h-[200px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
+        >
+          <p class="text-kong-text-secondary text-xs">No history data available</p>
+        </div>
+      {/if}
+    {:else if selectedTab === "rules"}
+      <div class="h-[200px] overflow-y-auto !text-kong-text-primary">
+        {#if market && market.rules}
+          <div class="prose prose-invert max-w-none">
+            <p class="text-sm text-kong-text-secondary whitespace-pre-wrap">{market.rules}</p>
+          </div>
+        {:else}
+          <p class="text-kong-text-secondary text-center">
+            No specific rules are available for this market.
+          </p>
+        {/if}
+      </div>
+    {/if}
+  </div>
+  
+  <!-- Details Section (Always Visible) -->
+  <div class="px-4 pb-4 pt-2 border-t border-kong-border/20">
+    {#if loading}
+      <!-- Loading State -->
+      <div class="space-y-2">
+        {#each Array(5) as _, i}
+          <div class="flex items-center justify-between py-2">
+            <div class="flex items-center gap-2">
+              <div
+                class="w-4 h-4 bg-kong-bg-secondary/30 rounded animate-pulse"
+              ></div>
+              <div
+                class="h-4 w-20 bg-kong-bg-secondary/30 rounded animate-pulse"
+              ></div>
+            </div>
             <div
-              class="w-4 h-4 bg-kong-bg-secondary/30 rounded animate-pulse"
-            ></div>
-            <div
-              class="h-4 w-20 bg-kong-bg-secondary/30 rounded animate-pulse"
+              class="h-4 w-24 bg-kong-bg-secondary/30 rounded animate-pulse"
             ></div>
           </div>
-          <div
-            class="h-4 w-24 bg-kong-bg-secondary/30 rounded animate-pulse"
-          ></div>
-        </div>
-      {/each}
+        {/each}
 
-      <!-- Loading Creator Section -->
-      <div class="pt-3 border-t border-kong-border/20">
-        <div class="flex items-center justify-between">
-          <div
-            class="h-4 w-16 bg-kong-bg-secondary/30 rounded animate-pulse"
-          ></div>
-          <div
-            class="h-4 w-32 bg-kong-bg-secondary/30 rounded animate-pulse"
-          ></div>
-        </div>
-      </div>
-
-      <!-- Loading Share Section -->
-      <div class="flex items-center justify-between py-2">
-        <div
-          class="h-4 w-12 bg-kong-bg-secondary/30 rounded animate-pulse"
-        ></div>
-        <div class="flex items-center gap-1">
-          {#each Array(6) as _}
+        <!-- Loading Creator Section -->
+        <div class="pt-3 border-t border-kong-border/20">
+          <div class="flex items-center justify-between">
             <div
-              class="w-7 h-7 bg-kong-bg-secondary/30 rounded animate-pulse"
+              class="h-4 w-16 bg-kong-bg-secondary/30 rounded animate-pulse"
             ></div>
-          {/each}
+            <div
+              class="h-4 w-32 bg-kong-bg-secondary/30 rounded animate-pulse"
+            ></div>
+          </div>
         </div>
-      </div>
-    </div>
-  {:else}
-    <!-- Actual Content -->
-    <div class="space-y-2">
-      <!-- Market Status -->
-      <div class="flex items-center justify-between py-2">
-        <div class="flex items-center gap-2 text-kong-text-secondary">
-          <Activity class="w-4 h-4" />
-          <span class="text-sm">Status</span>
-        </div>
-        <div class="flex items-center gap-2">
-          {#if isMarketResolved}
-            <span
-              class="px-2 py-0.5 bg-kong-success/20 text-kong-success text-xs rounded-full font-medium"
-            >
-              Resolved
-            </span>
-          {:else if isMarketVoided}
-            <span
-              class="px-2 py-0.5 bg-kong-error/20 text-kong-error text-xs rounded-full font-medium"
-            >
-              Voided
-            </span>
-          {:else if isPendingResolution}
-            <span
-              class="px-2 py-0.5 bg-yellow-500/20 text-yellow-500 text-xs rounded-full font-medium"
-            >
-              Pending Resolution
-            </span>
-          {:else}
-            <span
-              class="px-2 py-0.5 bg-kong-accent-blue/20 text-kong-accent-blue text-xs rounded-full font-medium"
-            >
-              Active
-            </span>
-          {/if}
-        </div>
-      </div>
 
-      {#each marketStats as stat}
+        <!-- Loading Share Section -->
+        <div class="flex items-center justify-between py-2">
+          <div
+            class="h-4 w-12 bg-kong-bg-secondary/30 rounded animate-pulse"
+          ></div>
+          <div class="flex items-center gap-1">
+            {#each Array(6) as _}
+              <div
+                class="w-7 h-7 bg-kong-bg-secondary/30 rounded animate-pulse"
+              ></div>
+            {/each}
+          </div>
+        </div>
+      </div>
+    {:else}
+      <!-- Actual Content -->
+      <div class="space-y-2">
+        <!-- Market Status -->
         <div class="flex items-center justify-between py-2">
           <div class="flex items-center gap-2 text-kong-text-secondary">
-            {#if stat.icon}
-              {@const Icon = stat.icon}
-              <Icon class="w-4 h-4" />
-            {:else if stat.logoUrl}
-              <img src={stat.logoUrl} alt="" class="w-4 h-4 rounded-full" />
-            {/if}
-            <span class="text-sm">{stat.label}</span>
+            <span>Status</span>
           </div>
-          <span class="text-sm font-medium text-kong-text-primary">
-            {stat.value}
-          </span>
+          <div class="flex items-center gap-2">
+            {#if isMarketResolved}
+              <span
+                class="px-2 py-0.5 bg-kong-success/20 text-kong-success rounded-full font-medium"
+              >
+                Resolved
+              </span>
+            {:else if market?.status?.Voided !== undefined}
+              <span
+                class="px-2 py-0.5 bg-kong-error/20 text-kong-error rounded-full font-medium"
+              >
+                Voided
+              </span>
+            {:else if !isMarketResolved && marketEndTime && marketEndTime < Date.now()}
+              <span
+                class="px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded-full font-medium"
+              >
+                Pending Resolution
+              </span>
+            {:else}
+              <span
+                class="px-2 py-0.5 bg-kong-accent-blue/20 text-kong-accent-blue rounded-full font-medium"
+              >
+                Active
+              </span>
+            {/if}
+          </div>
         </div>
-      {/each}
 
-      <!-- Creator Information -->
-      <div class="flex items-center justify-between py-2">
-        <div class="flex items-center gap-2 text-kong-text-secondary">
-          <span class="text-sm">Creator</span>
-        </div>
-        <button
-          class="text-sm font-medium text-kong-text-primary hover:text-kong-primary transition-colors"
-          onclick={() => goto(`/wallets/${market.creator.toText()}`)}
-        >
-          {truncateAddress(market.creator.toText())}
-        </button>
-      </div>
+        {#each marketStats() as stat}
+          <div class="flex items-center justify-between py-2">
+            <div class="flex items-center gap-2 text-kong-text-secondary">
+              <span>{stat.label}</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              {#if stat.token}
+                <TokenImages tokens={[stat.token]} size={16} />
+              {/if}
+              <span class="font-medium text-kong-text-primary">
+                {stat.value}
+              </span>
+            </div>
+          </div>
+        {/each}
 
-      <!-- Social Share -->
-      <div class="flex items-center justify-center py-2">
-        <div class="flex items-center gap-1">
+        <!-- Creator Information -->
+        <div class="flex items-center justify-between py-2">
+          <div class="flex items-center gap-2 text-kong-text-secondary">
+            <span>Creator</span>
+          </div>
           <button
-            onclick={handleShareToTwitter}
-            class="p-1.5 rounded hover:bg-kong-bg-secondary text-kong-text-secondary hover:text-kong-text-primary transition-colors"
-            aria-label="Share on X"
+            class="font-medium text-kong-text-primary hover:text-kong-primary transition-colors flex items-center gap-1"
+            onclick={() => goto(`/wallets/${market.creator.toText()}`)}
           >
-            <Icon icon="ri:twitter-x-fill" class="w-4 h-4" />
-          </button>
-          <button
-            onclick={handleShareToTelegram}
-            class="p-1.5 rounded hover:bg-kong-bg-secondary text-kong-text-secondary hover:text-kong-text-primary transition-colors"
-            aria-label="Share on Telegram"
-          >
-            <Icon icon="ri:telegram-fill" class="w-4 h-4" />
-          </button>
-          <button
-            onclick={handleShareToTikTok}
-            class="p-1.5 rounded hover:bg-kong-bg-secondary text-kong-text-secondary hover:text-kong-text-primary transition-colors"
-            aria-label="Share on TikTok"
-          >
-            <Icon icon="ri:tiktok-fill" class="w-4 h-4" />
-          </button>
-          <button
-            onclick={handleShareToFacebook}
-            class="p-1.5 rounded hover:bg-kong-bg-secondary text-kong-text-secondary hover:text-kong-text-primary transition-colors"
-            aria-label="Share on Facebook"
-          >
-            <Icon icon="ri:facebook-fill" class="w-4 h-4" />
-          </button>
-          <button
-            onclick={handleShareToReddit}
-            class="p-1.5 rounded hover:bg-kong-bg-secondary text-kong-text-secondary hover:text-kong-text-primary transition-colors"
-            aria-label="Share on Reddit"
-          >
-            <Icon icon="ri:reddit-fill" class="w-4 h-4" />
+            {#if isCreatorAdmin}
+              <Shield class="w-3 h-3 text-kong-accent-yellow" />
+            {/if}
+            {truncateAddress(market.creator.toText())}
           </button>
         </div>
+
+        <!-- Social Share -->
+        <div class="flex items-center justify-center">
+          <div class="flex items-center gap-1">
+            <button
+              onclick={() => shareToTwitter(marketUrl(), market.question)}
+              class="p-1.5 rounded hover:bg-kong-bg-secondary text-kong-text-secondary/70 hover:text-kong-text-primary transition-colors"
+              aria-label="Share on X"
+            >
+              <Icon icon="ri:twitter-x-fill" class="w-6 h-6" />
+            </button>
+            <button
+              onclick={() => shareToTelegram(marketUrl(), market.question)}
+              class="p-1.5 rounded hover:bg-kong-bg-secondary text-kong-text-secondary/70 hover:text-kong-text-primary transition-colors"
+              aria-label="Share on Telegram"
+            >
+              <Icon icon="ri:telegram-fill" class="w-6 h-6" />
+            </button>
+            <button
+              onclick={() => shareToTikTok(marketUrl())}
+              class="p-1.5 rounded hover:bg-kong-bg-secondary text-kong-text-secondary/70 hover:text-kong-text-primary transition-colors"
+              aria-label="Share on TikTok"
+            >
+              <Icon icon="ri:tiktok-fill" class="w-6 h-6" />
+            </button>
+            <button
+              onclick={() => shareToFacebook(marketUrl())}
+              class="p-1.5 rounded hover:bg-kong-bg-secondary text-kong-text-secondary/70 hover:text-kong-text-primary transition-colors"
+              aria-label="Share on Facebook"
+            >
+              <Icon icon="ri:facebook-fill" class="w-6 h-6" />
+            </button>
+            <button
+              onclick={() => shareToReddit(marketUrl(), market.question)}
+              class="p-1.5 rounded hover:bg-kong-bg-secondary text-kong-text-secondary/70 hover:text-kong-text-primary transition-colors"
+              aria-label="Share on Reddit"
+            >
+              <Icon icon="ri:reddit-fill" class="w-6 h-6" />
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
-  {/if}
-</Panel>
+    {/if}
+  </div>
+</Card>
+
+<style lang="postcss">
+  .scrollbar-none {
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+  
+  .chart-wrapper {
+    height: 100%;
+    width: 100%;
+  }
+</style>

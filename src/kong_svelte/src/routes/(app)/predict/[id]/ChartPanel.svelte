@@ -1,20 +1,13 @@
 <script lang="ts" runes>
   import BetBarChart from "./BetBarChart.svelte";
   import ChanceLineChart from "./ChanceLineChart.svelte";
+  import Card from "$lib/components/common/Card.svelte";
 
   const props = $props<{
     market: any;
     marketBets: any[];
-    selectedChartTab: string;
-    onTabChange?: (tab: string) => void;
+    selectedTab: string;
   }>();
-
-  // Function to handle tab selection
-  function selectTab(tab: string) {
-    if (tab !== props.selectedChartTab && props.onTabChange) {
-      props.onTabChange(tab);
-    }
-  }
 
   // Track error states for charts
   let betChartError = $state(false);
@@ -42,63 +35,16 @@
   }
 </script>
 
-<div class="flex flex-col gap-3 sm:gap-4">
-  <div
-    class="flex gap-2 sm:gap-4 border-b border-kong-border overflow-x-auto scrollbar-none"
-  >
-    <button
-      onclick={() => selectTab("percentageChance")}
-      class="px-3 sm:px-4 py-2 sm:py-3 focus:outline-none transition-colors relative whitespace-nowrap {props.selectedChartTab ===
-      'percentageChance'
-        ? 'text-kong-primary font-medium'
-        : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-    >
-      <span class="text-sm sm:text-base">Percentage Chance</span>
-      {#if props.selectedChartTab === "percentageChance"}
-        <div
-          class="absolute bottom-0 left-0 w-full h-0.5 bg-kong-primary rounded-t-full"
-        ></div>
-      {/if}
-    </button>
-    <button
-      onclick={() => selectTab("betHistory")}
-      class="px-3 sm:px-4 py-2 sm:py-3 focus:outline-none transition-colors relative whitespace-nowrap {props.selectedChartTab ===
-      'betHistory'
-        ? 'text-kong-primary font-medium'
-        : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-    >
-      <span class="text-sm sm:text-base">Prediction History</span>
-      {#if props.selectedChartTab === "betHistory"}
-        <div
-          class="absolute bottom-0 left-0 w-full h-0.5 bg-kong-primary rounded-t-full"
-        ></div>
-      {/if}
-    </button>
-    <button
-      onclick={() => selectTab("rules")}
-      class="px-3 sm:px-4 py-2 sm:py-3 focus:outline-none transition-colors relative whitespace-nowrap {props.selectedChartTab ===
-      'rules'
-        ? 'text-kong-primary font-medium'
-        : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-    >
-      <span class="text-sm sm:text-base">Rules</span>
-      {#if props.selectedChartTab === "rules"}
-        <div
-          class="absolute bottom-0 left-0 w-full h-0.5 bg-kong-primary rounded-t-full"
-        ></div>
-      {/if}
-    </button>
-  </div>
-
-  <div class="chart-container relative">
-    {#if props.selectedChartTab === "betHistory"}
+<Card className="">
+  <div class="chart-container relative p-3">
+    {#if props.selectedTab === "betHistory"}
       {#if props.market && marketBetsSnapshot.length > 0}
         {#if betChartError}
           <div
-            class="h-[300px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
+            class="h-[200px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
           >
-            <p class="text-kong-text-secondary">
-              Unable to display prediction history chart
+            <p class="text-kong-text-secondary text-xs">
+              Unable to display history
             </p>
           </div>
         {:else}
@@ -112,19 +58,19 @@
         {/if}
       {:else}
         <div
-          class="h-[300px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
+          class="h-[200px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
         >
-          <p class="text-kong-text-secondary">No prediction history data available</p>
+          <p class="text-kong-text-secondary text-xs">No history data available</p>
         </div>
       {/if}
-    {:else if props.selectedChartTab === "percentageChance"}
+    {:else if props.selectedTab === "percentageChance"}
       {#if props.market && marketBetsSnapshot.length > 0}
         {#if chanceChartError}
           <div
-            class="h-[300px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
+            class="h-[200px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
           >
-            <p class="text-kong-text-secondary">
-              Unable to display percentage chance chart
+            <p class="text-kong-text-secondary text-xs">
+              Unable to display chart
             </p>
           </div>
         {:else}
@@ -138,53 +84,30 @@
         {/if}
       {:else}
         <div
-          class="h-[300px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
+          class="h-[200px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
         >
-          <p class="text-kong-text-secondary">No percentage chance data available</p>
+          <p class="text-kong-text-secondary text-xs">No data available</p>
         </div>
       {/if}
-    {:else if props.selectedChartTab === "rules"}
-      <div class="px-4 h-[300px] overflow-y-auto bg-kong-bg-primary/10 rounded !text-kong-text-primary">
+    {:else if props.selectedTab === "rules"}
+      <div class="h-[200px] overflow-y-auto !text-kong-text-primary">
         {#if props.market && props.market.rules}
           <div class="prose prose-invert max-w-none">
-            {#if typeof props.market.rules === 'string'}
-              <p class="text-sm text-kong-text-secondary whitespace-pre-wrap">{props.market.rules}</p>
-            {:else if Array.isArray(props.market.rules)}
-              <ul>
-                {#each props.market.rules as rule}
-                  <li class="text-kong-text-primary">{rule}</li>
-                {/each}
-              </ul>
-            {:else}
-              <p class="text-kong-text-secondary">Rules format not recognized</p>
-            {/if}
+            <p class="text-sm text-kong-text-secondary whitespace-pre-wrap">{props.market.rules}</p>
           </div>
         {:else}
-          <div class="flex flex-col gap-3 h-full justify-center items-center">
-            <p class="text-kong-text-secondary text-center">
-              No specific rules are available for this market.
-            </p>
-            <p class="text-kong-text-secondary text-center text-sm">
-              Standard platform rules apply. The market will be resolved based on the actual outcome
-              when it is determined.
-            </p>
-          </div>
+          <p class="text-kong-text-secondary text-center">
+            No specific rules are available for this market.
+          </p>
         {/if}
       </div>
     {/if}
   </div>
-</div>
+</Card>
 
 <style lang="postcss">
-  .scrollbar-none {
-    scrollbar-width: none;
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
-
   .chart-container {
-    height: 300px;
+    height: 200px;
     width: 100%;
   }
 
