@@ -167,6 +167,9 @@
   //     liquidityStore.setAmount(1, calculateToken1FromPrice($liquidityStore.amount0, value));
   //   }
   // }, 150);
+
+  $inspect("livePool:", livePool);
+  $inspect("userPool:", userPool);
   
 
   // Handle input changes
@@ -466,14 +469,16 @@
       size="md"
       onclick={() => goto("/pools")}
     >
+    <div class="flex items-center gap-2">
       <ArrowLeft size={16} />
       Back to Pools
+    </div>
     </ButtonV2>
   </div>
 {:else}
   <div class="flex flex-col max-w-[1300px] mx-auto px-4 pb-8">
     <!-- Header -->
-    <div class="pb-8">
+    <div class="pb-4 lg:pb-8">
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
           <TokenImages tokens={[token0, token1]} size={32} overlap={true} />
@@ -482,92 +487,186 @@
           </h1>
         </div>
       </div>
-      
-      <!-- Key Metrics -->
-      <!-- {#if userPool && userPool.balance > 0n} -->
-      <div class="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {@render metricPanel(
-          "Position Value",
-          `$${formatToNonZeroDecimal(userPool?.usd_balance.toString())}`,
-          `<div class="flex justify-between text-xs w-full">
-            <div class="flex items-center gap-1">
-              <span class="text-kong-text-secondary">${token0?.symbol}:</span>
-              <span class="text-kong-text-primary font-medium">${formatToNonZeroDecimal(userPool?.amount_0.toString())}</span>
-            </div>
-            <div class="flex items-center gap-1">
-              <span class="text-kong-text-secondary">${token1?.symbol}:</span>
-              <span class="text-kong-text-primary font-medium">${formatToNonZeroDecimal(userPool?.amount_1.toString())}</span>
-            </div>
-          </div>`
-        )}
-        
-        {@render metricPanel(
-          "Pool Share",
-          `${formatToNonZeroDecimal(userPool?.poolSharePercentage.toString())}%`,
-          `<div class="flex justify-between items-center text-xs w-full">
-            <div class="flex items-center gap-1">
-              <span class="text-kong-text-secondary">LP:</span>
-              <span class="text-kong-text-primary font-medium">${formatToNonZeroDecimal(userPool?.balance.toString())}</span>
-            </div>
-            <div class="flex items-center gap-1">
-              <span class="text-kong-text-secondary">TVL:</span>
-              <span class="text-kong-text-primary font-medium">$${formatToNonZeroDecimal((livePool?.tvl || 0).toString())}</span>
-            </div>
-          </div>`
-        )}
-        
-        {@render metricPanel(
-          "Lifetime Earnings",
-          `$${calculateTotalEarnings()}`,
-          `<div class="flex justify-between items-center text-xs w-full">
-            <div class="flex items-center gap-2">
-              ${userPool?.userFeeShare0 && userPool?.userFeeShare0 > 0 ? `
-                <span class="text-kong-text-secondary">${userPool?.symbol_0}: <span class="text-kong-accent-green font-medium">${formatToNonZeroDecimal(userPool?.userFeeShare0.toString())}</span></span>
-              ` : ''}
-              ${userPool?.userFeeShare1 && userPool?.userFeeShare1 > 0 ? `
-                <span class="text-kong-text-secondary">${userPool?.symbol_1}: <span class="text-kong-accent-green font-medium">${formatToNonZeroDecimal(userPool?.userFeeShare1.toString())}</span></span>
-              ` : ''}
-            </div>
-            <div class="flex items-center gap-1">
-              <span class="text-kong-text-secondary">APR (24h):</span>
-              <span class="text-kong-accent-green font-semibold">${formatToNonZeroDecimal((livePool?.rolling_24h_apy || 0).toString())}%</span>
-            </div>
-          </div>`,
-          "text-kong-accent-green"
-        )}
-      </div>
-    <!-- {/if} -->
-    </div>
-    
-    <!-- Main Content Row -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-      <!-- TVL Chart -->
-      <TVLHistoryChart
-        {balanceHistory}
-        isLoading={isChartLoading}
-        errorMessage={chartErrorMessage}
-        currentPool={livePool}
-        fetchBalanceHistoryData={loadChartData}
-      />
-      <div class="flex flex-col gap-y-4">
+      <div class="block lg:hidden mb-4">
         <Panel variant="solid" type="secondary">
           <div class="space-y-3">
-            <!-- <div class="flex items-center gap-2">
-              <div class="w-6 h-6 bg-kong-primary rounded-full flex items-center justify-center text-xs font-bold text-white">1</div>
-              <h3 class="text-kong-text-primary font-medium">Select Token Pair</h3>
-            </div> -->
-            
-            <div>
               <TokenSelectionPanel
                 {token0}
                 {token1}
                 onTokenSelect={handleTokenSelect}
                 secondaryTokenIds={SECONDARY_TOKEN_IDS}
               />
+          </div>
+        </Panel>
+      </div>
+      <!-- Key Metrics -->
+      <!-- {#if userPool && userPool.balance > 0n} -->
+      <div class="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+         {@render metricPanel(
+           "TVL",
+           `${(livePool?.tvl || 0) > 100 ? (livePool?.tvl || 0).toLocaleString(undefined, {
+             style: 'currency',
+             currency: 'USD',
+             minimumFractionDigits: 0,
+             maximumFractionDigits: 0
+           }) : (livePool?.tvl || 0).toLocaleString(undefined, {
+             style: 'currency',
+             currency: 'USD',
+             minimumFractionDigits: 2,
+             maximumFractionDigits: 2
+           })}`,
+           `<div class="flex justify-between items-center text-xs w-full">
+             <div class="flex items-center gap-1">
+               <span class="text-kong-text-secondary">${livePool?.symbol_0}:</span>
+               <span class="text-kong-text-primary font-medium">${formatToNonZeroDecimal((livePool?.balance_0 || 0).toString())}</span>
+             </div>
+             <div class="flex items-center gap-1">
+               <span class="text-kong-text-secondary">${livePool?.symbol_1}:</span>
+               <span class="text-kong-text-primary font-medium">${formatToNonZeroDecimal((livePool?.balance_1 || 0).toString())}</span>
+             </div>
+           </div>`
+         )}
+
+         {@render metricPanel(
+           "APR (24h)",
+           `${formatToNonZeroDecimal((livePool?.rolling_24h_apy || 0).toString())}%`,
+           `<div class="flex justify-between items-center text-xs w-full">
+             <div class="flex items-center gap-1">
+               <span class="text-kong-text-secondary">Pool Fee:</span>
+               <span class="text-kong-text-primary font-medium">${formatToNonZeroDecimal(((livePool?.lp_fee_bps || 0) / 100).toString())}%</span>
+             </div>
+             <div class="flex items-center gap-1">
+               <span class="text-kong-text-secondary">24h LP Fees:</span>
+               <span class="text-kong-text-primary font-medium">${(livePool?.rolling_24h_lp_fee || 0) > 100 ? (livePool?.rolling_24h_lp_fee || 0).toLocaleString(undefined, {
+                 style: 'currency',
+                 currency: 'USD',
+                 minimumFractionDigits: 0,
+                 maximumFractionDigits: 0
+               }) : (livePool?.rolling_24h_lp_fee || 0).toLocaleString(undefined, {
+                 style: 'currency',
+                 currency: 'USD',
+                 minimumFractionDigits: 2,
+                 maximumFractionDigits: 2
+               })}</span>
+             </div>
+           </div>`,
+           "text-kong-accent-green"
+         )}
+
+         {@render metricPanel(
+           "24h Volume",
+           `${(livePool?.rolling_24h_volume || 0) > 100 ? (livePool?.rolling_24h_volume || 0).toLocaleString(undefined, {
+             style: 'currency',
+             currency: 'USD',
+             minimumFractionDigits: 0,
+             maximumFractionDigits: 0
+           }) : (livePool?.rolling_24h_volume || 0).toLocaleString(undefined, {
+             style: 'currency',
+             currency: 'USD',
+             minimumFractionDigits: 2,
+             maximumFractionDigits: 2
+           })}`,
+           `<div class="flex justify-between items-center text-xs w-full">
+             <div class="flex items-center gap-1">
+               <span class="text-kong-text-secondary">24h Swaps:</span>
+               <span class="text-kong-text-primary font-medium">${Math.floor(Number(livePool?.rolling_24h_num_swaps || 0)).toLocaleString()}</span>
+             </div>
+           </div>`
+         )}
+      </div>
+    <!-- {/if} -->
+    </div>
+    
+    <!-- Main Content Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+      <div class="flex flex-col gap-y-4">
+        {#if userPool}
+        <Panel variant="solid" className="p-5">
+          <!-- Header with Pool Share -->
+          <div class="flex items-start justify-between mb-4">
+            <h3 class="text-lg font-semibold text-kong-text-primary">Your Position</h3>
+            <div class="text-right">
+              <p class="text-xs text-kong-text-secondary uppercase tracking-wider font-medium mb-1">Pool Share</p>
+              <p class="text-sm font-bold text-kong-text-primary">{formatToNonZeroDecimal((userPool?.poolSharePercentage || 0).toString())}%</p>
+            </div>
+          </div>
+
+          <!-- Main Metrics Row -->
+          <div class="grid grid-cols-2 gap-6">
+            <!-- Total Value Section -->
+            <div>
+              <p class="text-xs text-kong-text-secondary mb-3 uppercase tracking-wider font-medium">Total Value</p>
+              <p class="text-3xl font-bold text-kong-primary mb-3">
+                {(userPool?.usd_balance || 0) > 100 ? (userPool?.usd_balance || 0).toLocaleString(undefined, {
+                  style: 'currency',
+                  currency: 'USD',
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0
+                }) : (userPool?.usd_balance || 0).toLocaleString(undefined, {
+                  style: 'currency',
+                  currency: 'USD',
+                  minimumFractionDigits: 2,
+                  maximumeFractionDigits: 2
+                })}
+              </p>
+              <div class="space-y-1 text-xs">
+                <div class="flex justify-between items-center">
+                  <span class="text-kong-text-secondary">{token0?.symbol}:</span>
+                  <span class="text-kong-text-primary font-medium">{formatToNonZeroDecimal(userPool?.amount_0.toString())}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-kong-text-secondary">{token1?.symbol}:</span>
+                  <span class="text-kong-text-primary font-medium">{formatToNonZeroDecimal(userPool?.amount_1.toString())}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Earnings Section -->
+            <div>
+              <p class="text-xs text-kong-text-secondary mb-3 uppercase tracking-wider font-medium">Earnings</p>
+              <p class="text-3xl font-bold text-kong-accent-green mb-3">
+                ${calculateTotalEarnings()}
+              </p>
+                <div class="space-y-1 text-xs">
+                  {#if userPool?.userFeeShare0 && userPool?.userFeeShare0 > 0}
+                    <div class="flex justify-between items-center">
+                      <span class="text-kong-text-secondary">{userPool?.symbol_0} fees:</span>
+                      <span class="text-kong-accent-green font-medium">{formatToNonZeroDecimal(userPool?.userFeeShare0.toString())}</span>
+                    </div>
+                  {/if}
+                  {#if userPool?.userFeeShare1 && userPool?.userFeeShare1 > 0}
+                    <div class="flex justify-between items-center">
+                      <span class="text-kong-text-secondary">{userPool?.symbol_1} fees:</span>
+                      <span class="text-kong-accent-green font-medium">{formatToNonZeroDecimal(userPool?.userFeeShare1.toString())}</span>
+                    </div>
+                  {/if}
+                </div>
             </div>
           </div>
         </Panel>
-
+        {/if}
+        <!-- TVL Chart -->
+        <TVLHistoryChart
+        {balanceHistory}
+        isLoading={isChartLoading}
+        errorMessage={chartErrorMessage}
+        currentPool={livePool}
+        fetchBalanceHistoryData={loadChartData}
+        />
+      </div>
+      <div class="flex flex-col gap-y-4">
+        <div class="hidden lg:block">
+          <Panel variant="solid" type="secondary">
+            <div class="space-y-3">
+                <TokenSelectionPanel
+                  {token0}
+                  {token1}
+                  onTokenSelect={handleTokenSelect}
+                  secondaryTokenIds={SECONDARY_TOKEN_IDS}
+                />
+            </div>
+          </Panel>
+        </div>
         <!-- Initial Price (for new pools or pools with TVL of 0) -->
         {#if isInitializingPrice}
         <Panel variant="solid" type="secondary">

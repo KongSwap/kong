@@ -4,9 +4,7 @@
   import { 
     initializeChart, 
     cleanupChart, 
-    getChartThemeColors, 
     formatNumber,
-    createChartGradient,
     getCommonChartOptions,
     calculateSignificantChanges,
     type PoolBalanceHistoryItem 
@@ -29,8 +27,62 @@
   let observer = $state<MutationObserver | null>(null);
   let tvlChartCanvas = $state<HTMLCanvasElement | null>(null);
   let tvlChartInstance = $state<ChartJS | null>(null);
-    let processedTooltipData = $state<Record<number, string>>({});
-    let shouldUpdateChart = $state(false);
+  let processedTooltipData = $state<Record<number, string>>({});
+  let shouldUpdateChart = $state(false);
+
+  // Get theme colors from CSS custom properties
+  function getThemeColors() {
+    const style = getComputedStyle(document.documentElement);
+    
+    // Primary brand color for TVL bars
+    const primaryRgb = style.getPropertyValue('--brand-primary').trim();
+    const primaryColor = primaryRgb ? `rgb(${primaryRgb})` : '#1A8FE3';
+    
+    // Text colors
+    const textPrimaryRgb = style.getPropertyValue('--text-primary').trim();
+    const textSecondaryRgb = style.getPropertyValue('--text-secondary').trim();
+    const textPrimaryColor = textPrimaryRgb ? `rgb(${textPrimaryRgb})` : '#FFFFFF';
+    const textSecondaryColor = textSecondaryRgb ? `rgb(${textSecondaryRgb})` : '#B0B6C5';
+    
+    // Background colors
+    const bgSecondaryRgb = style.getPropertyValue('--bg-secondary').trim();
+    const bgSecondaryColor = bgSecondaryRgb ? `rgb(${bgSecondaryRgb})` : '#1A2032';
+    
+    // Border colors
+    const borderRgb = style.getPropertyValue('--ui-border').trim();
+    const borderColor = borderRgb ? `rgb(${borderRgb})` : '#1C2028';
+    
+    return {
+      primaryColor,
+      textPrimaryColor,
+      textSecondaryColor,
+      bgSecondaryColor,
+      borderColor
+    };
+  }
+
+  // Create theme-aware gradient
+  function createThemeGradient(ctx: CanvasRenderingContext2D): CanvasGradient {
+    const colors = getThemeColors();
+    const canvasHeight = ctx.canvas.height || 300;
+    const gradient = ctx.createLinearGradient(0, canvasHeight, 0, 0);
+    
+    // Parse RGB values and create gradient with opacity
+    const rgbMatch = colors.primaryColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+    if (rgbMatch) {
+      const [, r, g, b] = rgbMatch;
+      gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.05)`);
+      gradient.addColorStop(0.7, `rgba(${r}, ${g}, ${b}, 0.25)`);
+      gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0.4)`);
+    } else {
+      // Fallback gradient
+      gradient.addColorStop(0, 'rgba(26, 143, 227, 0.05)');
+      gradient.addColorStop(0.7, 'rgba(26, 143, 227, 0.25)');
+      gradient.addColorStop(1, 'rgba(26, 143, 227, 0.4)');
+    }
+    
+    return gradient;
+  }
 
   // Effect to initialize chart when component mounts
   $effect(() => {
@@ -146,13 +198,13 @@
     );
     
     // Get theme colors
-    const colors = getChartThemeColors(isDarkMode);
+    const colors = getThemeColors();
     
-    // Create theme-aware TVL gradient using the shared utility
-    const tvlGradient = createChartGradient(ctx, isDarkMode, 'rgba(111, 93, 251, 1)', 300);
+    // Create theme-aware TVL gradient
+    const tvlGradient = createThemeGradient(ctx);
     
     // Get common chart options and extend with TVL-specific settings
-    const chartOptions = getCommonChartOptions(isDarkMode, {
+    const baseOptions = getCommonChartOptions(isDarkMode, {
       callbacks: {
         label: function(context) {
           if (context.parsed.y !== null) {
@@ -165,62 +217,67 @@
           // Use pre-processed tooltip data
           return processedTooltipData[index] || '';
         }
-      },
-      maintainAspectRatio: false, // Allow filling the entire container
-      responsive: true, // Ensure responsiveness
-      devicePixelRatio: 2, // Sharper rendering
-    });
-    
-    // Ensure axes don't add internal padding
-    if (!chartOptions.scales) {
-      chartOptions.scales = {};
-    }
-    
-    chartOptions.scales.x = {
-      ...chartOptions.scales.x,
-      display: true, // Show x-axis
-      grid: {
-        display: false, // Hide grid lines
-      },
-      ticks: {
-        display: true,
-        color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
-        maxTicksLimit: 8, // Limit number of ticks to prevent overcrowding
       }
-    };
-    
-    chartOptions.scales.y = {
-      ...chartOptions.scales.y,
-      display: true, // Show y-axis
-      min: 0, // Start y-axis at 0
-      grid: {
-        display: false, // Hide grid lines
-      },
-      ticks: {
-        display: true,
-        color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
-        callback: function(value) {
-          const numValue = Number(value);
-          if (numValue >= 1000000) {
-            return '$' + (numValue / 1000000).toFixed(1) + 'M';
-          } else if (numValue >= 1000) {
-            return '$' + (numValue / 1000).toFixed(1) + 'K';
-          } else {
-            return '$' + Math.round(numValue);
+    });
+
+    // Override chart options with theme colors
+    const chartOptions = {
+      ...baseOptions,
+      maintainAspectRatio: false,
+      responsive: true,
+      devicePixelRatio: 2,
+      scales: {
+        x: {
+          display: true,
+          grid: {
+            display: false,
+          },
+          ticks: {
+            display: true,
+            color: colors.textSecondaryColor,
+            maxTicksLimit: 8,
+          }
+        },
+        y: {
+          display: true,
+          min: 0,
+          grid: {
+            display: false,
+          },
+          ticks: {
+            display: true,
+            color: colors.textSecondaryColor,
+            callback: function(value) {
+              const numValue = Number(value);
+              if (numValue >= 1000000) {
+                return '$' + (numValue / 1000000).toFixed(1) + 'M';
+              } else if (numValue >= 1000) {
+                return '$' + (numValue / 1000).toFixed(1) + 'K';
+              } else {
+                return '$' + Math.round(numValue);
+              }
+            }
           }
         }
+      },
+      layout: {
+        padding: {
+          top: 10,
+          right: 10,
+          bottom: 10,
+          left: 10
+        }
+      },
+      plugins: {
+        ...baseOptions.plugins,
+        tooltip: {
+          ...baseOptions.plugins.tooltip,
+          backgroundColor: colors.bgSecondaryColor,
+          titleColor: colors.textPrimaryColor,
+          bodyColor: colors.textPrimaryColor,
+          borderColor: colors.borderColor,
+        }
       }
-    };
-    
-    // Add some layout padding for axes
-    if (!chartOptions.layout) {
-      chartOptions.layout = {};
-    }
-    chartOptions.layout.padding = {
-      top: 10,
-      right: 10,
-      bottom: 10,
-      left: 10
     };
     
     tvlChartInstance = new Chart(ctx, {
@@ -231,8 +288,8 @@
           {
             label: 'TVL (USD)',
             data: tvlData,
-            borderColor: colors.tvlColor,
-            backgroundColor: colors.tvlColor,
+            borderColor: colors.primaryColor,
+            backgroundColor: colors.primaryColor,
             borderWidth: 1,
             borderRadius: 2,
             borderSkipped: false,
