@@ -3,9 +3,21 @@
   import { auth } from "$lib/stores/auth";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import { marketStore, filteredMarkets } from "$lib/stores/marketStore";
-  import { ChartBar, ChartLine, ChevronLeft, ChevronRight, HelpCircle, Plus, History } from "lucide-svelte";
+  import {
+    ChartBar,
+    ChartLine,
+    ChevronLeft,
+    ChevronRight,
+    HelpCircle,
+    Plus,
+    History,
+    Activity,
+    Ticket,
+  } from "lucide-svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
+  import { getPredictionMarketStats } from "$lib/api/predictionMarket";
+  import { onMount } from "svelte";
 
   interface Props {
     openBetModal: (market: any, outcomeIndex?: number) => void;
@@ -13,6 +25,21 @@
   }
 
   let { openBetModal, userClaims = [] }: Props = $props();
+
+  // Stats state
+  let stats = $state<{
+    total_markets: bigint;
+    total_bets: bigint;
+    total_active_markets: bigint;
+  } | null>(null);
+
+  onMount(async () => {
+    try {
+      stats = await getPredictionMarketStats();
+    } catch (error) {
+      console.error("Failed to fetch prediction market stats:", error);
+    }
+  });
 
   // Carousel state
   let carouselRef: HTMLDivElement;
@@ -23,15 +50,15 @@
   // Get featured markets (active markets sorted by volume)
   const featuredMarkets = $derived(
     $filteredMarkets
-      .filter(m => 'Active' in m.status)
+      .filter((m) => "Active" in m.status)
       .sort((a, b) => Number(b.total_pool) - Number(a.total_pool))
-      .slice(0, 6)
+      .slice(0, 6),
   );
 
   // Check scroll position
   function checkScroll() {
     if (!carouselRef) return;
-    
+
     const { scrollLeft, scrollWidth, clientWidth } = carouselRef;
     canScrollLeft = scrollLeft > 0;
     canScrollRight = scrollLeft < scrollWidth - clientWidth - 10;
@@ -40,10 +67,14 @@
   // Scroll functions
   function scrollToIndex(index: number) {
     if (!carouselRef) return;
-    
-    const cards = carouselRef.querySelectorAll('.market-card');
+
+    const cards = carouselRef.querySelectorAll(".market-card");
     if (cards[index]) {
-      cards[index].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+      cards[index].scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "start",
+      });
       currentIndex = index;
     }
   }
@@ -71,14 +102,20 @@
       <div class="max-w-7xl mx-auto">
         <!-- Main headline -->
         <div class="text-center mb-4">
-          <h1 class="text-4xl md:text-5xl font-bold text-kong-text-primary mb-4">
+          <h1
+            class="text-4xl md:text-5xl font-bold text-kong-text-primary mb-4"
+          >
             Put Your <span
               class="text-transparent font-black bg-clip-text bg-gradient-to-r from-kong-primary via-kong-accent-blue to-kong-primary animate-shine"
               >Knowledge</span
             > to Work
           </h1>
-          <p class="text-lg md:text-base text-kong-text-secondary !max-w-3xl mx-auto">
-            Turn your predictions into <span class="text-kong-text-primary font-semibold">profit</span>. Stake on outcomes you believe in and
+          <p
+            class="text-lg md:text-base text-kong-text-secondary !max-w-3xl mx-auto"
+          >
+            Turn your predictions into <span
+              class="text-kong-text-primary font-semibold">profit</span
+            >. Stake on outcomes you believe in and
             <span class="text-kong-text-primary font-semibold"
               >earn when you're right.</span
             >
@@ -89,12 +126,14 @@
         {#if featuredMarkets.length > 0}
           <div class="mb-6">
             <div class="flex items-center justify-between mb-4">
-              <h2 class="text-lg font-semibold text-kong-text-primary">Featured Markets</h2>
+              <h2 class="text-lg font-semibold text-kong-text-primary">
+                Featured Markets
+              </h2>
               <div class="flex items-center gap-2">
                 <button
                   onclick={scrollLeft}
                   disabled={!canScrollLeft}
-                  class="p-1.5 rounded-lg bg-kong-bg-secondary border border-kong-text-primary/10 
+                  class="p-1.5 rounded-lg bg-kong-bg-secondary border border-kong-text-primary/10
                          hover:bg-kong-bg-tertiary transition-all duration-200
                          disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Previous market"
@@ -104,7 +143,7 @@
                 <button
                   onclick={scrollRight}
                   disabled={!canScrollRight}
-                  class="p-1.5 rounded-lg bg-kong-bg-secondary border border-kong-text-primary/10 
+                  class="p-1.5 rounded-lg bg-kong-bg-secondary border border-kong-text-primary/10
                          hover:bg-kong-bg-tertiary transition-all duration-200
                          disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Next market"
@@ -123,10 +162,14 @@
               >
                 {#each featuredMarkets as market, index}
                   <div class="market-card flex-none w-[320px] md:w-[380px]">
-                    <div class="bg-kong-bg-secondary rounded-xl border border-kong-text-primary/10 p-4 
-                                hover:border-kong-primary/30 transition-all duration-200 h-full">
+                    <div
+                      class="bg-kong-bg-secondary rounded-xl border border-kong-text-primary/10 p-4
+                                hover:border-kong-primary/30 transition-all duration-200 h-full"
+                    >
                       <!-- Market Title -->
-                      <h3 class="font-semibold text-kong-text-primary mb-3 line-clamp-2">
+                      <h3
+                        class="font-semibold text-kong-text-primary mb-3 line-clamp-2"
+                      >
                         {market.question}
                       </h3>
 
@@ -135,20 +178,30 @@
                         {#each market.outcomes as outcome, outcomeIndex}
                           <button
                             onclick={() => openBetModal(market, outcomeIndex)}
-                            class="relative overflow-hidden rounded-lg border border-kong-text-primary/10 
+                            class="relative overflow-hidden rounded-lg border border-kong-text-primary/10
                                    bg-kong-bg-tertiary/50 p-3 text-left transition-all duration-200
                                    hover:bg-kong-bg-tertiary hover:border-kong-primary/30"
                           >
                             <div class="relative z-10">
-                              <div class="text-xs text-kong-text-secondary mb-1">{outcome}</div>
-                              <div class="text-lg font-bold text-kong-text-primary">
-                                {market.outcome_percentages[outcomeIndex]?.toFixed(1) || '0.0'}%
+                              <div
+                                class="text-xs text-kong-text-secondary mb-1"
+                              >
+                                {outcome}
+                              </div>
+                              <div
+                                class="text-lg font-bold text-kong-text-primary"
+                              >
+                                {market.outcome_percentages[
+                                  outcomeIndex
+                                ]?.toFixed(1) || "0.0"}%
                               </div>
                             </div>
                             <!-- Background fill based on percentage -->
-                            <div 
+                            <div
                               class="absolute inset-0 bg-gradient-to-r from-kong-primary/20 to-kong-primary/10"
-                              style="width: {market.outcome_percentages[outcomeIndex] || 0}%"
+                              style="width: {market.outcome_percentages[
+                                outcomeIndex
+                              ] || 0}%"
                             ></div>
                           </button>
                         {/each}
@@ -163,7 +216,10 @@
                           </span>
                         </div>
                         <span class="text-xs text-kong-text-secondary">
-                          {market.bet_counts.reduce((sum, count) => sum + Number(count), 0)} bets
+                          {market.bet_counts.reduce(
+                            (sum, count) => sum + Number(count),
+                            0,
+                          )} bets
                         </span>
                       </div>
                     </div>
@@ -177,54 +233,66 @@
         <!-- CTA section -->
         <div class="text-center">
           <!-- Total Markets -->
-          <div class="flex items-center justify-center gap-1 text-sm text-kong-text-secondary mb-4">
-            <svg class="w-4 h-4 text-kong-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span><span class="font-semibold text-kong-text-primary">{$marketStore.markets.length}</span> Total Markets</span>
-            <div class="hidden sm:block w-px mx-2 h-4 bg-kong-border"></div>
-            <ChartLine class="w-4 h-4 text-kong-primary" />
-            <span><span class="font-semibold text-kong-text-primary">20k+</span> Predictions</span>
-            <div class="hidden sm:block w-px mx-2 h-4 bg-kong-border"></div>
+          <div
+            class="flex items-center justify-center gap-1 text-sm text-kong-text-secondary mb-4"
+          >
             <ChartBar class="w-4 h-4 text-kong-primary" />
-            <span><span class="font-semibold text-kong-text-primary">$1.41M</span> Total Volume</span>
+            <span
+              ><span class="font-semibold text-kong-text-primary"
+                >{stats?.total_markets || $marketStore.markets.length}</span
+              > Total Markets</span
+            >
+            <div class="hidden sm:block w-px mx-2 h-4 bg-kong-border"></div>
+            <Activity class="w-4 h-4 text-kong-primary" />
+            <span
+              ><span class="font-semibold text-kong-text-primary"
+                >{stats?.total_active_markets || 0}</span
+              > Active Markets</span
+            >
+            <div class="hidden sm:block w-px mx-2 h-4 bg-kong-border"></div>
+            <Ticket class="w-4 h-4 text-kong-primary" />
+            <span
+              ><span class="font-semibold text-kong-text-primary"
+                >{stats ? stats.total_bets : "0"}</span
+              > Predictions</span
+            >
           </div>
-          
+
           <!-- Action Buttons -->
           <div class="flex items-center justify-center gap-3 pt-2">
             <ButtonV2
               theme="primary"
               variant="transparent"
               size="lg"
-              onclick={() => goto('/predict/faq')}
+              onclick={() => goto("/predict/faq")}
             >
               <div class="flex items-center gap-2">
                 <HelpCircle class="w-4 h-4" />
                 <span>Learn More</span>
               </div>
             </ButtonV2>
-            
+
             {#if $auth.isConnected}
-              <ButtonV2
-                theme="primary"
-                variant="transparent"
-                size="lg"
-                onclick={() => goto('/predict/history')}
-              >
-                <div class="flex items-center gap-2">
-                  <History class="w-4 h-4" />
-                  <span>My History</span>
-                </div>
-              </ButtonV2>
               <ButtonV2
                 theme="primary"
                 variant="solid"
                 size="lg"
-                onclick={() => goto('/predict/create')}
-              > 
+                onclick={() => goto("/predict/create")}
+              >
                 <div class="flex items-center gap-2">
                   <Plus class="w-4 h-4" />
                   <span>Create Market</span>
+                </div>
+              </ButtonV2>
+              <ButtonV2
+                theme="primary"
+                variant="transparent"
+                size="lg"
+                onclick={() => goto("/predict/history")}
+              >
+                <div class="flex items-center gap-2">
+                  <History class="w-4 h-4" />
+                  <span>My History</span>
                 </div>
               </ButtonV2>
             {:else}
@@ -253,7 +321,7 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import { Clock, Coins, Users, Shield, HelpCircle } from "lucide-svelte";
+  import { Clock, Coins, Users, Shield, HelpCircle, ChevronDown, ChevronRight } from "lucide-svelte";
+  import Card from "$lib/components/common/Card.svelte";
   
   interface Section {
     id: string;
@@ -63,49 +63,22 @@
       ]
     }
   ];
+
+  let expandedSections = $state<Set<string>>(new Set());
   
-  let activeSection = $state("");
-  
-  function scrollToSection(id: string) {
-    const element = document.getElementById(id);
-    if (element) {
-      const offset = 80; // Account for fixed header
-      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
-      window.scrollTo({
-        top: elementPosition - offset,
-        behavior: 'smooth'
-      });
+  function toggleSection(sectionId: string) {
+    const newSet = new Set(expandedSections);
+    if (newSet.has(sectionId)) {
+      newSet.delete(sectionId);
+    } else {
+      newSet.add(sectionId);
     }
+    expandedSections = newSet;
   }
-  
-  function handleScroll() {
-    // Update active section
-    let currentSection = "";
-    for (const section of sections) {
-      const element = document.getElementById(section.id);
-      if (element) {
-        const rect = element.getBoundingClientRect();
-        if (rect.top <= 100 && rect.bottom > 100) {
-          currentSection = section.id;
-          break;
-        }
-      }
-    }
-    activeSection = currentSection;
-  }
-  
-  onMount(() => {
-    window.addEventListener('scroll', handleScroll);
-    handleScroll(); // Set initial state
-    
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  });
 </script>
 
 <div class="glossary-sidebar">
-  <nav class="bg-kong-bg-secondary rounded-lg border border-kong-border/30 p-4 max-h-[calc(100vh-8rem)] overflow-y-auto">
+  <Card className="p-4">
     <div class="flex items-center gap-2 mb-4 pb-3 border-b border-kong-border/20">
       <HelpCircle class="w-5 h-5 text-kong-primary" />
       <h3 class="font-semibold text-kong-text-primary">Glossary</h3>
@@ -114,28 +87,35 @@
     <ul class="space-y-1">
       {#each sections as section}
         {@const Icon = section.icon}
+        {@const isExpanded = expandedSections.has(section.id)}
         <li>
           <button
-            onclick={() => scrollToSection(section.id)}
-            class="w-full text-left px-3 py-2 rounded-lg transition-all duration-200 hover:bg-kong-bg-tertiary group flex items-center gap-2
-                   {activeSection === section.id ? 'bg-kong-primary/10 text-kong-primary' : 'text-kong-text-secondary'}"
+            onclick={() => toggleSection(section.id)}
+            class="w-full text-left px-3 py-2 rounded-lg transition-all duration-200 hover:bg-kong-bg-tertiary group flex items-center gap-2 text-kong-text-secondary"
           >
             <Icon 
-              class="w-4 h-4 flex-shrink-0 {activeSection === section.id ? 'text-kong-primary' : 'text-kong-text-secondary group-hover:text-kong-text-primary'}" 
+              class="w-4 h-4 flex-shrink-0 text-kong-text-secondary group-hover:text-kong-text-primary" 
             />
-            <span class="text-sm font-medium">{section.title}</span>
+            <span class="text-sm font-medium flex-1">{section.title}</span>
+            {#if section.subsections}
+              {#if isExpanded}
+                <ChevronDown class="w-4 h-4 text-kong-text-secondary group-hover:text-kong-text-primary" />
+              {:else}
+                <ChevronRight class="w-4 h-4 text-kong-text-secondary group-hover:text-kong-text-primary" />
+              {/if}
+            {/if}
           </button>
           
-          {#if section.subsections && activeSection === section.id}
+          {#if section.subsections && isExpanded}
             <ul class="ml-6 mt-1 space-y-0.5">
               {#each section.subsections as subsection}
                 <li>
-                  <button
-                    onclick={() => scrollToSection(subsection.id)}
-                    class="w-full text-left px-3 py-1.5 text-xs text-kong-text-secondary hover:text-kong-text-primary transition-colors"
+                  <a
+                    href="#{subsection.id}"
+                    class="w-full text-left px-3 py-1.5 text-xs text-kong-text-secondary hover:text-kong-text-primary transition-colors block"
                   >
                     {subsection.title}
-                  </button>
+                  </a>
                 </li>
               {/each}
             </ul>
@@ -146,32 +126,8 @@
     
     <div class="mt-6 pt-4 border-t border-kong-border/20">
       <p class="text-xs text-kong-text-secondary text-center">
-        Click any section to navigate
+        Click sections to expand, click subsections to navigate
       </p>
     </div>
-  </nav>
+  </Card>
 </div>
-
-<style>
-  .glossary-sidebar nav {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
-  }
-  
-  .glossary-sidebar nav::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  .glossary-sidebar nav::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  
-  .glossary-sidebar nav::-webkit-scrollbar-thumb {
-    background-color: rgba(156, 163, 175, 0.3);
-    border-radius: 3px;
-  }
-  
-  .glossary-sidebar nav::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(156, 163, 175, 0.5);
-  }
-</style>
