@@ -5,9 +5,6 @@
   import { marketStore, filteredMarkets } from "$lib/stores/marketStore";
   import {
     ChartBar,
-    ChartLine,
-    ChevronLeft,
-    ChevronRight,
     HelpCircle,
     Plus,
     History,
@@ -40,60 +37,6 @@
       console.error("Failed to fetch prediction market stats:", error);
     }
   });
-
-  // Carousel state
-  let carouselRef: HTMLDivElement;
-  let currentIndex = $state(0);
-  let canScrollLeft = $state(false);
-  let canScrollRight = $state(true);
-
-  // Get featured markets (active markets sorted by volume)
-  const featuredMarkets = $derived(
-    $filteredMarkets
-      .filter((m) => "Active" in m.status)
-      .sort((a, b) => Number(b.total_pool) - Number(a.total_pool))
-      .slice(0, 6),
-  );
-
-  // Check scroll position
-  function checkScroll() {
-    if (!carouselRef) return;
-
-    const { scrollLeft, scrollWidth, clientWidth } = carouselRef;
-    canScrollLeft = scrollLeft > 0;
-    canScrollRight = scrollLeft < scrollWidth - clientWidth - 10;
-  }
-
-  // Scroll functions
-  function scrollToIndex(index: number) {
-    if (!carouselRef) return;
-
-    const cards = carouselRef.querySelectorAll(".market-card");
-    if (cards[index]) {
-      cards[index].scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "start",
-      });
-      currentIndex = index;
-    }
-  }
-
-  function scrollLeft() {
-    const newIndex = Math.max(0, currentIndex - 1);
-    scrollToIndex(newIndex);
-  }
-
-  function scrollRight() {
-    const newIndex = Math.min(featuredMarkets.length - 1, currentIndex + 1);
-    scrollToIndex(newIndex);
-  }
-
-  // Format pool size for display
-  function formatPoolSize(volume: bigint, decimals: number = 8): string {
-    const value = Number(volume) / Math.pow(10, decimals);
-    return formatToNonZeroDecimal(value);
-  }
 </script>
 
 <div class="mb-8 px-4">
@@ -121,114 +64,6 @@
             >
           </p>
         </div>
-
-        <!-- Featured Markets Carousel -->
-        {#if featuredMarkets.length > 0}
-          <div class="mb-6">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="text-lg font-semibold text-kong-text-primary">
-                Featured Markets
-              </h2>
-              <div class="flex items-center gap-2">
-                <button
-                  onclick={scrollLeft}
-                  disabled={!canScrollLeft}
-                  class="p-1.5 rounded-lg bg-kong-bg-secondary border border-kong-text-primary/10
-                         hover:bg-kong-bg-tertiary transition-all duration-200
-                         disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label="Previous market"
-                >
-                  <ChevronLeft class="w-4 h-4" />
-                </button>
-                <button
-                  onclick={scrollRight}
-                  disabled={!canScrollRight}
-                  class="p-1.5 rounded-lg bg-kong-bg-secondary border border-kong-text-primary/10
-                         hover:bg-kong-bg-tertiary transition-all duration-200
-                         disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label="Next market"
-                >
-                  <ChevronRight class="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            <!-- Carousel Container -->
-            <div class="relative">
-              <div
-                bind:this={carouselRef}
-                onscroll={checkScroll}
-                class="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth pb-2"
-              >
-                {#each featuredMarkets as market, index}
-                  <div class="market-card flex-none w-[320px] md:w-[380px]">
-                    <div
-                      class="bg-kong-bg-secondary rounded-xl border border-kong-text-primary/10 p-4
-                                hover:border-kong-primary/30 transition-all duration-200 h-full"
-                    >
-                      <!-- Market Title -->
-                      <h3
-                        class="font-semibold text-kong-text-primary mb-3 line-clamp-2"
-                      >
-                        {market.question}
-                      </h3>
-
-                      <!-- Outcomes Grid -->
-                      <div class="grid grid-cols-2 gap-2 mb-3">
-                        {#each market.outcomes as outcome, outcomeIndex}
-                          <button
-                            onclick={() => openBetModal(market, outcomeIndex)}
-                            class="relative overflow-hidden rounded-lg border border-kong-text-primary/10
-                                   bg-kong-bg-tertiary/50 p-3 text-left transition-all duration-200
-                                   hover:bg-kong-bg-tertiary hover:border-kong-primary/30"
-                          >
-                            <div class="relative z-10">
-                              <div
-                                class="text-xs text-kong-text-secondary mb-1"
-                              >
-                                {outcome}
-                              </div>
-                              <div
-                                class="text-lg font-bold text-kong-text-primary"
-                              >
-                                {market.outcome_percentages[
-                                  outcomeIndex
-                                ]?.toFixed(1) || "0.0"}%
-                              </div>
-                            </div>
-                            <!-- Background fill based on percentage -->
-                            <div
-                              class="absolute inset-0 bg-gradient-to-r from-kong-primary/20 to-kong-primary/10"
-                              style="width: {market.outcome_percentages[
-                                outcomeIndex
-                              ] || 0}%"
-                            ></div>
-                          </button>
-                        {/each}
-                      </div>
-
-                      <!-- Market Stats -->
-                      <div class="flex items-center justify-between text-sm">
-                        <div class="flex items-center gap-3">
-                          <span class="text-kong-text-secondary">Pool:</span>
-                          <span class="font-medium text-kong-text-primary">
-                            {formatPoolSize(market.total_pool)} KONG
-                          </span>
-                        </div>
-                        <span class="text-xs text-kong-text-secondary">
-                          {market.bet_counts.reduce(
-                            (sum, count) => sum + Number(count),
-                            0,
-                          )} bets
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                {/each}
-              </div>
-            </div>
-          </div>
-        {/if}
 
         <!-- CTA section -->
         <div class="text-center">
