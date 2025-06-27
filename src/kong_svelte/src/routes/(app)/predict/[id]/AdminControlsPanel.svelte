@@ -20,7 +20,7 @@
   let isMarketResolved = $derived(isMarketClosed);
   let isMarketVoided = $derived(market?.status?.Voided !== undefined);
 
-  let showAdminResolutionModal = false;
+  let showAdminResolutionModal = $state(false);
 
   const dispatch = createEventDispatcher();
 
@@ -53,10 +53,10 @@
       <!-- Admin actions -->
       {#if !isMarketResolved && !isMarketVoided}
         <div class="space-y-2">
-          <button class="bg-kong-accent-yellow text-kong-text-on-primary px-3 py-2 rounded hover:bg-yellow-700 transition-colors w-full text-sm font-medium" onclick={() => showAdminResolutionModal = true}>
-            Propose Resolution
+          <button class="bg-kong-accent-yellow text-kong-text-on-primary px-3 py-2 rounded hover:bg-yellow-700 transition-colors w-full text-sm font-medium" on:click={() => showAdminResolutionModal = true}>
+            Force Resolution
           </button>
-          <button class="bg-kong-error text-kong-text-on-primary px-3 py-2 rounded hover:bg-red-400 transition-colors w-full text-sm font-medium" onclick={onOpenVoidDialog}>
+          <button class="bg-kong-error text-kong-text-on-primary px-3 py-2 rounded hover:bg-red-400 transition-colors w-full text-sm font-medium" on:click={onOpenVoidDialog}>
             Void Market
           </button>
         </div>

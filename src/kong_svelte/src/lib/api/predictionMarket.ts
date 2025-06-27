@@ -229,6 +229,63 @@ export async function resolveMarketViaAdmin(
   }
 }
 
+export async function forceResolveMarket(
+  marketId: bigint,
+  winningOutcome: bigint,
+): Promise<void> {
+  try {
+    console.log("forceResolveMarket called with:", { marketId, winningOutcome });
+    const actor = predictionActor({anon: false, requiresSigning: true});
+    console.log("Actor created, calling force_resolve_market...");
+
+    const result = await actor.force_resolve_market({
+      market_id: marketId,
+      winning_outcomes: [winningOutcome]
+    });
+    console.log("force_resolve_market result:", result);
+
+    if ("Err" in result) {
+      const error = result.Err as any;
+      if ("MarketNotFound" in error) {
+        throw new Error("Market not found");
+      } else if ("MarketStillOpen" in error) {
+        throw new Error("Market is still open");
+      } else if ("AlreadyResolved" in error) {
+        throw new Error("Market has already been resolved");
+      } else if ("Unauthorized" in error) {
+        throw new Error("You are not authorized to force resolve this market");
+      } else if ("InvalidOutcome" in error) {
+        throw new Error("Invalid outcome selected");
+      } else if ("InvalidMarketStatus" in error) {
+        throw new Error("Market is not in a resolvable state");
+      } else {
+        throw new Error(
+          `Failed to force resolve market: ${JSON.stringify(error)}`,
+        );
+      }
+    }
+    
+    if ("Success" in result) {
+      notificationsStore.add({
+        title: "Market Force Resolved",
+        message: `Market ${marketId} has been force resolved successfully`,
+        type: "success",
+      });
+    }
+  } catch (error) {
+    console.error("Failed to force resolve market:", error);
+    console.error("Error type:", typeof error);
+    console.error("Error details:", JSON.stringify(error, null, 2));
+    
+    // Check if it's a signing/authentication error
+    if (error instanceof Error && error.message.includes("Sign")) {
+      throw new Error("Authentication required. Please ensure you're signed in.");
+    }
+    
+    throw error;
+  }
+}
+
 export async function proposeResolution(
   marketId: bigint,
   winningOutcome: bigint,

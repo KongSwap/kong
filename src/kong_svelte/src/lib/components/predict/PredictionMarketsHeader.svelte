@@ -309,6 +309,19 @@
               </ButtonV2>
             {/if}
           </div>
+
+          <div class="flex items-center justify-center gap-3 pt-2">
+            <ButtonV2
+              theme="primary"
+              variant="transparent"
+              size="sm"
+              onclick={() => goto("/predict_v1")}
+            >
+              <div class="flex items-center gap-2">
+                <span>Legacy V1 Markets</span>
+              </div>
+            </ButtonV2>
+          </div>
         </div>
       </div>
     </div>

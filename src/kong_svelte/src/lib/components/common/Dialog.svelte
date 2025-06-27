@@ -21,27 +21,20 @@
     transparent?: boolean;
   }>();
 
-  let isOpen = $state(open);
-  $effect(() => {
-    isOpen = open;
-  });
-
   function handleBackdropClick(e: MouseEvent) {
     e.stopPropagation();
     e.preventDefault();
-    isOpen = false;
     open = false;
     onClose("backdrop");
   }
 
   function handleCloseClick() {
-    isOpen = false;
     open = false;
     onClose("button");
   }
 </script>
 
-{#if isOpen}
+{#if open}
   <DialogPortal>
     <div
       role="dialog"

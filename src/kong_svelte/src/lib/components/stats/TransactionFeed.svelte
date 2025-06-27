@@ -155,7 +155,7 @@
               {/each}
             </tr>
           </thead>
-          <tbody>
+          <tbody class="divide-y divide-kong-border/20">
             {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto?.randomUUID())}
               <TransactionFeedItem
                 {tx}

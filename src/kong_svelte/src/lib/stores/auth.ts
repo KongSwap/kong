@@ -216,6 +216,10 @@ export const predictionActor = ({ anon = false, requiresSigning = true}: { anon?
   return pnp.getActor<CanisterType["PREDICTION_MARKETS"]>({canisterId: canisters.predictionMarkets.canisterId, idl: canisters.predictionMarkets.idl, anon, requiresSigning});
 }
 
+export const predictionActorLegacy = ({ anon = false, requiresSigning = true}: { anon?: boolean, requiresSigning?: boolean}) => {
+  return pnp.getActor<CanisterType["PREDICTION_MARKETS_LEGACY"]>({canisterId: canisters.predictionMarketsLegacy.canisterId, idl: canisters.predictionMarketsLegacy.idl, anon, requiresSigning});
+}
+
 export const trollboxActor = ({ anon = false, requiresSigning = true}: { anon?: boolean, requiresSigning?: boolean}) => {
   return pnp.getActor<CanisterType["TROLLBOX"]>({canisterId: canisters.trollbox.canisterId, idl: canisters.trollbox.idl, anon, requiresSigning});
 }
