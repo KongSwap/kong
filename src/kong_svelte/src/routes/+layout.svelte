@@ -31,6 +31,7 @@
   description={data.metadata.description}
   image={data.metadata.image}
   url={data.metadata.url}
+  tags={data.metadata.keywords || []}
 />
 
 {@render children?.()}

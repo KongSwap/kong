@@ -6,9 +6,12 @@ import { idlFactory as kongFaucetIDL, canisterId as kongFaucetCanisterId } from 
 import type { _SERVICE as _KONG_FAUCET_SERVICE } from '../../../../declarations/kong_faucet/kong_faucet.did.d.ts';
 import { idlFactory as kongDataIDL, canisterId as kongDataCanisterId } from "../../../../declarations/kong_data";
 import type { _SERVICE as _KONG_DATA_SERVICE } from '../../../../declarations/kong_data/kong_data.did.d.ts';
-import { canisterId as predictionMarketsBackendCanisterId } from "../../../../declarations/prediction_markets_backend_legacy";
-import { idlFactory as predictionMarketsBackendIDL } from '../../../../declarations/prediction_markets_backend_legacy';
-import type { _SERVICE as _PREDICTION_MARKETS_BACKEND_SERVICE } from '../../../../declarations/prediction_markets_backend_legacy/prediction_markets_backend.did.d.ts';
+import { canisterId as predictionMarketsBackendCanisterId } from "../../../../declarations/prediction_markets_backend";
+import { idlFactory as predictionMarketsBackendIDL } from '../../../../declarations/prediction_markets_backend';
+import type { _SERVICE as _PREDICTION_MARKETS_BACKEND_SERVICE } from '../../../../declarations/prediction_markets_backend/prediction_markets_backend.did.d.ts';
+import { canisterId as predictionMarketsBackendLegacyCanisterId } from "../../../../declarations/prediction_markets_backend_legacy";
+import { idlFactory as predictionMarketsBackendLegacyIDL } from '../../../../declarations/prediction_markets_backend_legacy';
+import type { _SERVICE as _PREDICTION_MARKETS_BACKEND_SERVICE_LEGACY } from '../../../../declarations/prediction_markets_backend_legacy/prediction_markets_backend.did.d.ts';
 import {canisterId as kongBackendCanisterId, idlFactory as kongBackendIDL } from "../../../../declarations/kong_backend";
 import type { _SERVICE as _KONG_SERVICE } from '../../../../declarations/kong_backend/kong_backend.did.d.ts';
 import { canisterId as trollboxCanisterId, idlFactory as trollboxIDL } from "../../../../declarations/trollbox";
@@ -30,6 +33,7 @@ export type CanisterType = {
   ICP_LEDGER: _ICP_SERVICE;
   ICRC2_LEDGER: _ICRC2_SERVICE;
   PREDICTION_MARKETS: _PREDICTION_MARKETS_BACKEND_SERVICE;
+  PREDICTION_MARKETS_LEGACY: _PREDICTION_MARKETS_BACKEND_SERVICE_LEGACY;
   TROLLBOX: _TROLLBOX_SERVICE;
 }
 
@@ -62,6 +66,11 @@ export const canisters: CanisterConfigs = {
     idl: predictionMarketsBackendIDL,
     type: {} as CanisterType['PREDICTION_MARKETS'],
   },
+  predictionMarketsLegacy: {
+    canisterId: process.env.CANISTER_ID_PREDICTION_MARKETS_BACKEND_LEGACY,
+    idl: predictionMarketsBackendLegacyIDL,
+    type: {} as CanisterType['PREDICTION_MARKETS_LEGACY'],
+  },
   trollbox: {
     canisterId: trollboxCanisterId,
     idl: trollboxIDL,
@@ -91,8 +100,9 @@ const delegationTargets = [
   kongBackendCanisterId,
   predictionMarketsBackendCanisterId,
   trollboxCanisterId,
-  kongDataCanisterId
-]
+  kongDataCanisterId,
+  predictionMarketsBackendLegacyCanisterId
+].filter(Boolean);
 
 // Function to show signature modal
 function showSignatureModal(message: string, onSignatureComplete?: () => void) {

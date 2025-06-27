@@ -105,6 +105,16 @@ pub fn get_all_markets(args: GetAllMarketsArgs) -> GetAllMarketsResult {
             }
         });
         
+        // After featured sorting, always put resolved markets (Closed status) last
+        all_markets.sort_by(|(_, a), (_, b)| {
+            match (&a.status, &b.status) {
+                (MarketStatus::Closed(_), MarketStatus::Closed(_)) => std::cmp::Ordering::Equal, // Both resolved, maintain order
+                (MarketStatus::Closed(_), _) => std::cmp::Ordering::Greater, // a is resolved, b is not - a goes last
+                (_, MarketStatus::Closed(_)) => std::cmp::Ordering::Less,    // b is resolved, a is not - b goes last
+                _ => std::cmp::Ordering::Equal, // Neither resolved, maintain order
+            }
+        });
+        
         // Apply pagination after sorting
         let start_idx = args.start.to_u64() as usize;
         let length = args.length as usize;

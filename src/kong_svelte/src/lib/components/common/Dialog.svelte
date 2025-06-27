@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { panelRoundness } from "$lib/stores/derivedThemeStore";
   import { fade, fly } from "svelte/transition";
   import ButtonV2 from "./ButtonV2.svelte";
   import DialogPortal from "./DialogPortal.svelte";
@@ -22,27 +21,20 @@
     transparent?: boolean;
   }>();
 
-  let isOpen = $state(open);
-  $effect(() => {
-    isOpen = open;
-  });
-
   function handleBackdropClick(e: MouseEvent) {
     e.stopPropagation();
     e.preventDefault();
-    isOpen = false;
     open = false;
     onClose("backdrop");
   }
 
   function handleCloseClick() {
-    isOpen = false;
     open = false;
     onClose("button");
   }
 </script>
 
-{#if isOpen}
+{#if open}
   <DialogPortal>
     <div
       role="dialog"
@@ -52,7 +44,7 @@
      onclick={handleBackdropClick}
     >
       <div
-        class="{$panelRoundness} bg-gradient-to-b from-kong-bg-secondary to-kong-bg-primary flex flex-col justify-between gap-4 p-6 max-w-[90%] w-[480px] border border-kong-border shadow-2xl"
+        class="rounded-kong-roundness bg-gradient-to-b from-kong-bg-secondary to-kong-bg-primary flex flex-col justify-between gap-4 p-6 max-w-[90%] w-[480px] border border-kong-border shadow-2xl"
         role="document"
         in:fly={{ y: 20, duration: 300, delay: 100 }}
         out:fly={{ y: 20, duration: 200 }}
