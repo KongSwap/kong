@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use icrc_ledger_types::icrc21::errors::ErrorInfo;
 use icrc_ledger_types::icrc21::requests::{ConsentMessageRequest, ConsentMessageMetadata};
 use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
-use candid::decode_one;
+use candid::{decode_one, decode_args};
 
 use crate::types::{MarketId, TokenAmount, OutcomeIndex, NANOS_PER_SECOND};
 pub use crate::types::Timestamp;
@@ -17,7 +17,7 @@ use super::delegation::*;
 use crate::market::estimate_return_types::*;
 use crate::constants::PLATFORM_FEE_PERCENTAGE;
 use crate::storage::{DELEGATIONS, MARKETS};
-use crate::{ResolutionArgs, PlaceBetArgs};
+use crate::ResolutionArgs;
 
 // Helper function to get current time in nanoseconds as a Timestamp type
 pub fn get_current_time() -> Timestamp {
@@ -172,33 +172,35 @@ fn handle_place_bet_consent(
     consent_msg_request: &ConsentMessageRequest,
     caller_principal: Principal
 ) -> Result<ConsentMessage, ErrorInfo> {
-    // Try to decode place_bet parameters
-    match decode_one::<PlaceBetArgs>(&consent_msg_request.arg) {
-        Ok(args) => {
-            // Use MarketId directly 
-            let market_id_val = args.market_id.clone();
+    // Try to decode place_bet parameters as separate arguments (market_id, outcome_index, amount, token_id)
+    match decode_args::<(candid::Nat, candid::Nat, candid::Nat, Option<String>)>(&consent_msg_request.arg) {
+        Ok((market_id_nat, outcome_index_nat, amount_nat, token_id_opt)) => {
+            // Convert to our types
+            let market_id = MarketId::from(market_id_nat);
+            let outcome_index = OutcomeIndex::from(outcome_index_nat);
+            let amount = TokenAmount::from(amount_nat);
             
             // Try to get market data to show more context
             let market_data = match MARKETS.with(|markets| {
                 let markets_ref = markets.borrow();
-                markets_ref.get(&market_id_val).map(|m| m.clone())
+                markets_ref.get(&market_id).map(|m| m.clone())
             }) {
                 Some(market) => {
-                    let outcome_idx = args.outcome_index.to_u64() as usize;
+                    let outcome_idx = outcome_index.to_u64() as usize;
                     let outcome_name = if outcome_idx < market.outcomes.len() {
                         market.outcomes[outcome_idx].clone()
                     } else {
-                        format!("Outcome #{}", args.outcome_index.to_u64())
+                        format!("Outcome #{}", outcome_index.to_u64())
                     };
                     
                     // Get token info for better display
-                    let token_id = args.token_id.unwrap_or_else(|| market.token_id.clone());
+                    let token_id = token_id_opt.unwrap_or_else(|| market.token_id.clone());
                     let token_info = get_token_info(&token_id);
                     let token_symbol = token_info.as_ref().map(|info| info.symbol.clone()).unwrap_or_else(|| token_id.clone());
                     let decimals = token_info.map(|info| info.decimals).unwrap_or(0) as u32;
                     
-                    // Format amount using TokenAmount directly
-                    let amount_decimal = args.amount.to_f64() / 10f64.powi(decimals as i32);
+                    // Format amount
+                    let amount_decimal = amount.to_f64() / 10f64.powi(decimals as i32);
                     
                     format!(
                         "# Place Bet on KongSwap Prediction Market\n\nMarket: {}\n\nOutcome: {}\n\nAmount: {} {}\n\nThis will transfer tokens from your account to the prediction market canister.",
@@ -212,9 +214,9 @@ fn handle_place_bet_consent(
                     // If we can't find the market, provide more generic message
                     format!(
                         "# Place Bet on KongSwap Prediction Market\n\nMarket ID: {}\n\nOutcome: {}\n\nAmount: {}\n\nThis will transfer tokens from your account to the prediction market canister.",
-                        args.market_id.to_u64(),
-                        args.outcome_index.to_u64(),
-                        args.amount.to_u64()
+                        market_id.to_u64(),
+                        outcome_index.to_u64(),
+                        amount.to_u64()
                     )
                 }
             };
