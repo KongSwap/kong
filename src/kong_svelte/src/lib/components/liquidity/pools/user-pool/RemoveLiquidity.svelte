@@ -350,6 +350,17 @@
            placeholder:text-kong-text-primary/30;
   }
 
+  /* Remove number input spinner arrows */
+  .amount-input::-webkit-outer-spin-button,
+  .amount-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .amount-input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
   .input-decoration {
     @apply text-sm font-medium text-kong-text-primary/60 flex-shrink-0;
   }

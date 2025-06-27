@@ -105,10 +105,6 @@
       (p.address_0 === address1 && p.address_1 === address0)
     ));
   let isInitializingPrice = $derived(poolExists === false || (livePool?.balance_0 === 0n && livePool?.balance_1 === 0n));
-  // let hasTokenPair = $derived(token0 && token1);
-
-  $inspect("livePool:", livePool);
-  $inspect("userPool:", userPool);
   
   // Helper functions
   async function waitForCondition(
@@ -607,24 +603,25 @@
           <div class="-mx-6 -mt-6 px-6 pt-5 pb-4 border-b border-kong-border/20">
             <div class="flex items-center justify-between gap-4">
               <h3 class="text-base font-semibold text-kong-text-primary whitespace-nowrap">Manage</h3>
-              
               <!-- Tabs for actions -->
-              <div class="flex gap-1.5 flex-1 justify-end">
-                {#each TABS as tab}
-                  <button
-                    class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-200 {activeTab === tab.id ? tab.activeClass : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-white/[0.02]'}"
-                    onclick={() => (activeTab = tab.id)}
-                  >
-                    <tab.icon size={12} />
-                    <span>{tab.label}</span>
-                  </button>
-                {/each}
-              </div>
+               {#if userPool}
+                <div class="flex gap-1.5 flex-1 justify-end">
+                  {#each TABS as tab}
+                    <button
+                      class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md {activeTab === tab.id ? tab.activeClass : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-white/[0.02]'}"
+                      onclick={() => (activeTab = tab.id)}
+                    >
+                      <tab.icon size={12} />
+                      <span>{tab.label}</span>
+                    </button>
+                  {/each}
+                </div>
+              {/if}
             </div>
           </div>
         
           <!-- Tab Content -->
-          <div class="mt-6" in:fade={{ duration: 150 }}>
+          <div class="" in:fade={{ duration: 150 }}>
           {#if activeTab === "add"}
             <AddLiquidity 
               {userPool} 
@@ -633,7 +630,7 @@
               {token1} 
               onShowConfirmModal={handleShowConfirmModal} 
             />
-          {:else if activeTab === "remove"}
+          {:else if activeTab === "remove" && userPool}
             <RemoveLiquidity 
               pool={userPool} 
               {token0} 
@@ -641,7 +638,7 @@
               on:close={() => goto('/pools')} 
               on:liquidityRemoved={handleLiquidityActionComplete} 
             />
-          {:else if activeTab === "send"}
+          {:else if activeTab === "send" && userPool}
             <SendTokens
               pool={userPool}
               {token0}

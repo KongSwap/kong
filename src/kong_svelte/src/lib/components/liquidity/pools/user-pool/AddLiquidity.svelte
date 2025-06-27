@@ -27,6 +27,7 @@
     amounts: ["", ""] as [string, string],
     displayValues: ["", ""] as [string, string],
     isCalculating: false,
+    activeInputIndex: null as number | null, // Track which input is actively being typed in
     error: null as string | null,
     calculationId: 0
   });
@@ -78,6 +79,9 @@
     abortController?.abort();
     debounceTimer && clearTimeout(debounceTimer);
 
+    // Track which input is actively being used
+    state.activeInputIndex = inputIndex;
+    
     // Immediate UI update
     state.displayValues[inputIndex] = value;
     state.error = null;
@@ -215,8 +219,8 @@
     tokenBalance={balances[0]}
     bind:displayValue={state.displayValues[0]}
     isExceedingBalance={validation.exceeding[0]}
-    isLoading={false}
-    disabled={state.isCalculating}
+    isLoading={state.isCalculating && state.activeInputIndex === 1}
+    disabled={state.isCalculating && state.activeInputIndex === 1}
     decimals={token0?.decimals || 8}
     parsedBalance={parsedBalances[0]}
     on:valueChange={(e) => handleAmountChange(0, e.detail)}
@@ -229,8 +233,8 @@
       tokenBalance={balances[1]}
       bind:displayValue={state.displayValues[1]}
       isExceedingBalance={validation.exceeding[1]}
-      isLoading={state.isCalculating}
-      disabled={state.isCalculating}
+      isLoading={state.isCalculating && state.activeInputIndex === 0}
+      disabled={state.isCalculating && state.activeInputIndex === 0}
       decimals={token1?.decimals || 8}
       parsedBalance={parsedBalances[1]}
       on:valueChange={(e) => handleAmountChange(1, e.detail)}
