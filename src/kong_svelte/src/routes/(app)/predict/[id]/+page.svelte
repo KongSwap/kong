@@ -92,6 +92,8 @@
         amount: typeof bet.amount === "bigint" ? Number(bet.amount) : bet.amount,
         outcome_index: typeof bet.outcome_index === "bigint" ? Number(bet.outcome_index) : bet.outcome_index,
         timestamp: typeof bet.timestamp === "bigint" ? Number(bet.timestamp) : bet.timestamp,
+        // Add token_id from market if not present in bet
+        token_id: bet.token_id || market?.token_id,
       }));
     } catch (e) {
       console.error("Failed to load market bets:", e);
@@ -529,7 +531,6 @@
             maxHeight="500px"
             title="Recent Predictions"
             loading={loadingBets}
-            tokenSymbol={marketTokenInfo?.symbol || "KONG"}
           />
         </div>
 

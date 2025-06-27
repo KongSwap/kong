@@ -1,18 +1,12 @@
 <script lang="ts">
-  import {
-    Shield,
-    Info,
-  } from "lucide-svelte";
   import BetBarChart from "./BetBarChart.svelte";
   import ChanceLineChart from "./ChanceLineChart.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import Card from "$lib/components/common/Card.svelte";
-  import { formatBalance } from "$lib/utils/numberFormatUtils";
+  import { formatBalance, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import type { Market } from "$lib/types/predictionMarket";
   import { userTokens } from "$lib/stores/userTokens";
   import { isAdmin } from "$lib/api/predictionMarket";
-  import { goto } from "$app/navigation";
-  import { truncateAddress } from "$lib/utils/principalUtils";
   import Icon from "@iconify/svelte";
   import {
     shareToTwitter,
@@ -110,7 +104,7 @@
     return [
       {
         label: "Total Pool",
-        value: `${formatBalance(Number(market?.total_pool || 0), 8)} ${token?.symbol}`,
+        value: `${formatToNonZeroDecimal(formatBalance(Number(market?.total_pool || 0), token?.decimals))} ${token?.symbol}`,
         token: token,
       },
       {

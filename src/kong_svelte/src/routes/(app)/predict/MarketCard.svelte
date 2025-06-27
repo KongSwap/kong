@@ -494,7 +494,7 @@
   </div>
 </Card>
 
-<style>
+<style lang="postcss">
   /* Smooth hover transitions */
   .group\/outcome:hover :global(.bg-kong-success\/40) {
     @apply bg-kong-success/60;
@@ -521,7 +521,4 @@
   .scrollbar-thumb-kong-border::-webkit-scrollbar-thumb:hover {
     background-color: var(--kong-border, rgba(255, 255, 255, 0.2));
   }
-
-  /* Title text clamp to 2 lines */
-  /* Use Tailwind's line-clamp utility instead */
 </style>
