@@ -532,7 +532,7 @@
             bets={marketBets}
             outcomes={market?.outcomes}
             showOutcomes={true}
-            maxHeight="500px"
+            maxHeight="390px"
             title="Recent Predictions"
             loading={loadingBets}
           />
