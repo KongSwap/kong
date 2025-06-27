@@ -73,7 +73,6 @@
   let lastSearch = "";
   let lastPage = 0;
   let isFirstLoad = true;
-  let isLoadingData = false;
 
   // ===== Derived Stores =====
   const tokenMap = derived(
@@ -174,7 +173,7 @@
   // URL-driven data loading
   
   $effect(() => {
-    if (!browser || isLoadingData) return;
+    if (!browser) return;
     
     const urlParams = new URLSearchParams($page.url.search);
     const urlSearch = urlParams.get("search") || "";
@@ -201,14 +200,16 @@
       currentPage.set(urlPage);
     }
     
-    // Load data
-    isLoadingData = true;
+    // Cancel any pending operations to avoid conflicts
+    clearTimeout(searchDebounceTimer);
+    
+    // Load data - allow concurrent requests, loadPools will handle state properly
     const loadPromise = isFirstLoad 
       ? (isFirstLoad = false, loadInitialData())
       : loadPools(urlPage, urlSearch);
       
-    loadPromise.finally(() => {
-      isLoadingData = false;
+    loadPromise.catch((error) => {
+      console.error("Error loading pools:", error);
     });
   });
 
@@ -289,12 +290,16 @@
   function handleSearch() {
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
-      const search = searchInput.trim().toLowerCase();
-      goto(`/pools?search=${encodeURIComponent(search)}&page=1`, {
-        keepFocus: true,
-        noScroll: true,
-        replaceState: true,
-      });
+      try {
+        const search = searchInput.trim().toLowerCase();
+        goto(`/pools?search=${encodeURIComponent(search)}&page=1`, {
+          keepFocus: true,
+          noScroll: true,
+          replaceState: true,
+        });
+      } catch (error) {
+        console.error("Error navigating during search:", error);
+      }
     }, 300);
   }
 
@@ -362,6 +367,8 @@
 
   const handleSearchInputChange = (value: string) => {
     searchInput = value;
+
+    console.log("searchInput", searchInput);
     
     if ($activePoolView === "user") {
       currentUserPoolsStore.setSearchQuery(value);
