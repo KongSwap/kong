@@ -23,7 +23,7 @@
   let showThemeCreator = $state(false);
   let ThemeCreator = $state<ComponentType<any> | undefined>(undefined);
   let soundEnabled = $state(true);
-  let tickerEnabled = $state(true);
+  let tickerEnabled = $state(false);
   let slippageValue = $state<number>(2.0);
   let slippageInputValue = $state('2.0');
   let isCustomSlippage = $state(false);
@@ -85,7 +85,7 @@
   $effect(() => {
     if ($settingsStore) {
       soundEnabled = $settingsStore.sound_enabled;
-      tickerEnabled = $settingsStore.ticker_enabled ?? true;
+      tickerEnabled = $settingsStore.ticker_enabled ?? false;
       // DO NOT update slippageValue here
     }
   });
@@ -152,7 +152,7 @@
     // Default settings if nothing found
     return {
       sound_enabled: true,
-      ticker_enabled: true,
+      ticker_enabled: false,
       max_slippage: 2.0,
       timestamp: Date.now()
     };
@@ -185,7 +185,7 @@
   async function loadUserSettings() {
     const settings = await getSettings();
     soundEnabled = settings.sound_enabled;
-    tickerEnabled = settings.ticker_enabled ?? true;
+    tickerEnabled = settings.ticker_enabled ?? false;
     // Restore slippage loading here
     slippageValue = settings.max_slippage || 2.0; 
     slippageInputValue = slippageValue.toString();

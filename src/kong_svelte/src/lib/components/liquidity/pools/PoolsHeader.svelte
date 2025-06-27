@@ -3,19 +3,59 @@
   import { TrendingUp, PiggyBank, Flame, Plus, Droplets } from "lucide-svelte";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
+  import { fetchPoolTotals, fetchPools } from "$lib/api/pools";
+  import { onMount, onDestroy } from "svelte";
 
   const DEFAULT_POOL_URL = "/pools/ryjl3-tyaaa-aaaaa-aaaba-cai_cngnf-vqaaa-aaaar-qag4q-cai"
 
-  interface PoolsHeaderProps {
-    poolTotals: {
-      total_volume_24h: number;
-      total_tvl: number;
-      total_fees_24h: number;
-    };
-    highestAPY: number;
+  // Internal state for fetched data
+  let poolTotals = $state({
+    total_volume_24h: 0,
+    total_tvl: 0,
+    total_fees_24h: 0,
+  });
+  let highestAPY = $state(0);
+  let isLoading = $state(true);
+  let refreshInterval: NodeJS.Timeout | null = null;
+
+  // Function to fetch data
+  async function fetchData() {
+    try {
+      // Fetch pool totals
+      const totalsResult = await fetchPoolTotals();
+      poolTotals = totalsResult;
+
+      // Fetch first page of pools to calculate highest APY
+      const poolsResult = await fetchPools({ page: 1, limit: 100 });
+      if (poolsResult.pools && poolsResult.pools.length > 0) {
+        highestAPY = Math.max(...poolsResult.pools.map((p) => Number(p.rolling_24h_apy)), 0);
+      }
+    } catch (error) {
+      console.error("Error fetching pool header data:", error);
+    } finally {
+      isLoading = false;
+    }
   }
 
-  let { poolTotals, highestAPY }: PoolsHeaderProps = $props();
+  // Fetch data on mount and set up refresh interval
+  onMount(() => {
+    fetchData();
+    
+    // Refresh data every 30 seconds
+    refreshInterval = setInterval(fetchData, 30000);
+    
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
+  });
+
+  onDestroy(() => {
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+    }
+  });
 </script>
 
 <div class="px-4">
@@ -49,10 +89,18 @@
               <span class="text-xs text-kong-text-secondary uppercase tracking-wider">24H Volume</span>
             </div>
             <div class="text-2xl font-bold text-kong-text-primary mb-1">
-              {formatUsdValue(poolTotals.total_volume_24h)}
+              {#if isLoading}
+                <div class="h-8 w-32 bg-kong-bg-light rounded animate-pulse"></div>
+              {:else}
+                {formatUsdValue(poolTotals.total_volume_24h)}
+              {/if}
             </div>
             <div class="text-sm text-kong-success font-medium">
-              = {formatUsdValue(poolTotals.total_volume_24h * 0.003)} in fees
+              {#if isLoading}
+                <div class="h-5 w-24 bg-kong-bg-light rounded animate-pulse"></div>
+              {:else}
+                = {formatUsdValue(poolTotals.total_volume_24h * 0.003)} in fees
+              {/if}
             </div>
           </div>
 
@@ -65,7 +113,11 @@
               <span class="text-xs text-kong-text-secondary uppercase tracking-wider">Total Locked</span>
             </div>
             <div class="text-2xl font-bold text-kong-text-primary mb-1">
-              {formatUsdValue(poolTotals.total_tvl)}
+              {#if isLoading}
+                <div class="h-8 w-32 bg-kong-bg-light rounded animate-pulse"></div>
+              {:else}
+                {formatUsdValue(poolTotals.total_tvl)}
+              {/if}
             </div>
             <div class="text-sm text-kong-text-secondary">
               Earning fees 24/7
@@ -81,7 +133,11 @@
               <span class="text-xs text-kong-success uppercase tracking-wider font-semibold">Top APY</span>
             </div>
             <div class="text-2xl font-bold text-kong-success mb-1">
-              {highestAPY.toFixed(2)}%
+              {#if isLoading}
+                <div class="h-8 w-24 bg-kong-success/20 rounded animate-pulse"></div>
+              {:else}
+                {highestAPY.toFixed(2)}%
+              {/if}
             </div>
             <div class="text-sm text-kong-text-secondary">
               Best performing pool

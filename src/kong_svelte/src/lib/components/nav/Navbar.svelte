@@ -141,6 +141,18 @@
   let walletSidebarActiveTab = $state<WalletTab>("notifications");
   let isClaiming = $state(false);
   let closeTimeout: ReturnType<typeof setTimeout>;
+  
+  // Track if settings are initialized
+  let settingsInitialized = $state(false);
+  let showTicker = $derived(settingsInitialized && $settingsStore.ticker_enabled === true);
+  
+  $effect(() => {
+    const unsubscribe = settingsStore.initialized.subscribe(value => {
+      settingsInitialized = value;
+    });
+    
+    return unsubscribe;
+  });
   let activeTab = $derived.by(() => {
     const path = page.url.pathname;
 
@@ -421,7 +433,7 @@
 </script>
 
 <div id="navbar" class="w-full top-0 left-0 z-50 relative mb-4">
-  {#if $settingsStore.ticker_enabled}
+  {#if showTicker}
     <TokenTicker />
   {/if}
   <div class="mx-auto h-16 flex items-center justify-between md:px-6 px-4 py-2">

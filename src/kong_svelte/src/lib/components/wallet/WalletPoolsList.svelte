@@ -46,8 +46,9 @@
     if ($auth.isConnected && !hasInitialized && !isInitializing) {
       hasInitialized = true;
       isInitializing = true;
-      currentUserPoolsStore.initialize()
-        .catch(error => {
+      currentUserPoolsStore
+        .initialize()
+        .catch((error) => {
           console.error("Error loading user pools:", error);
           errorMessage = "Failed to load your liquidity positions.";
         })
@@ -64,10 +65,10 @@
   // Simple refresh handler
   async function handleRefresh() {
     if (isRefreshingLocal) return;
-    
+
     errorMessage = null;
     isRefreshingLocal = true;
-    
+
     try {
       // Use parent refresh if provided, otherwise refresh ourselves
       if (onRefresh) {
@@ -92,7 +93,7 @@
     // Build the pool ID
     const poolId = `${pool.address_0}_${pool.address_1}`;
     const path = `/pools/${poolId}`;
-    
+
     // If we have an onNavigate callback (which closes the sidebar), use it
     if (onNavigate) {
       onNavigate(path);
@@ -205,24 +206,28 @@
                   overlap={true}
                 />
               </div>
-              <div class="flex flex-col"> 
-              <span class="text-sm text-kong-text-primary">
-                {pool.symbol_0}/{pool.symbol_1}
-              </span>
-              <span class="text-xs text-kong-text-secondary/90">
-                {formatToNonZeroDecimal(pool.amount_0)} {pool.symbol_0} / {formatToNonZeroDecimal(pool.amount_1)} {pool.symbol_1}
-              </span>
+              <div class="flex flex-col">
+                <span class="text-sm text-kong-text-primary">
+                  {pool.symbol_0}/{pool.symbol_1}
+                </span>
+                <span class="text-xs text-kong-text-secondary/90">
+                  {formatToNonZeroDecimal(pool.amount_0)}
+                  {pool.symbol_0} / {formatToNonZeroDecimal(pool.amount_1)}
+                  {pool.symbol_1}
+                </span>
               </div>
               <div class="flex-grow flex justify-end">
-                  <div class="flex flex-col items-end gap-1 text-xs text-kong-text-secondary">
-                    <span class="font-medium text-sm text-kong-text-primary">
-                      {#if showUsdValues}
-                        {formatCurrency(pool.usd_balance || "0")}
-                      {:else}
-                        $****
-                      {/if}
-                    </span>
-                    <span class="text-kong-success">{getPoolApy(pool)}% APY</span>
+                <div
+                  class="flex flex-col items-end gap-1 text-xs text-kong-text-secondary"
+                >
+                  <span class="font-medium text-sm text-kong-text-primary">
+                    {#if showUsdValues}
+                      {formatCurrency(pool.usd_balance || "0")}
+                    {:else}
+                      $****
+                    {/if}
+                  </span>
+                  <span class="text-kong-success">{getPoolApy(pool)}% APY</span>
                 </div>
               </div>
             </div>
@@ -230,7 +235,6 @@
         {/each}
       </div>
     {/if}
-
   </div>
 </div>
 

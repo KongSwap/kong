@@ -24,6 +24,7 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { auth } from "$lib/stores/auth";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
+  import { isAdmin } from "$lib/api/predictionMarket";
 
   // Import our new components
   import MarketHeader from "./MarketHeader.svelte";
@@ -50,6 +51,21 @@
 
   // Store pending outcome for after authentication
   let pendingOutcome: number | null = null;
+  
+  // Check if user is admin
+  let isUserAdmin = false;
+  
+  // React to auth changes
+  $: if ($auth.isConnected && $auth.account?.owner) {
+    isAdmin($auth.account.owner).then(result => {
+      isUserAdmin = result;
+    }).catch(e => {
+      console.error("Failed to check admin status:", e);
+      isUserAdmin = false;
+    });
+  } else {
+    isUserAdmin = false;
+  }
 
   // Handle chart tab changes
   function handleChartTabChange(tab: string) {
@@ -129,6 +145,15 @@
       const marketData = await getMarket(marketId);
       console.log(marketData);
       market = marketData[0];
+
+      // Check if current user is admin
+      if ($auth.isConnected && $auth.account?.owner) {
+        try {
+          isUserAdmin = await isAdmin($auth.account.owner);
+        } catch (e) {
+          console.error("Failed to check admin status:", e);
+        }
+      }
 
       try {
         await loadMarketBets();
@@ -343,6 +368,35 @@
     !isMarketVoided &&
     marketEndTime &&
     marketEndTime < Date.now();
+  
+  // Check if market is pending activation
+  $: isMarketPendingActivation = market?.status?.PendingActivation !== undefined;
+  
+  // Check if market is already active
+  $: isMarketActive = market?.status?.Active !== undefined;
+  
+  // Check if market needs activation (no bets placed yet and not already active)
+  $: totalBets = betCounts.reduce((acc, curr) => acc + curr, 0);
+  $: isMarketNeedsActivation = totalBets === 0 && !isMarketClosed && !isMarketVoided && !isMarketActive;
+  
+  // Check if current user is market creator
+  $: isMarketCreator = market && $auth.isConnected && $auth.account?.owner === market.creator?.toText();
+  
+  // Check if market was created by admin
+  $: marketCreatorIsAdmin = false;
+  $: if (market && market.creator) {
+    isAdmin(market.creator.toText()).then(result => {
+      marketCreatorIsAdmin = result;
+    }).catch(e => {
+      console.error("Failed to check if market creator is admin:", e);
+      marketCreatorIsAdmin = false;
+    });
+  }
+  
+  // Determine if we should show activation UI
+  // Admin-created markets should NOT show activation UI - they should be active immediately
+  // Also don't show if market is already active or pending activation
+  $: shouldShowActivationUI = isMarketNeedsActivation && isMarketCreator && !marketCreatorIsAdmin && !isMarketPendingActivation && !isMarketActive;
 </script>
 
 <svelte:head>
@@ -431,19 +485,67 @@
             />
           </Panel>
 
-          <!-- Outcomes Panel -->
-          <OutcomesList
-            {market}
-            {outcomes}
-            {outcomePercentages}
-            {betCountPercentages}
-            {betCounts}
-            {isMarketResolved}
-            {isPendingResolution}
-            {isMarketClosed}
-            {winningOutcomes}
-            onSelectOutcome={handleOutcomeSelect}
-          />
+          <!-- Outcomes Panel or Activation Message -->
+          {#if shouldShowActivationUI}
+            <!-- Show activation UI for market creator -->
+            <Panel 
+              variant="transparent"
+              className="backdrop-blur-sm !rounded shadow-lg border border-kong-border/10 animate-fadeIn"
+            >
+              <div class="text-center py-8">
+                <h3 class="text-lg font-semibold text-kong-text-primary mb-3">
+                  Activate Your Market
+                </h3>
+                <p class="text-sm text-kong-text-secondary mb-6">
+                  To activate this market and make it visible to other users, you need to place the first bet.
+                </p>
+                <p class="text-xs text-kong-text-secondary mb-4">
+                  This helps prevent spam and ensures market creators have skin in the game.
+                </p>
+                <OutcomesList
+                  {market}
+                  {outcomes}
+                  {outcomePercentages}
+                  {betCountPercentages}
+                  {betCounts}
+                  {isMarketResolved}
+                  {isPendingResolution}
+                  {isMarketClosed}
+                  {winningOutcomes}
+                  onSelectOutcome={handleOutcomeSelect}
+                />
+              </div>
+            </Panel>
+          {:else if isMarketNeedsActivation && !isMarketCreator}
+            <!-- Show pending message for non-creators -->
+            <Panel 
+              variant="transparent"
+              className="backdrop-blur-sm !rounded shadow-lg border border-kong-border/10 animate-fadeIn"
+            >
+              <div class="text-center py-12">
+                <h3 class="text-lg font-semibold text-kong-text-primary mb-3">
+                  Market Awaiting Activation
+                </h3>
+                <p class="text-sm text-kong-text-secondary">
+                  This market is waiting for the creator to activate it by placing the first bet.
+                </p>
+              </div>
+            </Panel>
+          {:else}
+            <!-- Show normal outcomes list -->
+            <OutcomesList
+              {market}
+              {outcomes}
+              {outcomePercentages}
+              {betCountPercentages}
+              {betCounts}
+              {isMarketResolved}
+              {isPendingResolution}
+              {isMarketClosed}
+              {winningOutcomes}
+              onSelectOutcome={handleOutcomeSelect}
+            />
+          {/if}
         </div>
 
         <!-- Right Column -->
