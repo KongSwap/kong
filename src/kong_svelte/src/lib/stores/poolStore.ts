@@ -1,5 +1,4 @@
 import { derived, writable, type Readable, readable } from "svelte/store";
-// import { formatPoolData } from "$lib/utils/statsUtils";
 import { Pool } from "$lib/models/Pool";
 import { browser } from "$app/environment";
 import { fetchPools } from "$lib/api/pools";
