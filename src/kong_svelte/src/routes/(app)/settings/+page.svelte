@@ -466,13 +466,6 @@
       isThemeDropdownOpen = false;
     }
   }
-
-  // Navigation function to go back
-  function goBack() {
-    if (browser) {
-      history.back();
-    }
-  }
 </script>
 
 <svelte:head>
@@ -480,17 +473,6 @@
   <meta name="description" content="Customize Kong's appearance and behavior" />
 </svelte:head>
 
-  <!-- Back button -->
-  <div class="mb-4 px-4 max-w-[1300px] mx-auto">
-    <button
-      class="flex items-center gap-2 text-kong-text-secondary hover:text-kong-primary transition-colors"
-      onclick={goBack}
-    >
-      <ArrowLeft class="w-4 h-4" />
-      <span>Back</span>
-    </button>
-  </div>
-  
   <!-- Page Header -->
   <PageHeader
     title="Settings"

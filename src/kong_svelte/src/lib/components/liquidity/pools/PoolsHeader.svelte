@@ -76,7 +76,7 @@
           >
             <div class="flex items-center justify-between mb-2">
               <Flame class="w-7 h-7 text-kong-success group-hover:animate-pulse" />
-              <span class="text-xs text-kong-success uppercase tracking-wider font-semibold">Top APR</span>
+              <span class="text-xs text-kong-success uppercase tracking-wider font-semibold">Top APY</span>
             </div>
             <div class="text-2xl font-bold text-kong-success mb-1">
               {highestAPY.toFixed(2)}%

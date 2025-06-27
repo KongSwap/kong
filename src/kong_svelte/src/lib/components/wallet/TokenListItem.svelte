@@ -5,7 +5,7 @@
 	import Badge from "$lib/components/common/Badge.svelte";
 	import { currentUserBalancesStore } from "$lib/stores/balancesStore";
 	import { formatTokenName } from "$lib/utils/tokenFormatUtils";
-
+	import { BadgeCheck, BadgeX } from "lucide-svelte";
 	// Define props
 	export let token: Kong.Token;
 	export let isActive = false;
@@ -77,6 +77,13 @@
 					<span class="font-medium text-kong-text-primary text-sm leading-tight">
 						{formatTokenName(token.name, 25)}
 					</span>
+					<div class="flex flex-wrap items-center">
+						{#if token?.metrics?.is_verified}
+						  <Badge variant="green" size="xs" class="!p-0" tooltip="This token is verified by Kong" tooltipDirection="bottom"><BadgeCheck size="14" /></Badge>
+						{:else}
+						  <Badge variant="yellow" size="xs" class="!p-0" tooltip="This token is not verified by Kong" tooltipDirection="bottom"><BadgeX size="14" /></Badge>
+						{/if}
+					  </div>
 				</div>
 				<div class="text-xs text-kong-text-secondary mt-1 leading-tight">
 					{#if showUsdValues}
