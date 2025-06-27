@@ -23,38 +23,14 @@
     <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width" />
     <meta name="theme-color" content="#0E111B" />
+    <!-- Title and description will be set by SvelteKit -->
+    <meta
+      name="keywords"
+      content="kongswap, kong swap, icp dex, internet computer defi, icp amm, automated market maker, liquidity pools, icp prediction market, dfinity dex, internet computer exchange, icp trading, swap icp tokens, icrc tokens, ckbtc, cketh, ckusdt, decentralized exchange, web3 dex, icp liquidity, yield farming icp"
+    />
     <meta name="author" content="KongSwap" />
+    <meta name="robots" content="index, follow" />
     <meta name="yandex-verification" content="d943ce9c11eb25d8" />
-    <!-- Add Google Search Console verification (replace with your actual verification code) -->
-    <meta name="google-site-verification" content="YOUR_GOOGLE_VERIFICATION_CODE" />
-    <!-- Add Bing Webmaster Tools verification (replace with your actual verification code) -->
-    <meta name="msvalidate.01" content="YOUR_BING_VERIFICATION_CODE" />
-    
-    <!-- DNS Prefetch and Preconnect for Performance -->
-    <link rel="dns-prefetch" href="//www.googletagmanager.com" />
-    <link rel="dns-prefetch" href="//www.google-analytics.com" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    
-    <!-- Resource Hints for better performance -->
-    <link rel="preconnect" href="https://kongswap.io" />
-    <link rel="dns-prefetch" href="//kongswap.io" />
-    
-    <!-- Preload critical resources -->
-    <link rel="preload" href="/favicon.ico" as="image" type="image/x-icon" />
-    <link rel="preload" href="/android-chrome-192x192.png" as="image" type="image/png" />
-    
-    <!-- Enhanced robots directive -->
-    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
-    
-    <!-- Additional SEO meta tags -->
-    <meta name="format-detection" content="telephone=no" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    
-    <!-- Referrer Policy for Analytics -->
-    <meta name="referrer" content="strict-origin-when-cross-origin" />
 
     %sveltekit.head%
   </head>
@@ -114,27 +90,16 @@
         })();
       </script>
   
-      <!-- Enhanced Structured Data (Schema.org) -->
+      <!-- Structured Data (Schema.org) -->
       <script type="application/ld+json">
         {
           "@context": "https://schema.org",
           "@graph": [
             {
               "@type": "Organization",
-              "@id": "https://kongswap.io/#organization",
               "name": "KongSwap",
-              "alternateName": "Kong Swap",
               "url": "https://kongswap.io",
-              "logo": {
-                "@type": "ImageObject",
-                "url": "https://kongswap.io/images/kong_logo.png",
-                "width": 512,
-                "height": 512
-              },
-              "description": "KongSwap is the leading decentralized exchange on Internet Computer, enabling zero-slippage trading of 50+ tokens with prediction markets and DeFi services.",
-              "foundingDate": "2023",
-              "industry": "DeFi",
-              "keywords": "DeFi, DEX, Internet Computer, ICP, cryptocurrency, trading, liquidity, prediction markets",
+              "logo": "https://kongswap.io/images/kong_logo.png",
               "sameAs": [
                 "https://x.com/kongswapx",
                 "https://t.me/kong_swap",
@@ -146,43 +111,8 @@
             },
             {
               "@type": "WebSite",
-              "@id": "https://kongswap.io/#website",
-              "url": "https://kongswap.io",
               "name": "KongSwap",
-              "description": "Trade crypto with zero slippage on Internet Computer's premier DEX. Swap 50+ tokens, provide liquidity, earn rewards.",
-              "publisher": {
-                "@id": "https://kongswap.io/#organization"
-              },
-              "potentialAction": [
-                {
-                  "@type": "SearchAction",
-                  "target": {
-                    "@type": "EntryPoint",
-                    "urlTemplate": "https://kongswap.io/search?q={search_term_string}"
-                  },
-                  "query-input": "required name=search_term_string"
-                }
-              ]
-            },
-            {
-              "@type": "WebApplication",
-              "@id": "https://kongswap.io/#webapp",
-              "name": "KongSwap DEX",
-              "url": "https://kongswap.io",
-              "applicationCategory": "FinanceApplication",
-              "operatingSystem": "Web Browser",
-              "offers": {
-                "@type": "Offer",
-                "price": "0",
-                "priceCurrency": "USD"
-              },
-              "featureList": [
-                "Cryptocurrency Trading",
-                "Liquidity Provision", 
-                "Prediction Markets",
-                "Portfolio Tracking",
-                "Yield Farming"
-              ]
+              "url": "https://kongswap.io"
             }
           ]
         }

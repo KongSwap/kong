@@ -235,25 +235,3 @@ export function calculatePercentageAmount(
     
   return percentageAmount.minus(token.fee).toFixed(token.decimals);
 }
-
-export function toShortNumber(value: number | string, token: Kong.Token): string {
-  console.log("value", value);
-  if (!value) return "0.00";
-  const valueNumber = typeof value === 'string' ? Number(value.replace(/,/g, '')) : value;
-  const tokenDecimals = token.decimals;
-  const tokenDecimalsMultiplier = new BigNumber(10).pow(tokenDecimals);
-  const valueNumberWithDecimals = new BigNumber(valueNumber).div(tokenDecimalsMultiplier);
-  console.log("valueNumberWithDecimals", valueNumberWithDecimals);
-
-  // format to abbreviations (K, M, B, T)
-  if (valueNumberWithDecimals.gt(1_000_000_000)) {
-    return `${(valueNumberWithDecimals.dividedBy(1_000_000_000)).toFormat(2)}B`;
-  }
-  if (valueNumberWithDecimals.gt(1000000)) {
-    return `${(valueNumberWithDecimals.dividedBy(1_000_000)).toFormat(2)}M`;
-  }
-  if (valueNumberWithDecimals.gt(1000)) {
-    return `${(valueNumberWithDecimals.dividedBy(1_000)).toFormat(2)}K`;
-  }
-  return `${valueNumberWithDecimals.toFormat(2)}`;
-}
