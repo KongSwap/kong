@@ -63,7 +63,10 @@
       return market && market.status && "Pending" in market.status;
     },
     isOpen: (market: any): boolean => {
-      return market && market.status && "Open" in market.status;
+      return market && market.status && "Active" in market.status;
+    },
+    isPendingActivation: (market: any): boolean => {
+      return market && market.status && "PendingActivation" in market.status;
     },
     canResolveOrVoid: (market: any): boolean => {
       return (
@@ -174,6 +177,11 @@
       return {
         color: "bg-kong-accent-yellow/10 text-kong-accent-yellow",
         text: "Pending",
+      };
+    if (marketStatus.isPendingActivation(market))
+      return {
+        color: "bg-kong-accent-blue/10 text-kong-accent-blue",
+        text: "Pending Activation",
       };
     if (marketStatus.isExpiredUnresolved(market))
       return { color: "bg-indigo-400/10 text-indigo-400", text: "Unresolved" };
