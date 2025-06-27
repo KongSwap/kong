@@ -2,6 +2,7 @@
   import { CircleHelp, Wand } from "lucide-svelte";
   import Badge from "$lib/components/common/Badge.svelte";
   import { truncateAddress } from "$lib/utils/principalUtils";
+    import { goto } from "$app/navigation";
 
   let { market } = $props();
   
@@ -72,11 +73,11 @@
       {/if}
       
       {#if market.creator}
-        <a href="/wallets/{market.creator.toText()}" class="inline-block">
-          <Badge variant="purple" size="sm" class="hover:opacity-80 transition-opacity cursor-pointer">
-            Created by {truncateAddress(market.creator.toText())}
-          </Badge>
-        </a>
+        <Badge variant="purple" size="sm" class="hover:opacity-80 transition-opacity cursor-pointer" onclick={() => {
+          goto(`/wallets/${market.creator.toText()}`)
+        }}>
+          Created by {truncateAddress(market.creator.toText())}
+        </Badge>
       {/if}
     </div>
     
