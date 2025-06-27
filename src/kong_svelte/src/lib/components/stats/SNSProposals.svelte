@@ -65,7 +65,7 @@
   }
 
   function formatTimestamp(timestamp: bigint): string {
-    const date = new Date(Number(timestamp) * 1_000);
+    const date = new Date(Number(timestamp) * 1000);
     return formatDistanceToNow(date, { addSuffix: true });
   }
 

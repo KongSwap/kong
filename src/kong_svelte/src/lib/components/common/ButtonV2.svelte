@@ -29,7 +29,7 @@
     className?: string;
     element?: HTMLButtonElement | null;
     animationIterations?: number;
-    onclick?: (e: MouseEvent) => void;
+    onclick?: () => void;
   }>();
   
   // Convert state to runes
@@ -64,9 +64,9 @@
   };
 
   const outlineThemeClasses = {
-    primary: "border border-kong-primary !text-kong-primary hover:bg-kong-primary/20",
-    secondary: "border !border-kong-border !text-kong-text-primary hover:!bg-kong-bg-tertiary",
-    "accent-green": "border border-kong-success hover:bg-kong-success/10 !text-kong-success",
+    primary: "border border-kong-primary text-kong-text-primary hover:bg-kong-primary/20",
+    secondary: "border border-white/10 text-white/90 hover:bg-white/5",
+    "accent-green": "border border-kong-success text-kong-success hover:bg-kong-success/10",
     "accent-blue": "border border-kong-accent-blue text-kong-accent-blue hover:bg-kong-accent-blue/10",
     "accent-red": "border border-kong-error text-kong-error hover:bg-kong-error/10",
     success: "border border-kong-success text-kong-success hover:bg-kong-success/10",
@@ -76,8 +76,8 @@
   };
 
   const transparentThemeClasses = {
-    primary: "bg-transparent !text-kong-primary hover:bg-kong-primary/10",
-    secondary: "bg-transparent !text-kong-text-primary hover:bg-white/5",
+    primary: "bg-transparent text-kong-primary hover:bg-kong-primary/10",
+    secondary: "bg-transparent text-white/90 hover:bg-white/5",
     "accent-green": "bg-transparent text-kong-success hover:bg-kong-success/10",
     "accent-blue": "bg-transparent text-kong-accent-blue hover:bg-kong-accent-blue/10",
     "accent-red": "bg-transparent text-kong-error hover:bg-kong-error/10",
@@ -166,6 +166,7 @@
 <style>
   button {
     background-clip: padding-box;
+    border: none;
     outline: none;
   }
   

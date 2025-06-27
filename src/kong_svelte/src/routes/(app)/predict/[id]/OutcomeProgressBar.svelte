@@ -4,7 +4,7 @@
   $: colorClass = percentage >= 75
     ? 'from-emerald-500/50 to-emerald-400/30'
     : percentage >= 50
-      ? 'from-kong-success/50 to-kong-success/30'
+      ? 'from-kong-accent-green/50 to-kong-accent-green/30'
       : percentage >= 25
         ? 'from-yellow-500/50 to-yellow-400/30'
         : 'from-red-500/50 to-red-400/30';
@@ -66,7 +66,7 @@
   :global(.from-emerald-500\/50 .animate-laser-glow) {
     --laser-color: rgba(16, 185, 129, 0.5);
   }
-  :global(.from-kong-success\/50 .animate-laser-glow) {
+  :global(.from-kong-accent-green\/50 .animate-laser-glow) {
     --laser-color: rgba(68, 255, 131, 0.5);
   }
   :global(.from-yellow-500\/50 .animate-laser-glow) {

@@ -155,6 +155,7 @@
       };
     });
     
+    console.log("Chart data points (grouped by day):", chartData);
 
     const config: ChartConfiguration = {
       type: 'line',

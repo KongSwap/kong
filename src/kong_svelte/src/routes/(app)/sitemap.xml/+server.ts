@@ -1,57 +1,49 @@
-import type { RequestHandler } from './$types';
 
 const SITEMAP_URL = 'https://kongswap.io'; // Base URL for the site
-
-interface SitemapPage {
-  url: string;
-  changefreq: string;
-  priority: string;
-  lastmod?: string;
-}
-
-// Define static pages with more detailed configuration
-const staticPages: SitemapPage[] = [
-  { url: '/', changefreq: 'daily', priority: '1.0' },
-  { url: '/swap', changefreq: 'hourly', priority: '0.9' },
-  { url: '/pools', changefreq: 'hourly', priority: '0.9' },
-  { url: '/stats', changefreq: 'hourly', priority: '0.8' },
-  { url: '/predict', changefreq: 'hourly', priority: '0.8' },
-  { url: '/settings', changefreq: 'weekly', priority: '0.5' },
-  { url: '/airdrop-claims', changefreq: 'daily', priority: '0.7' },
-  { url: '/wallets', changefreq: 'weekly', priority: '0.6' },
-  { url: '/pro', changefreq: 'weekly', priority: '0.7' },
+// Define static pages
+// Exclude pages that rely heavily on client-side rendering or are dynamic by nature
+// (e.g., /swap, /pools, /stats, /predict based on svelte.config.js)
+const staticPages = [
+  '/',
+  '/swap',
+  '/pools',
+  '/stats',
+  '/predict',
+  '/settings',
+  '/airdrop-claims',
+  '/wallets',
   // Add other static routes here as needed
 ];
 
 export async function GET() {
-  // For static adapter compatibility, generate at build time
-  const buildTime = new Date().toISOString();
-  
-  // All pages for static generation (no dynamic fetching)
-  const allPages = staticPages;
+  const today = new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD format
 
   const headers = {
-    'Cache-Control': 'public, max-age=86400', // Cache for 24 hours (static content)
-    'Content-Type': 'application/xml; charset=utf-8',
+    'Cache-Control': 'max-age=0, s-maxage=3600', // Cache for 1 hour on CDN
+    'Content-Type': 'application/xml',
   };
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+  const xml = `<?xml version="1.0" encoding="UTF-8" ?>
 <urlset
   xmlns="https://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="https://www.w3.org/1999/xhtml"
   xmlns:mobile="https://www.google.com/schemas/sitemap-mobile/1.0"
+  xmlns:news="https://www.google.com/schemas/sitemap-news/0.9"
   xmlns:image="https://www.google.com/schemas/sitemap-image/1.1"
+  xmlns:video="https://www.google.com/schemas/sitemap-video/1.1"
 >
-${allPages
+${staticPages
   .map(
-    (page) => `  <url>
-    <loc>${SITEMAP_URL}${page.url}</loc>
-    <lastmod>${page.lastmod || buildTime}</lastmod>
-    <changefreq>${page.changefreq}</changefreq>
-    <priority>${page.priority}</priority>
-    <mobile:mobile/>
-  </url>`
+    (page) => `
+  <url>
+    <loc>${SITEMAP_URL}${page}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq> <!-- Adjust frequency as needed -->
+    <priority>${page === '/' ? '1.0' : '0.7'}</priority> <!-- Adjust priority as needed -->
+  </url>
+`,
   )
-  .join('\n')}
+  .join('')}
 </urlset>`;
 
   return new Response(xml.trim(), { headers });

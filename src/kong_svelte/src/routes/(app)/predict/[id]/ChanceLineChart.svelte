@@ -78,6 +78,7 @@
       const sortedBets = [...normalizedBets].sort((a, b) => a.normalizedTime - b.normalizedTime);
       
       if (sortedBets.length === 0) {
+        console.log('No valid bets found for chance chart');
         return;
       }
       
@@ -223,9 +224,7 @@
                   year: 'yyyy'
                 }
               },
-              grid: { display: false },
-              title: { display: false },
-              ticks: { display: false }
+              grid: { display: false }
             },
             y: {
               type: 'linear',
@@ -256,7 +255,8 @@
               }
             },
             legend: { 
-              display: false
+              display: true,
+              position: 'top'
             }
           }
         }
@@ -323,6 +323,6 @@
   });
 </script>
 
-<div class="h-full">
+<div class="h-[300px]">
   <canvas bind:this={chartCanvas}></canvas>
 </div>
