@@ -1,12 +1,16 @@
 import { canisters } from "$lib/config/auth.config";
-import { IcrcService } from "$lib/services/icrc/IcrcService";
-import { predictionActor } from "$lib/stores/auth";
+import { predictionActor, icrcActor } from "$lib/stores/auth";
 import { Principal } from "@dfinity/principal";
 import { notificationsStore } from "$lib/stores/notificationsStore";
-import type { MarketStatus, SortOption } from "../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
+import type {
+  MarketStatus,
+  SortOption,
+} from "../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
+import { AllowancePrecheck } from "$lib/services/icrc/AllowancePrecheck";
+import { IcrcService } from "$lib/services/icrc/IcrcService";
 
 export async function getMarket(marketId: bigint) {
-  const actor = predictionActor({anon: true});
+  const actor = predictionActor({ anon: true });
   const market = await actor.get_market(marketId);
   return market;
 }
@@ -15,34 +19,52 @@ export async function getAllMarkets(
   options: {
     start?: number;
     length?: number;
-    statusFilter?: "Active" | "Closed" | "Disputed" | "Voided" | "ExpiredUnresolved" | "PendingActivation";
+    statusFilter?:
+      | "Active"
+      | "Closed"
+      | "Disputed"
+      | "Voided"
+      | "ExpiredUnresolved"
+      | "PendingActivation";
     sortOption?: {
       type: "CreatedAt" | "TotalPool" | "EndTime";
       direction: "Ascending" | "Descending";
     };
   } = {},
 ) {
-  const actor = predictionActor({anon: true});
+  const actor = predictionActor({ anon: true });
 
   const statusFilterValue: [] | [MarketStatus] = options.statusFilter
-    ? [
-        options.statusFilter === "Active" ? { Active: null } as MarketStatus :
-        options.statusFilter === "Closed" ? { Closed: [] } as MarketStatus :
-        options.statusFilter === "Disputed" ? { Disputed: null } as MarketStatus :
-        options.statusFilter === "Voided" ? { Voided: null } as MarketStatus :
-        options.statusFilter === "ExpiredUnresolved" ? { ExpiredUnresolved: null } as MarketStatus :
-        options.statusFilter === "PendingActivation" ? { PendingActivation: null } as MarketStatus :
-        undefined
-      ].filter(Boolean) as [MarketStatus]
+    ? ([
+        options.statusFilter === "Active"
+          ? ({ Active: null } as MarketStatus)
+          : options.statusFilter === "Closed"
+            ? ({ Closed: [] } as MarketStatus)
+            : options.statusFilter === "Disputed"
+              ? ({ Disputed: null } as MarketStatus)
+              : options.statusFilter === "Voided"
+                ? ({ Voided: null } as MarketStatus)
+                : options.statusFilter === "ExpiredUnresolved"
+                  ? ({ ExpiredUnresolved: null } as MarketStatus)
+                  : options.statusFilter === "PendingActivation"
+                    ? ({ PendingActivation: null } as MarketStatus)
+                    : undefined,
+      ].filter(Boolean) as [MarketStatus])
     : [];
 
   const sortOptionValue: [] | [SortOption] = options.sortOption
     ? [
         options.sortOption.type === "TotalPool"
-          ? { TotalPool: { [options.sortOption.direction]: null } } as SortOption
+          ? ({
+              TotalPool: { [options.sortOption.direction]: null },
+            } as SortOption)
           : options.sortOption.type === "EndTime"
-          ? { EndTime: { [options.sortOption.direction]: null } } as SortOption
-          : { CreatedAt: { [options.sortOption.direction]: null } } as SortOption
+            ? ({
+                EndTime: { [options.sortOption.direction]: null },
+              } as SortOption)
+            : ({
+                CreatedAt: { [options.sortOption.direction]: null },
+              } as SortOption),
       ]
     : [];
 
@@ -58,7 +80,7 @@ export async function getAllMarkets(
 }
 
 export async function getMarketsByStatus() {
-  const actor = predictionActor({anon: true});
+  const actor = predictionActor({ anon: true });
   const marketsByStatus = await actor.get_markets_by_status({
     start: 0n,
     length: 100n,
@@ -67,13 +89,13 @@ export async function getMarketsByStatus() {
 }
 
 export async function getMarketBets(marketId: bigint) {
-  const actor = predictionActor({anon: true});
+  const actor = predictionActor({ anon: true });
   const bets = await actor.get_market_bets(marketId);
   return bets;
 }
 
 export async function getUserHistory(principal: string) {
-  const actor = predictionActor({anon: true});
+  const actor = predictionActor({ anon: true });
   try {
     const principalObj = Principal.fromText(principal);
     const history = await actor.get_user_history(principalObj);
@@ -98,7 +120,7 @@ export interface CreateMarketParams {
 }
 
 export async function createMarket(params: CreateMarketParams) {
-  const actor = predictionActor({anon: false, requiresSigning: false});
+  const actor = predictionActor({ anon: false, requiresSigning: false });
   const result = await actor.create_market(
     params.question,
     params.category,
@@ -107,9 +129,13 @@ export async function createMarket(params: CreateMarketParams) {
     params.resolutionMethod,
     params.endTimeSpec,
     params.image_url ? [params.image_url] : [], // Pass as optional array
-    params.uses_time_weighting !== undefined ? [params.uses_time_weighting] : [],
+    params.uses_time_weighting !== undefined
+      ? [params.uses_time_weighting]
+      : [],
     params.time_weight_alpha !== undefined ? [params.time_weight_alpha] : [],
-    (params.token_id !== undefined && params.token_id !== null) ? [String(params.token_id)] : []
+    params.token_id !== undefined && params.token_id !== null
+      ? [String(params.token_id)]
+      : [],
   );
 
   notificationsStore.add({
@@ -125,30 +151,40 @@ export async function placeBet(
   marketId: bigint,
   outcomeIndex: bigint,
   amount: string,
+  needsAllowance?: boolean,
 ) {
   try {
-    // Request a large allowance (100x the bet amount) to allow for multiple bets
-    const largeAllowance = BigInt(token.metrics.total_supply);
-
-    // Check and request allowance if needed
-    await IcrcService.checkAndRequestIcrc2Allowances(
-      token,
-      largeAllowance,
-      canisters.predictionMarkets.canisterId,
-    );
-
-    // Place the bet using an authenticated actor
-    const actor = predictionActor({anon: false, requiresSigning: true});
-
-    // Convert amount string to BigInt and verify it's not zero
+    // Convert amount string to BigInt first
     const bigIntAmount = BigInt(amount);
-
     if (bigIntAmount === 0n) {
       throw new Error("Bet amount cannot be zero");
     }
 
-    const result = await actor.place_bet(marketId, outcomeIndex, bigIntAmount, []);
+    // Place the bet using an authenticated actor
+    const actor = predictionActor({ anon: false, requiresSigning: true });
 
+    // Request allowance if needed (this will trigger wallet popup)
+    if (token.standards?.includes("ICRC-2") && needsAllowance !== false) {
+      const largeAllowance = BigInt(token.metrics.total_supply);
+      
+      // Create the ICRC actor for the token
+      const icrcTokenActor = icrcActor({
+        canisterId: token.address,
+        anon: false,
+        requiresSigning: true,
+      });
+      
+      await IcrcService.requestIcrc2Allowance(
+        token,
+        largeAllowance,
+        canisters.predictionMarkets.canisterId,
+        icrcTokenActor,
+      );
+    }
+
+    const result = await actor.place_bet(marketId, outcomeIndex, bigIntAmount, [
+      token.address,
+    ]);
     if ("Err" in result) {
       // Handle specific error cases
       if ("TransferError" in result.Err) {
@@ -180,7 +216,10 @@ export async function placeBet(
       console.error("Place bet error.message:", error.message);
       console.error("Place bet error.stack:", error.stack);
     } else {
-      console.error("Place bet error is not an instance of Error. Type:", typeof error);
+      console.error(
+        "Place bet error is not an instance of Error. Type:",
+        typeof error,
+      );
     }
 
     if (error instanceof Error) {
@@ -195,11 +234,11 @@ export async function resolveMarketViaAdmin(
   winningOutcome: bigint,
 ): Promise<void> {
   try {
-    const actor = predictionActor({anon: false, requiresSigning: false});
+    const actor = predictionActor({ anon: false, requiresSigning: false });
 
     const result = await actor.resolve_via_admin({
       market_id: marketId,
-      winning_outcomes: [winningOutcome]
+      winning_outcomes: [winningOutcome],
     });
 
     if ("Err" in result) {
@@ -234,13 +273,16 @@ export async function forceResolveMarket(
   winningOutcome: bigint,
 ): Promise<void> {
   try {
-    console.log("forceResolveMarket called with:", { marketId, winningOutcome });
-    const actor = predictionActor({anon: false, requiresSigning: true});
+    console.log("forceResolveMarket called with:", {
+      marketId,
+      winningOutcome,
+    });
+    const actor = predictionActor({ anon: false, requiresSigning: true });
     console.log("Actor created, calling force_resolve_market...");
 
     const result = await actor.force_resolve_market({
       market_id: marketId,
-      winning_outcomes: [winningOutcome]
+      winning_outcomes: [winningOutcome],
     });
     console.log("force_resolve_market result:", result);
 
@@ -264,7 +306,7 @@ export async function forceResolveMarket(
         );
       }
     }
-    
+
     if ("Success" in result) {
       notificationsStore.add({
         title: "Market Force Resolved",
@@ -276,12 +318,14 @@ export async function forceResolveMarket(
     console.error("Failed to force resolve market:", error);
     console.error("Error type:", typeof error);
     console.error("Error details:", JSON.stringify(error, null, 2));
-    
+
     // Check if it's a signing/authentication error
     if (error instanceof Error && error.message.includes("Sign")) {
-      throw new Error("Authentication required. Please ensure you're signed in.");
+      throw new Error(
+        "Authentication required. Please ensure you're signed in.",
+      );
     }
-    
+
     throw error;
   }
 }
@@ -291,16 +335,16 @@ export async function proposeResolution(
   winningOutcome: bigint,
 ): Promise<void> {
   try {
-    const actor = predictionActor({anon: false, requiresSigning: true});
+    const actor = predictionActor({ anon: false, requiresSigning: true });
 
     console.log("Calling propose_resolution with:", {
       market_id: marketId,
-      winning_outcomes: [winningOutcome]
+      winning_outcomes: [winningOutcome],
     });
 
     const result = await actor.propose_resolution({
       market_id: marketId,
-      winning_outcomes: [winningOutcome]
+      winning_outcomes: [winningOutcome],
     });
 
     console.log("propose_resolution result", result);
@@ -314,7 +358,9 @@ export async function proposeResolution(
       } else if ("AlreadyResolved" in error) {
         throw new Error("Market has already been resolved");
       } else if ("Unauthorized" in error) {
-        throw new Error("You are not authorized to propose resolution for this market");
+        throw new Error(
+          "You are not authorized to propose resolution for this market",
+        );
       } else if ("AwaitingAdminApproval" in error) {
         throw new Error("Resolution is awaiting admin approval");
       } else if ("AwaitingCreatorApproval" in error) {
@@ -325,7 +371,7 @@ export async function proposeResolution(
         );
       }
     }
-    
+
     // Handle success cases
     if ("AwaitingAdminApproval" in result) {
       notificationsStore.add({
@@ -354,7 +400,7 @@ export async function proposeResolution(
 
 export async function voidMarketViaAdmin(marketId: bigint): Promise<void> {
   try {
-    const actor = predictionActor({anon: false, requiresSigning: false});
+    const actor = predictionActor({ anon: false, requiresSigning: false });
 
     // Convert marketId from string to number
     const marketIdNumber = marketId;
@@ -373,9 +419,7 @@ export async function voidMarketViaAdmin(marketId: bigint): Promise<void> {
       } else if ("VoidingFailed" in error) {
         throw new Error("Failed to void the market");
       } else {
-        throw new Error(
-          `Failed to void market: ${JSON.stringify(result.Err)}`,
-        );
+        throw new Error(`Failed to void market: ${JSON.stringify(result.Err)}`);
       }
     }
     notificationsStore.add({
@@ -390,13 +434,13 @@ export async function voidMarketViaAdmin(marketId: bigint): Promise<void> {
 }
 
 export async function getLatestBets() {
-  const actor = predictionActor({anon: true});
+  const actor = predictionActor({ anon: true });
   const latestBets = await actor.get_latest_bets();
   return latestBets;
 }
 
 export async function getAllBets(fromIndex: number = 0, toIndex: number = 10) {
-  const actor = predictionActor({anon: true});
+  const actor = predictionActor({ anon: true });
 
   // The backend API expects start and length parameters
   const marketsByStatus = await actor.get_markets_by_status({
@@ -445,17 +489,17 @@ export async function getAllBets(fromIndex: number = 0, toIndex: number = 10) {
 }
 
 export async function getPredictionMarketStats() {
-  const actor = predictionActor({anon: true});
+  const actor = predictionActor({ anon: true });
   const stats = await actor.get_stats();
   return stats;
 }
 
 export async function getUserClaims(principal: string) {
-  const actor = predictionActor({anon: true});
+  const actor = predictionActor({ anon: true });
   try {
     const claims = await actor.get_user_claims(principal);
-    console.log("claims", claims)
-    
+    console.log("claims", claims);
+
     return claims;
   } catch (error) {
     console.error("Error in getUserClaims:", error);
@@ -464,10 +508,10 @@ export async function getUserClaims(principal: string) {
 }
 
 export async function getUserPendingClaims(principal: string) {
-  const actor = predictionActor({anon: true});
+  const actor = predictionActor({ anon: true });
   try {
     const pendingClaims = await actor.get_user_pending_claims(principal);
-    console.log("pendingClaims", pendingClaims)
+    console.log("pendingClaims", pendingClaims);
     return pendingClaims;
   } catch (error) {
     console.error("Error in getUserPendingClaims:", error);
@@ -476,14 +520,14 @@ export async function getUserPendingClaims(principal: string) {
 }
 
 export async function claimWinnings(claimIds: bigint[]) {
-  const actor = predictionActor({anon: false, requiresSigning: true});
+  const actor = predictionActor({ anon: false, requiresSigning: true });
   try {
     const result = await actor.claim_winnings(claimIds);
-    
+
     if ("Err" in result) {
       throw new Error(`Failed to claim winnings: ${result.Err}`);
     }
-    
+
     return result;
   } catch (error) {
     console.error("Error in claimWinnings:", error);
@@ -492,35 +536,35 @@ export async function claimWinnings(claimIds: bigint[]) {
 }
 
 export async function getAllCategories() {
-  const actor = predictionActor({anon: true});
+  const actor = predictionActor({ anon: true });
   const categories = await actor.get_all_categories();
   return categories;
 }
 
 export async function isAdmin(principal: string) {
-  const actor = predictionActor({anon: true});
+  const actor = predictionActor({ anon: true });
   return await actor.is_admin(Principal.fromText(principal));
 }
 
 export async function getSupportedTokens() {
-  const actor = predictionActor({anon: true});
+  const actor = predictionActor({ anon: true });
   return await actor.get_supported_tokens();
 }
 
 export async function estimateBetReturn(
-  marketId: bigint, 
-  outcomeIndex: bigint, 
-  betAmount: bigint, 
+  marketId: bigint,
+  outcomeIndex: bigint,
+  betAmount: bigint,
   currentTime: bigint = BigInt(Date.now()) * 1000000n,
-  tokenId?: string
+  tokenId?: string,
 ) {
-  const actor = predictionActor({anon: true});
+  const actor = predictionActor({ anon: true });
   return await actor.estimate_bet_return(
-    marketId, 
-    outcomeIndex, 
-    betAmount, 
+    marketId,
+    outcomeIndex,
+    betAmount,
     currentTime,
-    tokenId ? [tokenId] : []
+    tokenId ? [tokenId] : [],
   );
 }
 
@@ -530,9 +574,9 @@ export async function getMarketsByCreator(
     start?: number;
     length?: number;
     sortByCreationTime?: boolean;
-  } = {}
+  } = {},
 ) {
-  const actor = predictionActor({anon: true});
+  const actor = predictionActor({ anon: true });
   try {
     const creatorPrincipal = Principal.fromText(creator);
     const result = await actor.get_markets_by_creator({
@@ -548,14 +592,17 @@ export async function getMarketsByCreator(
   }
 }
 
-export async function setMarketFeatured(marketId: bigint, featured: boolean): Promise<void> {
+export async function setMarketFeatured(
+  marketId: bigint,
+  featured: boolean,
+): Promise<void> {
   try {
-    const actor = predictionActor({anon: false, requiresSigning: false});
+    const actor = predictionActor({ anon: false, requiresSigning: false });
     const result = await actor.set_market_featured(marketId, featured);
 
     if ("Err" in result) {
       const error = result.Err as any;
-      if (typeof error === 'object' && error !== null) {
+      if (typeof error === "object" && error !== null) {
         if ("MarketNotFound" in error) {
           throw new Error("Market not found");
         } else if ("Unauthorized" in error) {
@@ -568,7 +615,7 @@ export async function setMarketFeatured(marketId: bigint, featured: boolean): Pr
     }
     notificationsStore.add({
       title: featured ? "Market Featured" : "Market Unfeatured",
-      message: `Market ${marketId} has been ${featured ? 'featured' : 'unfeatured'}`,
+      message: `Market ${marketId} has been ${featured ? "featured" : "unfeatured"}`,
       type: "success",
     });
   } catch (error) {
@@ -584,7 +631,7 @@ export async function resolveMarket(
 ): Promise<void> {
   // Check if current user is admin
   const userIsAdmin = await isAdmin(userPrincipal);
-  
+
   if (userIsAdmin) {
     await resolveMarketViaAdmin(marketId, winningOutcome);
   } else {
@@ -593,7 +640,7 @@ export async function resolveMarket(
 }
 
 export async function getResolutionProposal(marketId: bigint) {
-  const actor = predictionActor({anon: true});
+  const actor = predictionActor({ anon: true });
   try {
     const result = await actor.get_resolution_proposal(marketId);
     return result[0] || null; // Extract the optional value

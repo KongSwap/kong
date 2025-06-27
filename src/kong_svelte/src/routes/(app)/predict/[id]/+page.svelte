@@ -177,7 +177,7 @@
     fetchData();
   });
 
-  async function handleBet(outcomeIndex: number, amount: number) {
+  async function handleBet(outcomeIndex: number, amount: number, needsAllowance?: boolean) {
     if (!market) return;
 
     try {
@@ -203,6 +203,7 @@
         BigInt(market.id),
         BigInt(outcomeIndex),
         scaledAmount,
+        needsAllowance,
       );
 
       toastStore.add({
@@ -273,6 +274,7 @@
         marketId,
         BigInt(outcomeIndex),
         minBetAmount.toString(),
+        undefined, // Let placeBet handle allowance checking
       );
 
       showInitializeDialog = false;

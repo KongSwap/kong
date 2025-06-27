@@ -335,10 +335,25 @@
       return;
     }
 
+    // Check if we need to account for fees
+    let additionalFeeToReserve: bigint | undefined;
+    if (panelType === "pay") {
+      // Always reserve the transfer fee for pay tokens
+      const transferFee = BigInt(token.fee_fixed || "10000");
+      
+      // If we also need allowance, add the approval fee
+      if ($swapState.needsAllowance && token.standards?.includes("ICRC-2")) {
+        additionalFeeToReserve = transferFee * 2n; // One for approval, one for transfer
+      } else {
+        additionalFeeToReserve = transferFee; // Just the transfer fee
+      }
+    }
+
     const percentageAmountString = calculatePercentageAmount(
       balance,
       percentage,
       token,
+      additionalFeeToReserve,
     );
 
     // Show raw value if focused, formatted if not

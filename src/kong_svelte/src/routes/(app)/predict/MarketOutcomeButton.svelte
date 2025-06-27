@@ -99,7 +99,7 @@
 {#if isYesNo}
   <!-- Yes/No outcome button -->
   <button
-    class="w-full cursor-pointer py-2 px-5 text-center {$panelRoundness} font-medium text-lg group/outcome relative
+    class="w-full cursor-pointer py-1 px-5 text-center {$panelRoundness} font-medium text-lg group/outcome relative
       border transition-all duration-200
       {isWinner
       ? 'bg-kong-success/10 text-kong-success font-bold border-kong-success/30'

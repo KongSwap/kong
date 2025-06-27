@@ -225,15 +225,33 @@ export function formatNumberWithCommas(num: number): string {
 export function calculatePercentageAmount(
   balance: bigint,
   percentage: number,
-  token: Kong.Token
+  token: Kong.Token,
+  additionalFeeToReserve?: bigint
 ): string {
   const balanceNumber = new BigNumber(balance.toString());
-  const percentageAmount = balanceNumber
-    .multipliedBy(percentage)
-    .dividedBy(100)
-    .dividedBy(new BigNumber(10).pow(token.decimals))
-    
-  return percentageAmount.minus(token.fee).toFixed(token.decimals);
+  
+  // Calculate the total fee to reserve in smallest units
+  let totalFeeInSmallestUnits = new BigNumber(token.fee_fixed || "0");
+  if (additionalFeeToReserve) {
+    // Add approval fee if provided (already in smallest units)
+    totalFeeInSmallestUnits = totalFeeInSmallestUnits.plus(
+      new BigNumber(additionalFeeToReserve.toString())
+    );
+  }
+  
+  // Calculate available balance (balance - total fees)
+  const availableBalanceInSmallestUnits = balanceNumber.minus(totalFeeInSmallestUnits);
+  
+  // If balance is less than fees, return 0
+  if (availableBalanceInSmallestUnits.isLessThanOrEqualTo(0)) {
+    return "0";
+  }
+  
+  // Convert to human-readable format for percentage calculation
+  const availableBalance = availableBalanceInSmallestUnits.dividedBy(new BigNumber(10).pow(token.decimals));
+  const percentageAmount = availableBalance.multipliedBy(percentage).dividedBy(100);
+  
+  return percentageAmount.toFixed(token.decimals);
 }
 
 export function toShortNumber(value: number | string, token: Kong.Token): string {

@@ -266,22 +266,13 @@ export async function addLiquidity(params: {
 
     // Handle ICRC2 tokens
     if (params.token_0.standards.includes("ICRC-2") && params.token_1.standards.includes("ICRC-2")) {
-      const [_approval0, _approval1, actorResult] = await Promise.all([
-        IcrcService.checkAndRequestIcrc2Allowances(
-          params.token_0,
-          params.amount_0,
-        ),
-        IcrcService.checkAndRequestIcrc2Allowances(
-          params.token_1,
-          params.amount_1,
-        ),
-        swapActor({anon: false, requiresSigning: false}),
-      ]);
+      // Allowances should already be approved when modal opened
+      // Just get the actor
+      actor = await swapActor({anon: false, requiresSigning: false});
 
       // For ICRC2 tokens, we don't need to pass transfer block indexes
       tx_id_0 = [];
       tx_id_1 = [];
-      actor = actorResult;
     } else {
       console.log("token_0", params.token_0);
       console.log("token_1", params.token_1);
@@ -518,22 +509,13 @@ export async function createPool(params: {
 
     // Handle ICRC2 tokens
     if (params.token_0.standards.includes("ICRC-2") && params.token_1.standards.includes("ICRC-2")) {
-      const [approval0, approval1, actorResult] = await Promise.all([
-        IcrcService.checkAndRequestIcrc2Allowances(
-          params.token_0,
-          params.amount_0,
-        ),
-        IcrcService.checkAndRequestIcrc2Allowances(
-          params.token_1,
-          params.amount_1,
-        ),
-        swapActor({anon: false, requiresSigning: false}),
-      ]);
+      // Allowances should already be approved when modal opened
+      // Just get the actor
+      actor = await swapActor({anon: false, requiresSigning: false});
 
       // For ICRC2 tokens, we don't need to pass transfer block indexes
       tx_id_0 = [];
       tx_id_1 = [];
-      actor = actorResult;
     } else {
       // Handle ICRC1 tokens
       const [transfer0Result, transfer1Result, actorResult] = await Promise.all([

@@ -281,7 +281,7 @@
 {/snippet}
 
 {#snippet marketOutcomes()}
-  <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
+  <div class="flex-1 flex flex-col min-h-0 overflow-hidden rounded-kong-roundness mt-2 p-1">
     {#if shouldShowOutcomes}
       {#if isYesNoMarket(market)}
         <!-- Yes/No buttons side by side, centered vertically -->

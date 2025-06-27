@@ -25,6 +25,7 @@ interface SwapExecuteParams {
   userMaxSlippage: number;
   backendPrincipal: Principal;
   lpFees: any[];
+  needsAllowance?: boolean;
 }
 
 // These types match the backend response structure
@@ -503,6 +504,7 @@ export class SwapService {
     }
   }
 
+
   /**
    * Executes complete swap flow
    */
@@ -547,19 +549,26 @@ export class SwapService {
       }
 
       let txId: bigint | false;
-      let approvalId: bigint | false;
+      let approvalId: bigint | false = BigInt(1); // Default to success
       const toastId = toastStore.info(
         `Swapping ${params.payAmount} ${params.payToken.symbol} to ${params.receiveAmount} ${params.receiveToken.symbol}...`,
         { duration: 15000 }, // 15 seconds
       );
 
+      // For ICRC-2 tokens, request allowance if needed
       if (payToken.standards.includes("ICRC-2")) {
-        const requiredAllowance = payAmount;
-        approvalId = await IcrcService.checkAndRequestIcrc2Allowances(
-          payToken,
-          requiredAllowance,
-        );
+        // Only request allowance if we determined it's needed during modal open
+        if (params.needsAllowance !== false) {
+          await IcrcService.requestIcrc2Allowance(
+            payToken,
+            payAmount,
+            params.backendPrincipal.toText()
+          );
+        }
+        // ICRC-2 tokens use allowances, no transfer needed
+        txId = undefined;
       } else if (payToken.standards.includes("ICRC-1")) {
+        // ICRC-1 only tokens need transfer first
         const result = await IcrcService.transfer(
           payToken,
           params.backendPrincipal,
@@ -578,7 +587,7 @@ export class SwapService {
         );
       }
 
-      if (txId === false || approvalId === false) {
+      if (txId === false) {
         swapStatusStore.updateSwap(swapId, {
           status: "Failed",
           isProcessing: false,
@@ -596,7 +605,7 @@ export class SwapService {
         max_slippage: [params.userMaxSlippage] as [] | [number],
         receive_address: [] as [] | [string],
         referred_by: [] as [] | [string],
-        pay_tx_id: txId ? [{ BlockIndex: BigInt(txId) }] as [] | [{ BlockIndex: bigint }] : [] as [] | [{ BlockIndex: bigint }],
+        pay_tx_id: txId !== undefined ? [{ BlockIndex: BigInt(txId) }] as [] | [{ BlockIndex: bigint }] : [] as [] | [{ BlockIndex: bigint }],
       };
 
       const result = await SwapService.swap_async(swapParams);
