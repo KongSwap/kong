@@ -75,7 +75,6 @@
       });
 
       if (validBets.length === 0) {
-        console.log("No valid bets found with amounts for chart");
         return;
       }
       
@@ -121,7 +120,6 @@
       );
       
       if (dailyBetsArray.length === 0) {
-        console.log("No daily bet data available after processing");
         return;
       }
       

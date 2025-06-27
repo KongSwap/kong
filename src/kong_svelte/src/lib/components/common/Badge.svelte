@@ -25,6 +25,7 @@
     tooltip: tooltipText = null, // optional tooltip text
     tooltipDirection = "top" as const, // tooltip direction: top, bottom, left, right
     class: className = "", // additional classes
+    onclick = null,   // optional click handler
     children = () => null
   } = $props<{
     variant?: "blue" | "green" | "red" | "yellow" | "purple" | "gray" | "orange" | "icrc" | "solana" | "google";
@@ -34,6 +35,7 @@
     tooltip?: string | null;
     tooltipDirection?: "top" | "bottom" | "left" | "right";
     class?: string;
+    onclick?: (() => void) | null;
     children?: () => any;
   }>();
 
@@ -86,6 +88,7 @@
 <span 
   class={badgeClasses}
   use:tooltip={tooltipText ? { text: tooltipText, direction: tooltipDirection } : undefined}
+  on:click={onclick}
 >
   {#if variant === 'google'}
     <div class="flex items-center gap-2">

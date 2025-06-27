@@ -95,7 +95,7 @@ export class SNSService {
         status: determineStatus(proposal),
         proposer: proposal.proposer[0]?.id.toString(),
         created: proposal.proposal_creation_timestamp_seconds,
-        deadline: proposal.wait_for_quiet_deadline_increase_seconds,
+        deadline: proposal.wait_for_quiet_state?.[0]?.current_deadline_timestamp_seconds || BigInt(0),
         reward_event_round: proposal.reward_event_round,
         tally: {
           yes: proposal.latest_tally[0]?.yes,
