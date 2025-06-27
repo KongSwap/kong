@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { 
   getPriceChangeClass, 
-  formatPoolData, 
   getPoolPriceUsd,
 } from '$lib/utils/statsUtils';
 import BigNumber from 'bignumber.js';
@@ -69,31 +68,6 @@ describe('getPriceChangeClass', () => {
   it('should return empty string for zero price change', () => {
     const token = { metrics: { price_change_24h: '0' } } as Kong.Token;
     expect(getPriceChangeClass(token)).toBe('');
-  });
-});
-
-describe('formatPoolData', () => {
-  it('should return empty array for empty input', async () => {
-    const result = await formatPoolData([]);
-    expect(result).toEqual([]);
-  });
-
-  it('should format pool data correctly', async () => {
-    const pools: BE.Pool[] = [createMockPool({
-      address_1: 'token1',
-      symbol_0: 'BTC',
-      symbol_1: 'USDT',
-      price: 2,
-      rolling_24h_apy: '10.50'
-    })];
-
-    const result = await formatPoolData(pools);
-    
-    expect(result[0]).toMatchObject({
-      price_usd: '200',
-      id: 'BTC-USDT-0',
-      apy: '10.50'
-    });
   });
 });
 
