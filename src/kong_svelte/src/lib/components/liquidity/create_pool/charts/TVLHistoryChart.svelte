@@ -125,8 +125,14 @@
     
     const ctx = tvlChartCanvas.getContext('2d');
     
-    // Now using the date field directly
-    const labels = props.balanceHistory.map(entry => entry.date);
+    // Format dates to shorter format (e.g., "Jan 15")
+    const labels = props.balanceHistory.map(entry => {
+      const date = new Date(entry.date);
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    });
     
     // Use the TVL in USD value as the primary data point
     const tvlData = props.balanceHistory.map(entry => entry.tvl_usd);
@@ -172,41 +178,53 @@
     
     chartOptions.scales.x = {
       ...chartOptions.scales.x,
-      display: false, // Hide entire x-axis
+      display: true, // Show x-axis
       grid: {
-        display: false,
+        display: false, // Hide grid lines
       },
       ticks: {
-        display: false,
-        padding: 0,
+        display: true,
+        color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+        maxTicksLimit: 8, // Limit number of ticks to prevent overcrowding
       }
     };
     
     chartOptions.scales.y = {
       ...chartOptions.scales.y,
-      display: false, // Hide entire y-axis
+      display: true, // Show y-axis
+      min: 0, // Start y-axis at 0
       grid: {
         display: false, // Hide grid lines
       },
       ticks: {
-        display: false,
-        padding: 0,
+        display: true,
+        color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+        callback: function(value) {
+          const numValue = Number(value);
+          if (numValue >= 1000000) {
+            return '$' + (numValue / 1000000).toFixed(1) + 'M';
+          } else if (numValue >= 1000) {
+            return '$' + (numValue / 1000).toFixed(1) + 'K';
+          } else {
+            return '$' + Math.round(numValue);
+          }
+        }
       }
     };
     
-    // Ensure no layout padding
+    // Add some layout padding for axes
     if (!chartOptions.layout) {
       chartOptions.layout = {};
     }
     chartOptions.layout.padding = {
-      top: 0,
-      right: 0,
-      bottom: 0,
-      left: 0
-    }; // No padding at all
+      top: 10,
+      right: 10,
+      bottom: 10,
+      left: 10
+    };
     
     tvlChartInstance = new Chart(ctx, {
-      type: 'line',
+      type: 'bar',
       data: {
         labels: labels,
         datasets: [
@@ -214,15 +232,10 @@
             label: 'TVL (USD)',
             data: tvlData,
             borderColor: colors.tvlColor,
-            backgroundColor: tvlGradient,
-            borderWidth: 2,
-            fill: true, // Enable fill for area background
-            pointRadius: 0, // Hide all points for cleaner look
-            pointBackgroundColor: colors.tvlColor,
-            pointBorderColor: colors.pointBorderColor,
-            pointBorderWidth: 1.5,
-            tension: 0.3,
-            clip: false, // Allow drawing outside the chart area
+            backgroundColor: colors.tvlColor,
+            borderWidth: 1,
+            borderRadius: 2,
+            borderSkipped: false,
           }
         ]
       },
@@ -252,12 +265,12 @@
 
 <Panel variant="solid" type="secondary" className="!overflow-visible !p-0">
   <div class="flex flex-col w-full h-full">
-    <h3 class="flex items-center justify-between py-3 px-3 text-sm uppercase font-medium text-kong-text-primary/90">
-      TVL History
+    <h3 class="flex items-center justify-between p-3 text-lg uppercase font-medium text-kong-text-primary/90">
+      TVL
       <div class="flex items-center gap-2">
         <div class="text-kong-text-primary/90">
-          {#if typeof props.currentPool?.tvl === 'number'}
-            {(props.currentPool.tvl as number).toLocaleString(undefined, {
+          {#if props.currentPool?.tvl}
+            {(props.currentPool.tvl).toLocaleString(undefined, {
               style: 'currency',
               currency: 'USD',
               minimumFractionDigits: 2,

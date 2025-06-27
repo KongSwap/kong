@@ -4,6 +4,8 @@
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
 
+  const DEFAULT_POOL_URL = "/pools/ryjl3-tyaaa-aaaaa-aaaba-cai_cngnf-vqaaa-aaaar-qag4q-cai"
+
   interface PoolsHeaderProps {
     poolTotals: {
       total_volume_24h: number;
@@ -99,10 +101,9 @@
               <span class="text-kong-success">●</span>
               <span>0.3% Swap Fee</span>
             </div>
-                        <div class="hidden sm:block w-px h-4 bg-kong-border"></div>
-
-                              <button
-              onclick={() => goto('/pools/add')}
+            <div class="hidden sm:block w-px h-4 bg-kong-border"></div>
+            <button
+              onclick={() => goto(DEFAULT_POOL_URL)}
               class="flex items-center gap-1.5 px-3 py-1.5 text-base bg-kong-primary/10 hover:bg-kong-primary/20 text-kong-primary rounded-lg transition-all duration-200"
             >
               <Plus class="w-4 h-4" />

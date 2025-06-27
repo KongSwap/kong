@@ -70,7 +70,6 @@
           amount_0: amount0,
           token_1: token1,
           amount_1: amount1,
-          initial_price: parseFloat($liquidityStore.initialPrice),
         };
 
         toastStore.info(

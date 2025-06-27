@@ -15,8 +15,6 @@
     isLoading?: boolean;
   }>();
 
-  $inspect(routingPath);
-
   // Show routing for all swaps
   const showRouting = $derived(routingPath && routingPath.length > 0 && !isLoading);
   const isMultiHop = $derived(routingPath && routingPath.length > 1);

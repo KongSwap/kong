@@ -1,4 +1,5 @@
 import { browser } from '$app/environment';
+import { replaceState } from '$app/navigation';
 import { CKUSDT_CANISTER_ID } from '$lib/constants/canisterConstants';
 import { BigNumber } from "bignumber.js";
 
@@ -60,10 +61,16 @@ export function validateTokenSelect(
 export function updateQueryParams(token0Id?: string, token1Id?: string) {
   if (!browser) return;
   
-  const params = new URLSearchParams();
-  if (token0Id) params.set('token0', token0Id);
-  if (token1Id) params.set('token1', token1Id);
+    // Navigate to the new position URL with updated token addresses
+    const newUrl = `/pools/${token0Id}_${token1Id}`;
+    replaceState(newUrl, {});
   
-  const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
-  window.history.replaceState({}, '', newUrl);
+  
+  // // Fallback to original query param behavior for other pages
+  // const params = new URLSearchParams();
+  // if (token0Id) params.set('token0', token0Id);
+  // if (token1Id) params.set('token1', token1Id);
+  
+  // const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+  // replaceState(newUrl, {});
 }

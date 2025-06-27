@@ -39,6 +39,9 @@
     { value: "rolling_24h_apy", label: "APR" },
     { value: "price", label: "Price" }
   ];
+
+  const DEFAULT_POOL_URL = "/pools/ryjl3-tyaaa-aaaaa-aaaba-cai_cngnf-vqaaa-aaaar-qag4q-cai"
+
 </script>
 
 <div class="flex flex-col sticky top-0 z-20 backdrop-blur-md rounded-t-{$panelRoundness}">
@@ -72,7 +75,7 @@
               placeholder={isMobile
                 ? "Search pools..."
                 : "Search pools by name, symbol, or canister ID"}
-              class="w-full bg-kong-bg-secondary p-2 text-kong-text-primary placeholder-kong-text-secondary/70 focus:outline-none focus:border-b focus:border-kong-primary/20 transition-all duration-200"
+              class="w-full bg-kong-bg-secondary p-2 text-kong-text-primary placeholder-kong-text-secondary/70 rounded-lg border border-kong-border/0 focus:outline-none focus:border focus:border-kong-primary"
               value={searchInput}
               oninput={(e) => onSearchInput(e.currentTarget.value)}
             />
@@ -163,7 +166,7 @@
               placeholder={isMobile
                 ? "Search pools..."
                 : "Search pools by name, symbol, or canister ID"}
-              class="w-full bg-kong-bg-secondary p-2 text-kong-text-primary placeholder-kong-text-secondary/70 focus:outline-none focus:border-b focus:border-kong-primary/20 transition-all duration-200"
+              class="w-full bg-kong-bg-secondary p-2 text-kong-text-primary placeholder-kong-text-secondary/70 rounded-lg border border-kong-border/0 focus:outline-none focus:border focus:border-kong-primary"
               value={searchInput}
               oninput={(e) => onSearchInput(e.currentTarget.value)}
             />
@@ -210,7 +213,7 @@
           
           <!-- Add Liquidity Button -->
           <button
-            onclick={() => goto('/pools/add')}
+            onclick={() => goto(DEFAULT_POOL_URL)}
             class="px-4 mr-4 py-1.5 rounded-lg bg-kong-primary/10 border border-kong-primary/20 text-kong-primary hover:bg-kong-primary/20 hover:border-kong-primary/30 transition-all duration-200 flex items-center gap-1.5 font-medium"
           >
             <Plus class="w-4 h-4" />

@@ -106,7 +106,7 @@
   function handlePoolItemClick(pool: any) {
     // Build the pool ID
     const poolId = `${pool.address_0}_${pool.address_1}`;
-    const path = `/pools/${poolId}/position`;
+    const path = `/pools/${poolId}`;
     
     // If we have an onNavigate callback (which closes the sidebar), use it
     if (onNavigate) {

@@ -508,7 +508,6 @@ export async function createPool(params: {
   amount_0: bigint;
   token_1: Kong.Token;
   amount_1: bigint;
-  initial_price: number;
 }) {
   requireWalletConnection();
   

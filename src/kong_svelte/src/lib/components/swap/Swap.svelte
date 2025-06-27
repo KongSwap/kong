@@ -37,8 +37,6 @@
 
   let { widthFull = false } = $props<{ widthFull?: boolean }>();
 
-  $inspect(widthFull);
-
   // Constants
   const PANELS = { PAY: "pay" as PanelType, RECEIVE: "receive" as PanelType };
   const DROPDOWN_WIDTH = 360;
