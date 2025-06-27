@@ -27,7 +27,11 @@
   let observer = $state<MutationObserver | null>(null);
   let tvlChartCanvas = $state<HTMLCanvasElement | null>(null);
   let tvlChartInstance = $state<ChartJS | null>(null);
-  let processedTooltipData = $state<Record<number, string>>({});
+  let processedTooltipData = $state<Record<number, {
+    balances: string[];
+    prices: string[];
+    changes: string[];
+  }>>({});
   let shouldUpdateChart = $state(false);
 
   // Get theme colors from CSS custom properties
@@ -139,12 +143,17 @@
     processedTooltipData = {};
     
     props.balanceHistory.forEach((dayData, index) => {
-      let tooltipInfo = `Day Index: ${dayData.day_index}\n`;
-      tooltipInfo += `Date: ${dayData.date}\n`;
-      tooltipInfo += `Token 0 Balance: ${formatNumber(dayData.token_0_balance)}\n`;
-      tooltipInfo += `Token 1 Balance: ${formatNumber(dayData.token_1_balance)}\n`;
-      tooltipInfo += `Token 0 Price: $${formatNumber(dayData.token_0_price_usd, 6)}\n`;
-      tooltipInfo += `Token 1 Price: $${formatNumber(dayData.token_1_price_usd, 6)}`;
+      const tooltipData = {
+        balances: [
+          `${props.currentPool.symbol_0} Balance: ${formatNumber(dayData.token_0_balance)}`,
+          `${props.currentPool.symbol_1} Balance: ${formatNumber(dayData.token_1_balance)}`
+        ],
+        prices: [
+          `${props.currentPool.symbol_0} Price: $${formatNumber(dayData.token_0_price_usd, 6)}`,
+          `${props.currentPool.symbol_1} Price: $${formatNumber(dayData.token_1_price_usd, 6)}`
+        ],
+        changes: []
+      };
       
       // Calculate changes from previous day if not the first day
       if (index > 0) {
@@ -153,11 +162,16 @@
         
         if (Math.abs(tvlChange) > 0.01) {
           const percentChange = (tvlChange / prevDay.tvl_usd) * 100;
-          tooltipInfo += `\n\nTVL Change: ${tvlChange > 0 ? '+' : ''}$${formatNumber(Math.abs(tvlChange))} (${percentChange > 0 ? '+' : ''}${percentChange.toFixed(2)}%)`;
+          const changeSign = tvlChange > 0 ? '+' : '';
+          const percentSign = percentChange > 0 ? '+' : '';
+          
+          tooltipData.changes.push(
+            `TVL Change: ${changeSign}$${formatNumber(Math.abs(tvlChange))} (${percentSign}${percentChange.toFixed(2)}%)`
+          );
         }
       }
       
-      processedTooltipData[index] = tooltipInfo;
+      processedTooltipData[index] = tooltipData;
     });
   }
 
@@ -214,8 +228,28 @@
         },
         afterBody: function(context) {
           const index = context[0].dataIndex;
-          // Use pre-processed tooltip data
-          return processedTooltipData[index] || '';
+          const tooltipData = processedTooltipData[index];
+          
+          if (!tooltipData) return [];
+          
+          // Create organized tooltip lines
+          const tooltipLines = [];
+          
+          // Add spacing and balances section
+          tooltipLines.push('');
+          tooltipLines.push(...tooltipData.balances);
+          
+          // Add spacing and prices section
+          tooltipLines.push('');
+          tooltipLines.push(...tooltipData.prices);
+          
+          // Add changes section if there are any
+          if (tooltipData.changes.length > 0) {
+            tooltipLines.push('');
+            tooltipLines.push(...tooltipData.changes);
+          }
+          
+          return tooltipLines;
         }
       }
     });

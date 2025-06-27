@@ -1,5 +1,5 @@
 import { browser } from '$app/environment';
-import { replaceState } from '$app/navigation';
+import { goto } from '$app/navigation';
 import { CKUSDT_CANISTER_ID } from '$lib/constants/canisterConstants';
 import { BigNumber } from "bignumber.js";
 
@@ -61,10 +61,12 @@ export function validateTokenSelect(
 export function updateQueryParams(token0Id?: string, token1Id?: string) {
   if (!browser) return;
   
-    // Navigate to the new position URL with updated token addresses
-    const newUrl = `/pools/${token0Id}_${token1Id}`;
-    replaceState(newUrl, {});
-  
+  // Navigate to the new position URL with updated token addresses
+  const newUrl = `/pools/${token0Id}_${token1Id}`;
+  goto(newUrl, { 
+    replaceState: true,  // Replace current history entry (like your original replaceState)
+    noScroll: true       // Prevent scrolling to top
+  });
   
   // // Fallback to original query param behavior for other pages
   // const params = new URLSearchParams();

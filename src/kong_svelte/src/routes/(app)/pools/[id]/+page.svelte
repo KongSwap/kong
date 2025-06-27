@@ -628,18 +628,14 @@
                 ${calculateTotalEarnings()}
               </p>
                 <div class="space-y-1 text-xs">
-                  {#if userPool?.userFeeShare0 && userPool?.userFeeShare0 > 0}
                     <div class="flex justify-between items-center">
                       <span class="text-kong-text-secondary">{userPool?.symbol_0} fees:</span>
                       <span class="text-kong-accent-green font-medium">{formatToNonZeroDecimal(userPool?.userFeeShare0.toString())}</span>
                     </div>
-                  {/if}
-                  {#if userPool?.userFeeShare1 && userPool?.userFeeShare1 > 0}
                     <div class="flex justify-between items-center">
                       <span class="text-kong-text-secondary">{userPool?.symbol_1} fees:</span>
                       <span class="text-kong-accent-green font-medium">{formatToNonZeroDecimal(userPool?.userFeeShare1.toString())}</span>
                     </div>
-                  {/if}
                 </div>
             </div>
           </div>
