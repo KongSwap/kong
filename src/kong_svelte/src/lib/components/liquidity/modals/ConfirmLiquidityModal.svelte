@@ -70,7 +70,6 @@
           amount_0: amount0,
           token_1: token1,
           amount_1: amount1,
-          initial_price: parseFloat($liquidityStore.initialPrice),
         };
 
         toastStore.info(
@@ -161,7 +160,7 @@
   {modalKey}
   {target}
 >
-  <div class="flex flex-col min-h-[400px] px-4 pb-4">
+  <div class="flex flex-col min-h-[400px] p-4">
     {#if error}
       <div class="mb-4 text-kong-text-accent-red text-center p-4 bg-red-400/20 rounded-xl">
         {error}
@@ -169,8 +168,6 @@
     {/if}
 
     <div class="flex-1">
-      <div class="text-kong-text-primary/90 mb-1">You will provide</div>
-
       <div class="bg-white/5 rounded-xl p-4 space-y-4">
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-2">

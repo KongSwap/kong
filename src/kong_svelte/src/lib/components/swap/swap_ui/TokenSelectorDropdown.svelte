@@ -516,6 +516,7 @@
       window.removeEventListener("click", handleClickOutside);
       window.removeEventListener("keydown", handleKeydown);
       clearTimeout(scrollDebounceTimer);
+      enableBodyScroll();
     }
   }
 

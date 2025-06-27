@@ -4,17 +4,23 @@
   import { handleFormattedNumberInput } from "$lib/utils/formUtils";
   import { BigNumber } from "bignumber.js";
   import { calculateMaxAmount } from "$lib/utils/liquidityUtils";
+  import { app } from "$lib/state/app.state.svelte";
 
   const dispatch = createEventDispatcher();
 
-  export let token: any;
-  export let tokenBalance: string = "0";
-  export let displayValue: string = "";
-  export let isExceedingBalance: boolean = false;
-  export let isLoading: boolean = false;
-  export let disabled: boolean = false;
-  export let decimals: number = 8;
-  export let parsedBalance: BigNumber = new BigNumber(0);
+  let isMobile = $derived(app.isMobile);
+
+  let {
+    token,
+    tokenBalance,
+    displayValue,
+    isExceedingBalance,
+    isLoading,
+    disabled,
+    decimals,
+    parsedBalance,
+  } = $props();
+
 
   let inputElement: HTMLInputElement;
 
@@ -112,26 +118,34 @@
     </div>
     <div class="percentage-buttons">
       {#if token && parsedBalance.gt(0)}
+        {#if !isMobile}
         <button 
           onclick={() => handlePercentageClick(25)}
           disabled={disabled}
         >25%</button>
+        {/if}
         <button 
           onclick={() => handlePercentageClick(50)}
           disabled={disabled}
         >50%</button>
+        {#if !isMobile}
         <button 
           onclick={() => handlePercentageClick(75)}
           disabled={disabled}
         >75%</button>
+        {/if}
         <button 
           onclick={() => handlePercentageClick(100)}
           disabled={disabled}
         >MAX</button>
       {:else}
+        {#if !isMobile}
         <button disabled>25%</button>
+        {/if}
         <button disabled>50%</button>
+        {#if !isMobile}
         <button disabled>75%</button>
+        {/if}
         <button disabled>MAX</button>
       {/if}
     </div>

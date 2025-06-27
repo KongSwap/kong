@@ -470,7 +470,7 @@
           {#each sortedPools as pool}
             <!-- Desktop view - grid layout -->
             <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,1fr,1fr] sm:gap-4 sm:items-center px-4 py-3 hover:bg-kong-bg-primary/30 hover:border-l-2 hover:border-kong-primary transition-all cursor-pointer"
-                 onclick={() => goto(`/pools/${pool.address_0}_${pool.address_1}/position`)}>
+                 onclick={() => goto(`/pools/${pool.address_0}_${pool.address_1}`)}>
               <!-- Pool -->
               <div class="flex items-center gap-2">
                 <TokenImages
@@ -548,7 +548,7 @@
             
             <!-- Mobile view - card layout -->
             <div class="sm:hidden p-4 hover:bg-kong-bg-primary/30 hover:border-l-2 hover:border-kong-primary transition-all cursor-pointer"
-                 onclick={() => goto(`/pools/${pool.address_0}_${pool.address_1}/position`)}>
+                 onclick={() => goto(`/pools/${pool.address_0}_${pool.address_1}`)}>
               <!-- Pool and Value -->
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2">

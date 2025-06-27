@@ -112,7 +112,7 @@
 
       // Fallback to store
       const data = $tokenData;
-      const foundToken = data?.find(t => t.address === tokenId || t.canister_id === tokenId);
+      const foundToken = data?.find(t => t.address === tokenId);
       if (foundToken) {
         state.token = foundToken;
         await fetchPoolData();
@@ -124,7 +124,7 @@
       console.error("Error fetching token:", error);
       // Try one more time with just the store
       const data = $tokenData;
-      const foundToken = data?.find(t => t.address === tokenId || t.canister_id === tokenId);
+      const foundToken = data?.find(t => t.address === tokenId);
       if (foundToken) {
         state.token = foundToken;
         await fetchPoolData();

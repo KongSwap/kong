@@ -4,9 +4,7 @@
   import { 
     initializeChart, 
     cleanupChart, 
-    getChartThemeColors, 
     formatNumber,
-    createChartGradient,
     getCommonChartOptions,
     calculateSignificantChanges,
     type PoolBalanceHistoryItem 
@@ -29,8 +27,66 @@
   let observer = $state<MutationObserver | null>(null);
   let tvlChartCanvas = $state<HTMLCanvasElement | null>(null);
   let tvlChartInstance = $state<ChartJS | null>(null);
-    let processedTooltipData = $state<Record<number, string>>({});
-    let shouldUpdateChart = $state(false);
+  let processedTooltipData = $state<Record<number, {
+    balances: string[];
+    prices: string[];
+    changes: string[];
+  }>>({});
+  let shouldUpdateChart = $state(false);
+
+  // Get theme colors from CSS custom properties
+  function getThemeColors() {
+    const style = getComputedStyle(document.documentElement);
+    
+    // Primary brand color for TVL bars
+    const primaryRgb = style.getPropertyValue('--brand-primary').trim();
+    const primaryColor = primaryRgb ? `rgb(${primaryRgb})` : '#1A8FE3';
+    
+    // Text colors
+    const textPrimaryRgb = style.getPropertyValue('--text-primary').trim();
+    const textSecondaryRgb = style.getPropertyValue('--text-secondary').trim();
+    const textPrimaryColor = textPrimaryRgb ? `rgb(${textPrimaryRgb})` : '#FFFFFF';
+    const textSecondaryColor = textSecondaryRgb ? `rgb(${textSecondaryRgb})` : '#B0B6C5';
+    
+    // Background colors
+    const bgSecondaryRgb = style.getPropertyValue('--bg-secondary').trim();
+    const bgSecondaryColor = bgSecondaryRgb ? `rgb(${bgSecondaryRgb})` : '#1A2032';
+    
+    // Border colors
+    const borderRgb = style.getPropertyValue('--ui-border').trim();
+    const borderColor = borderRgb ? `rgb(${borderRgb})` : '#1C2028';
+    
+    return {
+      primaryColor,
+      textPrimaryColor,
+      textSecondaryColor,
+      bgSecondaryColor,
+      borderColor
+    };
+  }
+
+  // Create theme-aware gradient
+  function createThemeGradient(ctx: CanvasRenderingContext2D): CanvasGradient {
+    const colors = getThemeColors();
+    const canvasHeight = ctx.canvas.height || 300;
+    const gradient = ctx.createLinearGradient(0, canvasHeight, 0, 0);
+    
+    // Parse RGB values and create gradient with opacity
+    const rgbMatch = colors.primaryColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+    if (rgbMatch) {
+      const [, r, g, b] = rgbMatch;
+      gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.05)`);
+      gradient.addColorStop(0.7, `rgba(${r}, ${g}, ${b}, 0.25)`);
+      gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0.4)`);
+    } else {
+      // Fallback gradient
+      gradient.addColorStop(0, 'rgba(26, 143, 227, 0.05)');
+      gradient.addColorStop(0.7, 'rgba(26, 143, 227, 0.25)');
+      gradient.addColorStop(1, 'rgba(26, 143, 227, 0.4)');
+    }
+    
+    return gradient;
+  }
 
   // Effect to initialize chart when component mounts
   $effect(() => {
@@ -87,12 +143,17 @@
     processedTooltipData = {};
     
     props.balanceHistory.forEach((dayData, index) => {
-      let tooltipInfo = `Day Index: ${dayData.day_index}\n`;
-      tooltipInfo += `Date: ${dayData.date}\n`;
-      tooltipInfo += `Token 0 Balance: ${formatNumber(dayData.token_0_balance)}\n`;
-      tooltipInfo += `Token 1 Balance: ${formatNumber(dayData.token_1_balance)}\n`;
-      tooltipInfo += `Token 0 Price: $${formatNumber(dayData.token_0_price_usd, 6)}\n`;
-      tooltipInfo += `Token 1 Price: $${formatNumber(dayData.token_1_price_usd, 6)}`;
+      const tooltipData = {
+        balances: [
+          `${props.currentPool.symbol_0} Balance: ${formatNumber(dayData.token_0_balance)}`,
+          `${props.currentPool.symbol_1} Balance: ${formatNumber(dayData.token_1_balance)}`
+        ],
+        prices: [
+          `${props.currentPool.symbol_0} Price: $${formatNumber(dayData.token_0_price_usd, 6)}`,
+          `${props.currentPool.symbol_1} Price: $${formatNumber(dayData.token_1_price_usd, 6)}`
+        ],
+        changes: []
+      };
       
       // Calculate changes from previous day if not the first day
       if (index > 0) {
@@ -101,11 +162,16 @@
         
         if (Math.abs(tvlChange) > 0.01) {
           const percentChange = (tvlChange / prevDay.tvl_usd) * 100;
-          tooltipInfo += `\n\nTVL Change: ${tvlChange > 0 ? '+' : ''}$${formatNumber(Math.abs(tvlChange))} (${percentChange > 0 ? '+' : ''}${percentChange.toFixed(2)}%)`;
+          const changeSign = tvlChange > 0 ? '+' : '';
+          const percentSign = percentChange > 0 ? '+' : '';
+          
+          tooltipData.changes.push(
+            `TVL Change: ${changeSign}$${formatNumber(Math.abs(tvlChange))} (${percentSign}${percentChange.toFixed(2)}%)`
+          );
         }
       }
       
-      processedTooltipData[index] = tooltipInfo;
+      processedTooltipData[index] = tooltipData;
     });
   }
 
@@ -125,8 +191,14 @@
     
     const ctx = tvlChartCanvas.getContext('2d');
     
-    // Now using the date field directly
-    const labels = props.balanceHistory.map(entry => entry.date);
+    // Format dates to shorter format (e.g., "Jan 15")
+    const labels = props.balanceHistory.map(entry => {
+      const date = new Date(entry.date);
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    });
     
     // Use the TVL in USD value as the primary data point
     const tvlData = props.balanceHistory.map(entry => entry.tvl_usd);
@@ -140,13 +212,13 @@
     );
     
     // Get theme colors
-    const colors = getChartThemeColors(isDarkMode);
+    const colors = getThemeColors();
     
-    // Create theme-aware TVL gradient using the shared utility
-    const tvlGradient = createChartGradient(ctx, isDarkMode, 'rgba(111, 93, 251, 1)', 300);
+    // Create theme-aware TVL gradient
+    const tvlGradient = createThemeGradient(ctx);
     
     // Get common chart options and extend with TVL-specific settings
-    const chartOptions = getCommonChartOptions(isDarkMode, {
+    const baseOptions = getCommonChartOptions(isDarkMode, {
       callbacks: {
         label: function(context) {
           if (context.parsed.y !== null) {
@@ -156,73 +228,105 @@
         },
         afterBody: function(context) {
           const index = context[0].dataIndex;
-          // Use pre-processed tooltip data
-          return processedTooltipData[index] || '';
+          const tooltipData = processedTooltipData[index];
+          
+          if (!tooltipData) return [];
+          
+          // Create organized tooltip lines
+          const tooltipLines = [];
+          
+          // Add spacing and balances section
+          tooltipLines.push('');
+          tooltipLines.push(...tooltipData.balances);
+          
+          // Add spacing and prices section
+          tooltipLines.push('');
+          tooltipLines.push(...tooltipData.prices);
+          
+          // Add changes section if there are any
+          if (tooltipData.changes.length > 0) {
+            tooltipLines.push('');
+            tooltipLines.push(...tooltipData.changes);
+          }
+          
+          return tooltipLines;
+        }
+      }
+    });
+
+    // Override chart options with theme colors
+    const chartOptions = {
+      ...baseOptions,
+      maintainAspectRatio: false,
+      responsive: true,
+      devicePixelRatio: 2,
+      scales: {
+        x: {
+          display: true,
+          grid: {
+            display: false,
+          },
+          ticks: {
+            display: true,
+            color: colors.textSecondaryColor,
+            maxTicksLimit: 8,
+          }
+        },
+        y: {
+          display: true,
+          min: 0,
+          grid: {
+            display: false,
+          },
+          ticks: {
+            display: true,
+            color: colors.textSecondaryColor,
+            callback: function(value) {
+              const numValue = Number(value);
+              if (numValue >= 1000000) {
+                return '$' + (numValue / 1000000).toFixed(1) + 'M';
+              } else if (numValue >= 1000) {
+                return '$' + (numValue / 1000).toFixed(1) + 'K';
+              } else {
+                return '$' + Math.round(numValue);
+              }
+            }
+          }
         }
       },
-      maintainAspectRatio: false, // Allow filling the entire container
-      responsive: true, // Ensure responsiveness
-      devicePixelRatio: 2, // Sharper rendering
-    });
-    
-    // Ensure axes don't add internal padding
-    if (!chartOptions.scales) {
-      chartOptions.scales = {};
-    }
-    
-    chartOptions.scales.x = {
-      ...chartOptions.scales.x,
-      display: false, // Hide entire x-axis
-      grid: {
-        display: false,
+      layout: {
+        padding: {
+          top: 10,
+          right: 10,
+          bottom: 10,
+          left: 10
+        }
       },
-      ticks: {
-        display: false,
-        padding: 0,
+      plugins: {
+        ...baseOptions.plugins,
+        tooltip: {
+          ...baseOptions.plugins.tooltip,
+          backgroundColor: colors.bgSecondaryColor,
+          titleColor: colors.textPrimaryColor,
+          bodyColor: colors.textPrimaryColor,
+          borderColor: colors.borderColor,
+        }
       }
     };
-    
-    chartOptions.scales.y = {
-      ...chartOptions.scales.y,
-      display: false, // Hide entire y-axis
-      grid: {
-        display: false, // Hide grid lines
-      },
-      ticks: {
-        display: false,
-        padding: 0,
-      }
-    };
-    
-    // Ensure no layout padding
-    if (!chartOptions.layout) {
-      chartOptions.layout = {};
-    }
-    chartOptions.layout.padding = {
-      top: 0,
-      right: 0,
-      bottom: 0,
-      left: 0
-    }; // No padding at all
     
     tvlChartInstance = new Chart(ctx, {
-      type: 'line',
+      type: 'bar',
       data: {
         labels: labels,
         datasets: [
           {
             label: 'TVL (USD)',
             data: tvlData,
-            borderColor: colors.tvlColor,
-            backgroundColor: tvlGradient,
-            borderWidth: 2,
-            fill: true, // Enable fill for area background
-            pointRadius: 0, // Hide all points for cleaner look
-            pointBackgroundColor: colors.tvlColor,
-            pointBorderColor: colors.pointBorderColor,
-            pointBorderWidth: 1.5,
-            tension: 0.3,
-            clip: false, // Allow drawing outside the chart area
+            borderColor: colors.primaryColor,
+            backgroundColor: colors.primaryColor,
+            borderWidth: 1,
+            borderRadius: 2,
+            borderSkipped: false,
           }
         ]
       },
@@ -252,12 +356,12 @@
 
 <Panel variant="solid" type="secondary" className="!overflow-visible !p-0">
   <div class="flex flex-col w-full h-full">
-    <h3 class="flex items-center justify-between py-3 px-3 text-sm uppercase font-medium text-kong-text-primary/90">
-      TVL History
+    <h3 class="flex items-center justify-between p-3 text-lg uppercase font-medium text-kong-text-primary/90">
+      TVL
       <div class="flex items-center gap-2">
         <div class="text-kong-text-primary/90">
-          {#if typeof props.currentPool?.tvl === 'number'}
-            {(props.currentPool.tvl as number).toLocaleString(undefined, {
+          {#if props.currentPool?.tvl}
+            {(props.currentPool.tvl).toLocaleString(undefined, {
               style: 'currency',
               currency: 'USD',
               minimumFractionDigits: 2,

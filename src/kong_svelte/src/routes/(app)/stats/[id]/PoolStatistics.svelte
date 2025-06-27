@@ -67,22 +67,13 @@
       ? (Number(selectedPool.lp_fee_bps) / 100).toFixed(2)
       : '0.00'
   );
-  
-  // Check if user has a position in this pool
-  const userPosition = $derived(
-    $auth.isConnected && selectedPool 
-      ? $currentUserPoolsStore.filteredPools.find(
-          p => p.address_0 === selectedPool.address_0 && p.address_1 === selectedPool.address_1
-        )
-      : null
-  );
 </script>
 
 <Panel type="main" className="relative !bg-kong-bg-secondary" zIndex={1}>
   <div class="flex flex-col gap-5">
     <!-- Pool Title Section -->
     <div>
-      <div class="flex justify-between items-center mb-2">
+      <div class="flex justify-between items-center mb-4">
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider">
           <span class="flex gap-x-2 items-center">
             Pool Information 
@@ -92,21 +83,14 @@
             }}><Info size={16} /></span>
           </span>
         </div>
-        <div class="flex items-center gap-2">
-          {#if userPosition}
+        <div class="flex flex-col items-center gap-2">
             <button
               class="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-kong-accent-green bg-kong-accent-green/10 rounded-md hover:bg-kong-accent-green/20 transition-colors"
-              onclick={() => goto(`/pools/${selectedPool.address_0}_${selectedPool.address_1}/position`)}
+              onclick={() => window.open(`/pools/${selectedPool.address_0}_${selectedPool.address_1}`, '_blank')}
             >
               <ExternalLink size={12} />
-              View Position
+              View
             </button>
-          {/if}
-          {#if selectedPool?.pool_id}
-            <div class="text-xs text-kong-text-primary/50 bg-kong-bg-secondary/20 px-2 py-0.5 rounded">
-              Pool #{selectedPool.pool_id}
-            </div>
-          {/if}
         </div>
       </div>
       

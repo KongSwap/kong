@@ -2,7 +2,7 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import TokenSelectionPanel from "./TokenSelectionPanel.svelte";
-  import AmountInputs from "./AmountInputs.svelte";
+  // import AmountInputs from "./AmountInputs.svelte";
   import InitialPriceInput from "./InitialPriceInput.svelte";
   import PoolWarning from "./PoolWarning.svelte";
   import ConfirmLiquidityModal from "$lib/components/liquidity/modals/ConfirmLiquidityModal.svelte";
@@ -83,7 +83,7 @@
   let buttonTheme = $derived($buttonThemeStore);
 
   // Derived state for UI organization
-  let isCreatingNewPool = $derived(poolExists === false || pool?.balance_0 === 0n);
+  let isCreatingNewPool = $derived(poolExists === false || (pool?.balance_0 === 0n && pool?.balance_1 === 0n));
   let hasTokenPair = $derived(token0 && token1);
   let canProceed = $derived(hasTokenPair && $liquidityStore.amount0 && $liquidityStore.amount1);
   
@@ -335,7 +335,7 @@
             </h3>
           </div>
           
-          <div>
+          <!-- <div>
             <AmountInputs
               {token0}
               {token1}
@@ -347,7 +347,7 @@
               onPercentageClick={handlePercentageClick(0)}
               onToken1PercentageClick={handlePercentageClick(1)}
             />
-          </div>
+          </div> -->
         </div>
       </Panel>
     {/if}

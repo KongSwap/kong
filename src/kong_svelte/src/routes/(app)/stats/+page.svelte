@@ -367,7 +367,7 @@
           <input
             type="text"
             placeholder={isMobile ? "Search tokens..." : "Search tokens by name, symbol, or canister ID"}
-            class="w-full pl-10 pr-4 py-2 rounded-xl bg-kong-bg-secondary/60 border border-kong-border/40 text-kong-text-primary placeholder-[#8890a4] focus:outline-none focus:border-kong-primary shadow-sm"
+            class="w-full pl-10 pr-4 py-2 rounded-xl bg-kong-bg-secondary/60 border border-kong-border/40 text-kong-text-primary placeholder-[#8890a4] focus:outline-none focus:border focus:border-kong-primary shadow-sm"
             oninput={handleSearch}
             value={searchTerm}
           />

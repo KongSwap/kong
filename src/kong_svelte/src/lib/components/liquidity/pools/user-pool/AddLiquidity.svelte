@@ -7,24 +7,37 @@
   import TokenInput from "./TokenInput.svelte";
   import { calculateLiquidityAmounts } from "$lib/api/pools";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
+  import { 
+    calculateToken1FromPrice, 
+    calculateToken0FromPrice
+  } from "$lib/utils/liquidityUtils";
 
   interface Props {
-    pool: any;
+    userPool: any;
+    livePool: any;
     token0: any;
     token1: any;
     onShowConfirmModal: () => void;
   }
 
-  let { pool, token0, token1, onShowConfirmModal }: Props = $props();
+  let { userPool, livePool, token0, token1, onShowConfirmModal }: Props = $props();
 
   // Unified state for atomic updates
   let state = $state({
     amounts: ["", ""] as [string, string],
     displayValues: ["", ""] as [string, string],
     isCalculating: false,
+    activeInputIndex: null as number | null, // Track which input is actively being typed in
     error: null as string | null,
     calculationId: 0
   });
+
+  // Check if pool has existing liquidity
+  let poolHasLiquidity = $derived(livePool && (
+    (livePool.balance_0 && livePool.balance_0 > 0n) || 
+    (livePool.balance_1 && livePool.balance_1 > 0n) ||
+    (livePool.tvl && livePool.tvl > 0)
+  ));
 
   // Async management
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -66,6 +79,9 @@
     abortController?.abort();
     debounceTimer && clearTimeout(debounceTimer);
 
+    // Track which input is actively being used
+    state.activeInputIndex = inputIndex;
+    
     // Immediate UI update
     state.displayValues[inputIndex] = value;
     state.error = null;
@@ -92,25 +108,50 @@
       state.isCalculating = true;
       abortController = new AbortController();
 
-      const tokens = [token0, token1];
-      const inputAmount = parseTokenAmount(value, tokens[inputIndex].decimals);
-      if (!inputAmount) return;
+      let outputAmount = "";
 
-      const result = await calculateLiquidityAmounts(
-        tokens[inputIndex].address,
-        inputAmount,
-        tokens[outputIndex].address
-      );
+      if (!poolHasLiquidity && $liquidityStore.initialPrice) {
+        // Use price-based calculation for new pools
+        const price = $liquidityStore.initialPrice;
+        
+        if (inputIndex === 0) {
+          // Calculate token1 from token0 and price
+          outputAmount = calculateToken1FromPrice(value, price);
+        } else {
+          // Calculate token0 from token1 and price
+          outputAmount = calculateToken0FromPrice(value, price);
+        }
+      } else if (poolHasLiquidity) {
+        // Use API-based calculation for existing pools
+        const tokens = [token0, token1];
+        const inputAmount = parseTokenAmount(value, tokens[inputIndex].decimals);
+        if (!inputAmount) return;
+
+        const result = await calculateLiquidityAmounts(
+          tokens[inputIndex].address,
+          inputAmount,
+          tokens[outputIndex].address
+        );
+
+        // Check if calculation is still valid
+        if (abortController.signal.aborted || calculationId !== state.calculationId) return;
+
+        if ('Ok' in result) {
+          outputAmount = (
+            Number(inputIndex === 0 ? result.Ok.amount_1 : result.Ok.amount_0) / 
+            Math.pow(10, tokens[outputIndex].decimals)
+          ).toString();
+        }
+      } else {
+        // No initial price set for new pool
+        state.error = "Please set an initial price first";
+        return;
+      }
 
       // Check if calculation is still valid
       if (abortController.signal.aborted || calculationId !== state.calculationId) return;
 
-      if ('Ok' in result) {
-        const outputAmount = (
-          Number(inputIndex === 0 ? result.Ok.amount_1 : result.Ok.amount_0) / 
-          Math.pow(10, tokens[outputIndex].decimals)
-        ).toString();
-
+      if (outputAmount) {
         // Atomic state update
         state.amounts[inputIndex] = value;
         state.amounts[outputIndex] = outputAmount;
@@ -143,6 +184,12 @@
       return;
     }
 
+    // For new pools, ensure initial price is set
+    if (!poolHasLiquidity && (!$liquidityStore.initialPrice || parseFloat($liquidityStore.initialPrice) <= 0)) {
+      state.error = "Please set an initial price";
+      return;
+    }
+
     const amounts = [
       parseTokenAmount(state.amounts[0], token0.decimals),
       parseTokenAmount(state.amounts[1], token1.decimals)
@@ -172,8 +219,8 @@
     tokenBalance={balances[0]}
     bind:displayValue={state.displayValues[0]}
     isExceedingBalance={validation.exceeding[0]}
-    isLoading={false}
-    disabled={state.isCalculating}
+    isLoading={state.isCalculating && state.activeInputIndex === 1}
+    disabled={state.isCalculating && state.activeInputIndex === 1}
     decimals={token0?.decimals || 8}
     parsedBalance={parsedBalances[0]}
     on:valueChange={(e) => handleAmountChange(0, e.detail)}
@@ -186,8 +233,8 @@
       tokenBalance={balances[1]}
       bind:displayValue={state.displayValues[1]}
       isExceedingBalance={validation.exceeding[1]}
-      isLoading={state.isCalculating}
-      disabled={state.isCalculating}
+      isLoading={state.isCalculating && state.activeInputIndex === 0}
+      disabled={state.isCalculating && state.activeInputIndex === 0}
       decimals={token1?.decimals || 8}
       parsedBalance={parsedBalances[1]}
       on:valueChange={(e) => handleAmountChange(1, e.detail)}
