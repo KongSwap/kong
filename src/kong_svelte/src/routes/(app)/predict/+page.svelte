@@ -348,4 +348,3 @@
   onClose={betModal.close}
   onBet={betModal.placeBet}
 />
-

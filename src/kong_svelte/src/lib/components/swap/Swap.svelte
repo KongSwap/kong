@@ -37,8 +37,6 @@
 
   let { widthFull = false } = $props<{ widthFull?: boolean }>();
 
-  $inspect(widthFull);
-
   // Constants
   const PANELS = { PAY: "pay" as PanelType, RECEIVE: "receive" as PanelType };
   const DROPDOWN_WIDTH = 360;
@@ -525,7 +523,6 @@
       payAmount={$swapState.payAmount}
       receiveToken={$swapState.receiveToken}
       receiveAmount={$swapState.receiveAmount}
-      routingPath={$swapState.routingPath}
       onConfirm={handleSwap}
       onClose={() => swapState.setShowConfirmation(false)}
     />
