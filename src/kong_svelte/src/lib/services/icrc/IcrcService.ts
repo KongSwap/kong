@@ -189,6 +189,28 @@ export class IcrcService {
     return results;
   }
 
+  public static async checkAllowance(
+    token: Kong.Token,
+    owner: string,
+    spender: string = KONG_BACKEND_CANISTER_ID,
+  ): Promise<{ allowance: bigint; expires_at: [] | [bigint] }> {
+    const allowanceActor = icrcActor({
+      canisterId: token.address,
+      anon: true,
+    });
+
+    return await allowanceActor.icrc2_allowance({
+      account: {
+        owner: Principal.fromText(owner),
+        subaccount: [],
+      },
+      spender: { 
+        owner: Principal.fromText(spender),
+        subaccount: [],
+      },
+    });
+  }
+
   public static async checkAndRequestIcrc2Allowances(
     token: Kong.Token,
     payAmount: bigint,
@@ -210,22 +232,8 @@ export class IcrcService {
         : 0n;
       const totalAmount = payAmount + (tokenFee * 4n);
 
-      const allowanceActor = icrcActor({
-        canisterId: token.address,
-        anon: true,
-      })
-
-      // Check current allowance
-      const currentAllowance = await allowanceActor.icrc2_allowance({
-        account: {
-          owner: Principal.fromText(authStore.account.owner),
-          subaccount: [],
-        },
-        spender: { 
-          owner: Principal.fromText(spender),
-          subaccount: [],
-        },
-      })
+      // Check current allowance using anonymous actor (no signing required)
+      const currentAllowance = await this.checkAllowance(token, authStore.account.owner, spender);
       const isExpired = currentAllowance.expires_at.length > 0 && currentAllowance.expires_at[0] < BigInt(Date.now() * 1000);
 
       if (currentAllowance && !isExpired && currentAllowance.allowance > totalAmount) {
@@ -266,6 +274,77 @@ export class IcrcService {
 
       if ("Err" in result) {
         // Convert BigInt values to strings in the error object
+        const stringifiedError = JSON.stringify(result.Err, (_, value) =>
+          typeof value === "bigint" ? value.toString() : value,
+        );
+        throw new Error(`ICRC2 approve error: ${stringifiedError}`);
+      }
+
+      return result.Ok;
+    } catch (error) {
+      console.error("ICRC2 approve error:", error);
+      toastStore.error(`Failed to approve ${token.symbol}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Request ICRC-2 allowance without checking current allowance
+   * Use this when you've already checked and know approval is needed
+   */
+  public static async requestIcrc2Allowance(
+    token: Kong.Token,
+    payAmount: bigint,
+    spender: string = KONG_BACKEND_CANISTER_ID,
+    actor?: any,
+  ): Promise<bigint> {
+    if (!token?.address) {
+      throw new Error("Invalid token: missing address");
+    }
+
+    if (!token.standards?.includes("ICRC-2")) {
+      throw new Error("Token does not support ICRC-2 standard");
+    }
+
+    try {
+      const expiresAt = BigInt(Date.now() + 1000 * 60 * 60 * 24 * 29) * BigInt(1000000); // 29 days
+
+      // Calculate total amount including fee
+      const cleanFee = token.fee_fixed?.replace(/_/g, "");
+      const tokenFee = cleanFee && /^\d+$/.test(cleanFee) ? BigInt(cleanFee) : 0n;
+      const totalAmount = payAmount + (tokenFee * 4n);
+
+      let approveAmount: bigint;
+      if (token?.metrics?.total_supply) {
+        const cleanSupply = token.metrics.total_supply.toString().replace(/_/g, "");
+        approveAmount = /^\d+$/.test(cleanSupply) ? BigInt(cleanSupply) : totalAmount * 10n;
+      } else {
+        approveAmount = totalAmount * 10n;
+      }
+
+      const approveArgs: ApproveArgs = {
+        fee: [],
+        memo: [],
+        from_subaccount: [],
+        created_at_time: [],
+        amount: approveAmount,
+        expected_allowance: [],
+        expires_at: [expiresAt],
+        spender: {
+          owner: Principal.fromText(spender),
+          subaccount: [],
+        },
+      };
+
+      const approveActor = actor || icrcActor({
+        canisterId: token.address,
+        anon: false,
+        requiresSigning: true,
+      });
+
+      const result = await approveActor.icrc2_approve(approveArgs);
+
+      if ("Err" in result) {
         const stringifiedError = JSON.stringify(result.Err, (_, value) =>
           typeof value === "bigint" ? value.toString() : value,
         );
@@ -391,7 +470,7 @@ export class IcrcService {
   private static hex2Bytes(hex: string): number[] {
     const bytes = [];
     for (let i = 0; i < hex.length; i += 2) {
-      bytes.push(parseInt(hex.substr(i, 2), 16));
+      bytes.push(parseInt(hex.substring(i, i + 2), 16));
     }
     return bytes;
   }

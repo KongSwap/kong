@@ -256,7 +256,7 @@
                     <span class="text-xs text-kong-text-secondary">
                       predicted
                     </span>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-kong-success/10 text-kong-success whitespace-nowrap">
+                    <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-kong-success/10 text-kong-success max-w-[120px] truncate">
                       {outcomes[Number(betData.outcome_index)]}
                     </span>
                   </div>
@@ -271,12 +271,12 @@
                 </div>
               {:else if betData.market}
                 <div class="flex-1 min-w-0">
-                  <h3 class="text-xs text-kong-text-secondary line-clamp-2 group-hover:text-kong-text-primary transition-colors">
+                  <h3 class="text-xs text-kong-text-secondary line-clamp-1 group-hover:text-kong-text-primary transition-colors">
                     {betData.market.question}
                   </h3>
                   <div class="space-y-1">
-                    <div>
-                      <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-kong-success/10 text-kong-success">
+                    <div class="flex">
+                      <span class="inline-block px-1.5 py-0.5 rounded text-xs font-medium bg-kong-success/10 text-kong-success max-w-[140px] truncate">
                         {betData.market.outcomes[Number(betData.outcome_index)]}
                       </span>
                     </div>

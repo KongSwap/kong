@@ -40,6 +40,7 @@ export interface SwapState {
     receiveToken: Kong.Token | null;
     principalId: string;
   } | null;
+  needsAllowance: boolean;
 }
 
 const initialState: SwapState = {
@@ -64,7 +65,8 @@ const initialState: SwapState = {
     pay: false,
     receive: false
   },
-  successDetails: null
+  successDetails: null,
+  needsAllowance: false
 };
 
 function createSwapStateStore() {

@@ -6,6 +6,8 @@
   import { auth } from "$lib/stores/auth";
   import { estimateBetReturn } from "$lib/api/predictionMarket";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { AllowancePrecheck } from "$lib/services/icrc/AllowancePrecheck";
+  import { canisters } from "$lib/config/auth.config";
 
   let {
     open = $bindable(false),
@@ -23,7 +25,7 @@
     percentage: number;
     token: any;
     marketId: bigint;
-    onSubmit: (amount: number) => Promise<void>;
+    onSubmit: (amount: number, needsAllowance: boolean) => Promise<void>;
     isSubmitting?: boolean;
   }>();
 
@@ -33,9 +35,31 @@
   let manualAmount = $state('');
   let estimatedReturn = $state<any>(null);
   let loadingEstimate = $state(false);
+  let needsAllowance = $state(false);
   
   // Default token info if not provided
   const defaultDecimals = 8;
+  
+  // Check allowance when dialog opens (without requesting approval)
+  $effect(() => {
+    if (open && token && $auth.isConnected && token.standards?.includes("ICRC-2")) {
+      const largeAllowance = token.metrics?.total_supply ? BigInt(token.metrics.total_supply) : BigInt(10 ** 18);
+      
+      AllowancePrecheck.checkAllowanceOnly({
+        token,
+        amount: largeAllowance,
+        spender: canisters.predictionMarkets.canisterId,
+      }).then(hasAllowance => {
+        console.log(`Allowance check for ${token.symbol}: ${hasAllowance ? 'sufficient' : 'insufficient'}`);
+        needsAllowance = !hasAllowance;
+      }).catch(error => {
+        console.error("Failed to check allowance:", error);
+        needsAllowance = true; // Assume we need it if check fails
+      });
+    } else if (!token?.standards?.includes("ICRC-2")) {
+      needsAllowance = false; // Non-ICRC-2 tokens don't need allowance
+    }
+  });
   
   // Fetch balance when token or auth changes
   $effect(() => {
@@ -211,7 +235,7 @@
 
   async function handleSubmit() {
     if (amount() > 0) {
-      await onSubmit(amount());
+      await onSubmit(amount(), needsAllowance);
       handleClose();
     }
   }

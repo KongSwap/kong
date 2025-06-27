@@ -30,7 +30,7 @@
 
   let { market, onPlacePrediction, marketBets = [], isAdmin = false } = $props<{
     market: any;
-    onPlacePrediction: (outcomeIndex: number, amount: number) => Promise<void>;
+    onPlacePrediction: (outcomeIndex: number, amount: number, needsAllowance?: boolean) => Promise<void>;
     marketBets?: any[];
     isAdmin?: boolean;
   }>();
@@ -112,12 +112,12 @@
     uiState.showPredictionDialog = true;
   }
   
-  async function handlePlacePrediction(amount: number) {
+  async function handlePlacePrediction(amount: number, needsAllowance: boolean) {
     if (uiState.selectedOutcome === null) return;
     
     uiState.placingPrediction = true;
     try {
-      await onPlacePrediction(uiState.selectedOutcome, amount);
+      await onPlacePrediction(uiState.selectedOutcome, amount, needsAllowance);
       uiState.selectedOutcome = null;
     } catch (error) {
       console.error('Prediction error:', error);

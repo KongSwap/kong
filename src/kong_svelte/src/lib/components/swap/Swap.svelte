@@ -5,6 +5,7 @@
   import Portal from "svelte-portal";
   import { Principal } from "@dfinity/principal";
   import { onMount, onDestroy } from "svelte";
+  import { get } from "svelte/store";
   import { swapState } from "$lib/stores/swapStateStore";
   import { SwapService } from "$lib/services/swap/SwapService";
   import { auth } from "$lib/stores/auth";
@@ -12,6 +13,7 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/stores/swapStore";
   import { sidebarStore } from "$lib/stores/sidebarStore";
+  import { currentUserBalancesStore } from "$lib/stores/balancesStore";
   import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { browser } from "$app/environment";
   import { tick } from "svelte";
@@ -24,6 +26,7 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { disableBodyScroll, enableBodyScroll } from "$lib/utils/scrollUtils";
+  import { AllowancePrecheck } from "$lib/services/icrc/AllowancePrecheck";
 
   // Import custom hooks
   import { useSwapQuote } from "$lib/hooks/useSwapQuote.svelte";
@@ -61,18 +64,52 @@
   let lastEditedPanel: PanelType | null = null;
 
   // Derived values
+  let hasInsufficientFunds = $derived(() => {
+    // First check if we have insufficient funds for the swap itself
+    const baseInsufficientFunds = insufficientFunds();
+    
+    // If we don't have enough for the swap, we definitely don't have enough
+    if (baseInsufficientFunds) return true;
+    
+    // If we need allowance and it's an ICRC-2 token, check if we have enough for approval fee too
+    if ($swapState.needsAllowance && $swapState.payToken?.standards?.includes("ICRC-2") && $swapState.payAmount) {
+      try {
+        // Get current balance
+        const balances = get(currentUserBalancesStore);
+        const balanceData = balances?.[$swapState.payToken.address];
+        if (!balanceData) return false;
+        
+        const balanceBigInt = balanceData.in_tokens;
+        const decimals = $swapState.payToken.decimals || 8;
+        
+        // Calculate required amount: swap amount + approval fee
+        const swapAmountBigInt = SwapService.toBigInt($swapState.payAmount, decimals);
+        const approvalFee = BigInt($swapState.payToken.fee_fixed || "10000");
+        const totalRequired = swapAmountBigInt + approvalFee;
+        
+        // Check if balance is less than total required
+        return balanceBigInt < totalRequired;
+      } catch (error) {
+        console.error("Error checking balance with approval fee:", error);
+        return baseInsufficientFunds;
+      }
+    }
+    
+    return baseInsufficientFunds;
+  });
+
   let buttonText = $derived(
     !$auth.isConnected
       ? "Connect Wallet"
       : !$swapState.payAmount || $swapState.payAmount === "0"
         ? "Enter Amount"
-        : insufficientFunds()
+        : hasInsufficientFunds()
           ? "Insufficient Balance"
           : getSwapButtonText(
               $swapState,
               $settingsStore,
               isQuoteLoading(),
-              insufficientFunds(),
+              hasInsufficientFunds(),
               $auth,
             ),
   );
@@ -84,7 +121,7 @@
           $swapState.payAmount === "0" ||
           isSwapButtonDisabled(
             $swapState,
-            insufficientFunds(),
+            hasInsufficientFunds(),
             isQuoteLoading(),
             $auth,
           ),
@@ -182,16 +219,47 @@
 
     if (!$swapState.payToken || !$swapState.receiveToken) return;
 
-    // Delay the modal opening to allow the press effect to show
-    setTimeout(() => {
-      swapState.update((state) => ({
+    // Show the modal immediately
+    swapState.update((state) => ({
+      ...state,
+      showConfirmation: true,
+      isProcessing: false,
+      error: null,
+      showSuccessModal: false,
+    }));
+
+    // Only check allowance (don't request) when modal is shown
+    if ($swapState.payToken.standards?.includes("ICRC-2")) {
+      const payAmount = SwapService.toBigInt(
+        $swapState.payAmount,
+        $swapState.payToken.decimals,
+      );
+      
+      AllowancePrecheck.checkAllowanceOnly({
+        token: $swapState.payToken,
+        amount: payAmount,
+      }).then(hasAllowance => {
+        console.log(`Allowance check for ${$swapState.payToken.symbol}: ${hasAllowance ? 'sufficient' : 'insufficient'}`);
+        // Store whether we need allowance
+        swapState.update(state => ({
+          ...state,
+          needsAllowance: !hasAllowance
+        }));
+      }).catch(error => {
+        console.error("Background allowance check failed:", error);
+        // Assume we need allowance if check fails
+        swapState.update(state => ({
+          ...state,
+          needsAllowance: true
+        }));
+      });
+    } else {
+      // Non-ICRC-2 tokens don't need allowance
+      swapState.update(state => ({
         ...state,
-        showConfirmation: true,
-        isProcessing: false,
-        error: null,
-        showSuccessModal: false,
+        needsAllowance: false
       }));
-    }, 200);
+    }
   }
 
   async function handleSwap(): Promise<boolean> {
@@ -230,6 +298,7 @@
         userMaxSlippage: $settingsStore.max_slippage,
         backendPrincipal: Principal.fromText(KONG_BACKEND_CANISTER_ID),
         lpFees: $swapState.lpFees,
+        needsAllowance: $swapState.needsAllowance,
       });
 
       if (typeof result !== "bigint") {
@@ -281,7 +350,7 @@
       return;
     }
 
-    if (insufficientFunds()) {
+    if (hasInsufficientFunds()) {
       toastStore.error("Insufficient funds for this swap");
       return;
     }
@@ -476,7 +545,7 @@
         text={buttonText}
         isError={!!$swapState.error ||
           $swapState.swapSlippage > $settingsStore.max_slippage ||
-          insufficientFunds()}
+          hasInsufficientFunds()}
         isProcessing={$swapState.isProcessing}
         isLoading={isQuoteLoading()}
         disabled={buttonDisabled}
