@@ -104,7 +104,7 @@
     return [
       {
         label: "Total Pool",
-        value: `${formatToNonZeroDecimal(formatBalance(Number(market?.total_pool || 0), token?.decimals))} ${token?.symbol}`,
+        value: `${formatBalance(Number(market?.total_pool || 0), token?.decimals)} ${token?.symbol}`,
         token: token,
       },
       {
