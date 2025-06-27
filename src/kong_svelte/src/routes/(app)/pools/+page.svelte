@@ -388,10 +388,7 @@
 </svelte:head>
 
 <!-- Pools Header -->
-<PoolsHeader 
-  poolTotals={$poolTotals} 
-  highestAPY={getHighestAPY()} 
-/>
+<PoolsHeader />
 <section class="flex flex-col w-full px-2 sm:px-4 pb-4 mt-4 max-w-[1600px] mx-auto">
     <div class="overflow-hidden flex flex-col h-full {$panelRoundness}">
       <!-- Toolbar -->

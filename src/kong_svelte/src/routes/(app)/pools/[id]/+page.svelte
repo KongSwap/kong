@@ -528,7 +528,7 @@
          )}
 
          {@render metricPanel(
-           "APR (24h)",
+           "APY (7 day)",
            `${formatToNonZeroDecimal((livePool?.rolling_24h_apy || 0).toString())}%`,
            `<div class="flex justify-between items-center text-xs w-full">
              <div class="flex items-center gap-1">

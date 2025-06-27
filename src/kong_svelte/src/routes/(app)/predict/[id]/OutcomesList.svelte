@@ -221,13 +221,14 @@
 </Card>
 
 <!-- Prediction Confirmation Dialog -->
-{#if uiState.selectedOutcome !== null && marketData.token}
+{#if uiState.selectedOutcome !== null && marketData.token && market?.id}
   <PredictionConfirmationDialog
     bind:open={uiState.showPredictionDialog}
     outcome={marketData.outcomes[uiState.selectedOutcome]}
     outcomeIndex={uiState.selectedOutcome}
     percentage={marketData.outcomePercentages[uiState.selectedOutcome]}
     token={marketData.token}
+    marketId={BigInt(market.id)}
     onSubmit={handlePlacePrediction}
     isSubmitting={uiState.placingPrediction}
   />
