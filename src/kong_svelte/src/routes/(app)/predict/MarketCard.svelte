@@ -20,6 +20,7 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import MarketOutcomeButton from "./MarketOutcomeButton.svelte";
   import AdminDropdownButton from "./AdminDropdownButton.svelte";
+  import { auth } from "$lib/stores/auth";
 
   let {
     market,
@@ -46,6 +47,11 @@
   let imageError = $state(false);
   // Remove local dropdown state - now managed by parent
 
+  // Check if current user is the market creator
+  let isCurrentUserCreator = $derived(
+    market && $auth.account?.owner && market.creator?.toText() === $auth.account.owner
+  );
+
   // Consolidated market status helpers
   const marketStatus = {
     isExpiredUnresolved: (market: any): boolean => {
@@ -60,13 +66,10 @@
       return market && market.status && "Voided" in market.status;
     },
     isPending: (market: any): boolean => {
-      return market && market.status && "Pending" in market.status;
+      return market && market.status && "PendingActivation" in market.status;
     },
     isOpen: (market: any): boolean => {
       return market && market.status && "Active" in market.status;
-    },
-    isPendingActivation: (market: any): boolean => {
-      return market && market.status && "PendingActivation" in market.status;
     },
     canResolveOrVoid: (market: any): boolean => {
       return (
@@ -76,6 +79,9 @@
     },
   };
 
+  // Determine if outcomes should be shown
+  let shouldShowOutcomes = $derived(!marketStatus.isPending(market) || isCurrentUserCreator);
+  
   // Helper function to check if an outcome is a winner
   function isWinningOutcome(market: any, outcomeIndex: number): boolean {
     try {
@@ -178,11 +184,6 @@
         color: "bg-kong-accent-yellow/10 text-kong-accent-yellow",
         text: "Pending",
       };
-    if (marketStatus.isPendingActivation(market))
-      return {
-        color: "bg-kong-accent-blue/10 text-kong-accent-blue",
-        text: "Pending Activation",
-      };
     if (marketStatus.isExpiredUnresolved(market))
       return { color: "bg-indigo-400/10 text-indigo-400", text: "Unresolved" };
     return { color: "bg-kong-success/10 text-kong-success", text: "Active" };
@@ -280,39 +281,37 @@
 {/snippet}
 
 {#snippet marketOutcomes()}
-  <div class="flex-1 flex flex-col">
-    {#if isYesNoMarket(market)}
-      <!-- Yes/No buttons side by side, centered vertically -->
-      <div class="flex-1 flex items-center">
-        <div class="w-full flex gap-2 justify-center">
-          {#if getYesNoIndices(market).yesIndex !== -1}
-            {@const yesIndex = getYesNoIndices(market).yesIndex}
-            <MarketOutcomeButton
-              outcome="Yes"
-              index={yesIndex}
-              {market}
-              {openBetModal}
-              isYesNo={true}
-            />
-          {/if}
-          {#if getYesNoIndices(market).noIndex !== -1}
-            {@const noIndex = getYesNoIndices(market).noIndex}
-            <MarketOutcomeButton
-              outcome="No"
-              index={noIndex}
-              {market}
-              {openBetModal}
-              isYesNo={true}
-            />
-          {/if}
+  <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
+    {#if shouldShowOutcomes}
+      {#if isYesNoMarket(market)}
+        <!-- Yes/No buttons side by side, centered vertically -->
+        <div class="flex-1 flex items-center">
+          <div class="w-full flex gap-2 justify-center">
+            {#if getYesNoIndices(market).yesIndex !== -1}
+              {@const yesIndex = getYesNoIndices(market).yesIndex}
+              <MarketOutcomeButton
+                outcome="Yes"
+                index={yesIndex}
+                {market}
+                {openBetModal}
+                isYesNo={true}
+              />
+            {/if}
+            {#if getYesNoIndices(market).noIndex !== -1}
+              {@const noIndex = getYesNoIndices(market).noIndex}
+              <MarketOutcomeButton
+                outcome="No"
+                index={noIndex}
+                {market}
+                {openBetModal}
+                isYesNo={true}
+              />
+            {/if}
+          </div>
         </div>
-      </div>
-    {:else}
-      <div class="flex-1 flex items-center">
-        <div class="w-full space-y-1.5">
-          <div
-            class="flex flex-col max-h-[120px] gap-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-kong-border"
-          >
+      {:else}
+        <div class="flex-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-kong-border">
+          <div class="flex flex-col gap-1">
             {#each market.outcomes as outcome, i}
               <MarketOutcomeButton
                 {outcome}
@@ -323,13 +322,26 @@
             {/each}
           </div>
         </div>
+      {/if}
+    {:else}
+      <!-- Show pending activation message for non-creators -->
+      <div class="flex-1 flex items-center justify-center">
+        <div class="text-center px-4 py-2">
+          <p class="text-sm text-kong-text-secondary">
+            {#if marketStatus.isPending(market)}
+              Activating
+            {:else}
+              Outcomes hidden
+            {/if}
+          </p>
+        </div>
       </div>
     {/if}
   </div>
 {/snippet}
 
 {#snippet marketFooter()}
-  <div class="mt-auto pt-2 border-t border-kong-border/20">
+  <div class="mt-auto pt-2 border-t border-kong-border/20 flex-shrink-0">
     <div class="flex items-center justify-between gap-2">
       <div class="flex items-center gap-2">
         {#if !marketStatus.isResolved(market)}
@@ -407,23 +419,27 @@
 />
 
 <Card
-  className="relative !p-0 group transition-all duration-200 h-[230px] overflow-visible {marketStatus.isResolved(
+  className="relative !p-0 group transition-all duration-200 h-[230px] overflow-hidden {marketStatus.isResolved(
     market,
   ) && !hasClaim
     ? 'grayscale opacity-40 hover:opacity-60'
+    : marketStatus.isPending(market) && !isCurrentUserCreator
+    ? 'opacity-60 hover:opacity-80'
     : ''}"
   onClick={() => goto(`/predict/${market.id}`)}
 >
   <!-- Card content -->
   <div class="relative flex flex-col h-full p-3">
-    <div class="flex flex-col h-full">
+    <div class="flex flex-col h-full min-h-0">
       <!-- Market header -->
       {#if market.featured}
-        <div class="mb-1">
+        <div class="mb-1 flex-shrink-0">
           {@render marketHeader()}
         </div>
       {:else}
-        {@render marketHeader()}
+        <div class="flex-shrink-0">
+          {@render marketHeader()}
+        </div>
       {/if}
 
       <!-- Market outcomes -->
@@ -478,7 +494,7 @@
   </div>
 </Card>
 
-<style>
+<style lang="postcss">
   /* Smooth hover transitions */
   .group\/outcome:hover :global(.bg-kong-success\/40) {
     @apply bg-kong-success/60;
@@ -505,7 +521,4 @@
   .scrollbar-thumb-kong-border::-webkit-scrollbar-thumb:hover {
     background-color: var(--kong-border, rgba(255, 255, 255, 0.2));
   }
-
-  /* Title text clamp to 2 lines */
-  /* Use Tailwind's line-clamp utility instead */
 </style>

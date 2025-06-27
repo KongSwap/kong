@@ -8,6 +8,7 @@
   import { auth } from "$lib/stores/auth";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import PredictionConfirmationDialog from "./PredictionConfirmationDialog.svelte";
+    import { formatToNonZeroDecimal } from "$lib/utils/liquidityUtils";
   
   // Format token amounts that are already in token units
   function formatTokenAmount(amount: number, maxDecimals: number = 4): string {
@@ -152,7 +153,7 @@
       <div class="space-y-3">
         {#each marketData.outcomes as outcome, i}
           {@const isWinner = marketStatus.isClosed && marketData.winningOutcomes.some((w) => Number(w) === i)}
-          {@const poolAmount = new BigNumber(market.outcome_pools[i]).div(10 ** (marketData.token?.decimals || 8))}
+          {@const poolAmount = new BigNumber(market.outcome_pools[i]).div(10 ** (marketData.token?.decimals))}
           {@const isLeading = marketData.outcomePercentages[i] === marketData.maxPercentage && marketData.maxPercentage > 0}
           
           <ButtonV2
@@ -181,12 +182,12 @@
                     <span>{marketData.betCounts[i]} predictions</span>
                     {#if marketData.token}
                       <span>•</span>
-                      <span>{formatBalance(poolAmount.toNumber(), 0)} {marketData.token.symbol}</span>
+                      <span>{formatTokenAmount(poolAmount.toNumber())} {marketData.token.symbol}</span>
                     {/if}
                   </div>
                   {#if userBetsPerOutcome()[i] > 0}
                     <div class="mt-1 text-xs text-kong-accent-green font-medium">
-                      Your bet: {formatTokenAmount(userBetsPerOutcome()[i])} {marketData.token?.symbol || 'KONG'}
+                      Your bet: {formatToNonZeroDecimal(userBetsPerOutcome()[i])} {marketData.token?.symbol || 'KONG'}
                     </div>
                   {/if}
                 </div>

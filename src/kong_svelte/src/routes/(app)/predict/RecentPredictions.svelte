@@ -5,6 +5,8 @@
   import { fade, fly } from "svelte/transition";
   import { onMount } from "svelte";
   import { Clock, User, History } from "lucide-svelte";
+  import { userTokens } from "$lib/stores/userTokens";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens/TokenApiClient";
 
   let {
     bets = [],
@@ -13,8 +15,7 @@
     maxHeight = "400px",
     showOutcomes = true,
     className = "",
-    loading = false,
-    tokenSymbol = "KONG"
+    loading = false
   } = $props<{
     bets?: any[];
     outcomes?: string[] | null;
@@ -23,11 +24,13 @@
     showOutcomes?: boolean;
     className?: string;
     loading?: boolean;
-    tokenSymbol?: string;
   }>();
 
   // Store visible bets to avoid animation flashes
   let visibleBets = $state<any[]>([]);
+  
+  // Store fetched tokens for proper formatting
+  let fetchedTokens = $state<Map<string, Kong.Token>>(new Map());
 
   // Helper function to convert any value to string safely
   function safeToString(value: any): string {
@@ -42,11 +45,45 @@
     return `${safeToString(data.timestamp)}-${safeToString(data.user)}`;
   }
 
+  // Fetch tokens for all bets
+  async function fetchBetTokens(bets: any[]) {
+    if (!bets || bets.length === 0) return;
+    
+    // Get unique token IDs from bets
+    const tokenIds = new Set<string>();
+    bets.forEach(bet => {
+      const betData = getBetData(bet);
+      const tokenId = betData.token_id || betData.market?.token_id;
+      if (tokenId) {
+        tokenIds.add(tokenId);
+      }
+    });
+    
+    if (tokenIds.size === 0) return;
+    
+    try {
+      // Fetch all tokens at once
+      const tokens = await fetchTokensByCanisterId(Array.from(tokenIds));
+      
+      // Update the fetchedTokens map
+      const newMap = new Map(fetchedTokens);
+      tokens.forEach(token => {
+        if (token.address) {
+          newMap.set(token.address, token);
+        }
+      });
+      fetchedTokens = newMap;
+    } catch (error) {
+      console.error('Error fetching bet tokens:', error);
+    }
+  }
+
   // Process bets on component mount and when they change
   onMount(() => {
     // Initial setup
     if (bets && bets.length) {
       visibleBets = [...bets];
+      fetchBetTokens(bets);
     }
   });
 
@@ -56,6 +93,9 @@
 
     // Use a simple approach to just set the visibleBets directly
     visibleBets = [...bets];
+    
+    // Fetch tokens for the new bets
+    fetchBetTokens(bets);
   });
 
   function getBetData(bet: any) {
@@ -74,8 +114,8 @@
       outcome_index: bet.outcome_index,
       amount: bet.amount,
       user: bet.user,
-      market: null,
-      token_id: null,
+      market: bet.market || null,
+      token_id: bet.token_id || null,
     };
   }
 
@@ -129,14 +169,32 @@
     return `hsl(${hue}, 70%, 60%)`;
   }
 
-  function getTokenSymbol(betData: any): string {
-    // If we have a specific token symbol passed as prop, use it
-    if (tokenSymbol !== "KONG") return tokenSymbol;
+  function getTokenData(betData: any): Kong.Token | null {
+    const tokenId = betData.token_id || betData.market?.token_id;
+    if (!tokenId) return null;
     
-    // Otherwise, try to determine from the bet data
-    // For now, we'll default to KONG as most markets use KONG
-    // In the future, this could be enhanced to look up token info
+    // First check fetchedTokens map
+    const fetchedToken = fetchedTokens.get(tokenId);
+    if (fetchedToken) return fetchedToken;
+    
+    // Fallback to userTokens store
+    return $userTokens.tokens.find(t => t.address === tokenId) || null;
+  }
+
+  function getTokenSymbol(betData: any): string {
+    // Try to get the token from the bet data
+    const token = getTokenData(betData);
+    if (token) {
+      return token.symbol;
+    }
+    
+    // Default to KONG if we can't find the token
     return "KONG";
+  }
+  
+  function getTokenDecimals(betData: any): number {
+    const token = getTokenData(betData);
+    return token?.decimals || 8; // Default to 8 decimals if not found
   }
 </script>
 
@@ -240,7 +298,7 @@
                 <div class="text-right">
                   <div class="flex items-center gap-1">
                     <div class="{showOutcomes ? 'text-sm' : 'text-xs'} font-semibold text-kong-success">
-                      {formatBalance(Number(betData.amount || 0), 8)}
+                      {formatBalance(Number(betData.amount || 0), getTokenDecimals(betData))}
                     </div>
                   </div>
                   <div class="text-xs text-kong-text-secondary">

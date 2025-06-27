@@ -92,6 +92,8 @@
         amount: typeof bet.amount === "bigint" ? Number(bet.amount) : bet.amount,
         outcome_index: typeof bet.outcome_index === "bigint" ? Number(bet.outcome_index) : bet.outcome_index,
         timestamp: typeof bet.timestamp === "bigint" ? Number(bet.timestamp) : bet.timestamp,
+        // Add token_id from market if not present in bet
+        token_id: bet.token_id || market?.token_id,
       }));
     } catch (e) {
       console.error("Failed to load market bets:", e);
@@ -301,6 +303,7 @@
     return {
       isClosed: market.status?.Closed !== undefined,
       isVoided: market.status?.Voided !== undefined,
+      isPending: market.status?.PendingActivation !== undefined,
       endTime: market.end_time ? Number(market.end_time) / 1_000_000 : null
     };
   });
@@ -336,17 +339,15 @@
     return `${formatBalance(Number(marketTokenInfo.activation_fee), marketTokenInfo.decimals)} ${marketTokenInfo.symbol}`;
   });
 
-  // Check if market is pending activation (has zero bets)
-  let isMarketPendingActivation = $derived.by(() => {
-    if (!market || !market.bet_counts) return false;
-    const totalBets = market.bet_counts.reduce((acc: number, curr: any) => acc + Number(curr), 0);
-    return totalBets === 0;
-  });
-
   // Check if current user is the market creator
-  let isCurrentUserCreator = $derived(
-    market && $auth.account?.owner && market.creator?.toText() === $auth.account.owner
+  let isMarketCreator = $derived(
+    market && 
+    $auth.isConnected && 
+    $auth.account?.owner === market.creator?.toText()
   );
+  
+  // Check if market is pending activation
+  let isMarketPendingActivation = $derived(marketStatus?.isPending ?? false);
 
   // Resolution status checks
   let resolutionStatus = $derived.by(() => {
@@ -493,7 +494,7 @@
           {/if}
 
           <!-- Pending Activation Message for Non-Creators -->
-          {#if isMarketPendingActivation && !isCurrentUserCreator && !isMarketEndedWithNoBets}
+          {#if isMarketPendingActivation && !isMarketCreator && !isUserAdmin}
             <Card className="p-4 sm:p-6">
               <div class="flex items-start gap-3">
                 <div class="flex-shrink-0 mt-0.5">
@@ -502,9 +503,9 @@
                   </svg>
                 </div>
                 <div class="flex-1">
-                  <h3 class="text-base font-semibold text-kong-text-primary mb-1">Market Pending Activation</h3>
+                  <h3 class="text-base font-semibold text-kong-text-primary mb-1">Market Awaiting Activation</h3>
                   <p class="text-sm text-kong-text-secondary">
-                    This market is waiting to be activated by its creator. Once activated with an initial prediction, the market will be open for all users to participate.
+                    This market is pending activation by its creator. Once the creator places the initial prediction, the market will be open for everyone to participate.
                   </p>
                 </div>
               </div>
@@ -518,7 +519,7 @@
               onMarketResolved={handleMarketResolved}
               isAdmin={isUserAdmin}
             />
-          {:else if !isMarketNeedsActivation && !isMarketEndedForNonResolver && !isMarketEndedWithNoBets && (!isMarketPendingActivation || isCurrentUserCreator)}
+          {:else if !isMarketNeedsActivation && !isMarketEndedForNonResolver && !isMarketEndedWithNoBets && (!isMarketPendingActivation || isMarketCreator || isUserAdmin)}
             <OutcomesList {market} {marketBets} onPlacePrediction={handleBet} isAdmin={isUserAdmin} />
           {/if}
 
@@ -530,7 +531,6 @@
             maxHeight="500px"
             title="Recent Predictions"
             loading={loadingBets}
-            tokenSymbol={marketTokenInfo?.symbol || "KONG"}
           />
         </div>
 
