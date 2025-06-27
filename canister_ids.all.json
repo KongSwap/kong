@@ -66,9 +66,15 @@
     "ic": "rdmx6-jaaaa-aaaaa-aaadq-cai"
   },
   "prediction_markets_backend": {
-    "local": "xidgj-jyaaa-aaaad-qghpq-cai",
+    "local": "qqoq7-zaaaa-aaaan-qzzvq-cai",
     "staging_fe": "qqoq7-zaaaa-aaaan-qzzvq-cai",
     "staging": "qqoq7-zaaaa-aaaan-qzzvq-cai",
+    "ic": "qqoq7-zaaaa-aaaan-qzzvq-cai"
+  },
+  "prediction_markets_backend_legacy": {
+    "local": "xidgj-jyaaa-aaaad-qghpq-cai",
+    "staging_fe": "xidgj-jyaaa-aaaad-qghpq-cai",
+    "staging": "xidgj-jyaaa-aaaad-qghpq-cai",
     "ic": "xidgj-jyaaa-aaaad-qghpq-cai"
   },
   "trollbox": {

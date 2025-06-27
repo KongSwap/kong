@@ -100,7 +100,7 @@
               <div class="flex flex-col flex-1 min-w-0">
                 <button
                   class="text-kong-text-primary font-medium line-clamp-2 text-left group-hover:text-kong-accent-blue transition-colors w-full relative p-0 m-0 appearance-none border-0 focus:outline-none bg-transparent"
-                  on:click={() => goto(`/predict/${betData.market.id}`)}
+                  on:click={() => goto(`/predict_v1/${betData.market.id}`)}
                 >
                   <span class="block pr-6">{betData.market.question}</span>
                 </button>

@@ -83,7 +83,7 @@
 </script>
 
 <tr
-  class={`border-b border-kong-border/20 hover:bg-kong-bg-secondary/20 transition-all duration-200 ${
+  class={`border-b border-kong-border/50 hover:bg-kong-bg-secondary/30 transition-all duration-200 ${
     isHighlighted ? "transaction-highlight" : ""
   }`}
 >
