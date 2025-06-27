@@ -231,10 +231,14 @@
   function handleConfirmationClose() {
     showConfirmation = false;
     transferDetails = null;
+    resetState();
+    onClose();
   }
 
   async function handleConfirmationConfirm() {
     if (!transferDetails) return;
+
+    let tokenCopy = token; // Keep a copy of the token symbol, so even if the modal is closed, we can still access the details
 
     isValidating = true;
     errorMessage = "";
@@ -273,14 +277,14 @@
         
         // Update balance
         const principalId = authStore.pnp?.account?.owner;
-        await refreshSingleBalance(token, principalId, true);
+        await refreshSingleBalance(tokenCopy, principalId, true);
         
         // Reset form for next transaction
         recipientAddress = "";
         amount = "";
         
         // Notify success
-        toastStore.success(`Successfully sent ${token.symbol}`);
+        toastStore.success(`Successfully sent ${tokenCopy.symbol}`);
         onSuccess(txId);
         
         // Keep modal open, but reset success state after a delay
@@ -337,7 +341,7 @@
 </script>
 
 <Modal
-  {isOpen}
+  isOpen={isOpen && !showConfirmation}
   onClose={handleClose}
   title="Send {token?.name || 'Token'}"
   width="480px"
@@ -350,10 +354,10 @@
     <!-- Token Info Banner -->
     {#if token}
       <div
-        class="flex items-center gap-3 p-3 rounded-lg bg-kong-surface-dark border border-kong-border/30 transition-all duration-300 shadow-sm"
+        class="flex items-center gap-3 p-3 rounded-lg bg-kong-bg-tertiary border border-kong-border/30 transition-all duration-300 shadow-sm"
         style="opacity: {closing ? 0 : mounted ? 1 : 0}; transform: translateY({closing ? '-10px' : mounted ? 0 : '10px'});"
       >
-        <div class="w-12 h-12 rounded-full bg-kong-bg-light p-1 border border-kong-border/20 flex-shrink-0 flex items-center justify-center shadow-inner-white">
+        <div class="w-12 h-12 rounded-full bg-kong-bg-secondary p-1 border border-kong-border/20 flex-shrink-0 flex items-center justify-center shadow-inner-white">
           <TokenImages tokens={[token]} size={36} showSymbolFallback={true} />
         </div>
         <div class="flex flex-col">
@@ -369,13 +373,13 @@
         </div>
       </div>
     {:else}
-      <div class="h-[68px] bg-kong-bg-light/10 border border-kong-border/30 rounded-lg animate-pulse"></div>
+      <div class="h-[68px] bg-kong-bg-secondary/10 border border-kong-border/30 rounded-lg animate-pulse"></div>
     {/if}
 
     <!-- Send Form -->
     {#if token}
       <form
-        on:submit|preventDefault={handleSubmit}
+        onsubmit={handleSubmit}
         class="flex flex-col gap-4 transition-all duration-300"
         style="opacity: {closing ? 0 : mounted ? 1 : 0}; transform: translateY({closing ? '-10px' : mounted ? 0 : '20px'}); transition-delay: {closing ? '0ms' : '100ms'};"
       >
@@ -384,34 +388,34 @@
           <label for="recipient-address" class="block text-sm text-kong-text-primary font-medium mb-1.5 flex justify-between">
             <span>Recipient Address</span>
             {#if recipientAddress && !addressValidation.isValid && addressValidation.errorMessage}
-              <span class="text-kong-accent-red text-xs">{addressValidation.errorMessage}</span>
+              <span class="text-kong-error text-xs">{addressValidation.errorMessage}</span>
             {/if}
           </label>
           <div class="relative">
             <input
               id="recipient-address"
               type="text"
-              class={`w-full py-4 px-3 bg-kong-bg-light/30 border ${
+              class={`w-full py-4 px-3 bg-kong-bg-secondary/30 border ${
                 addressFocused ? 'border-kong-primary ring-1 ring-kong-primary/20' :
                 addressValidation.isValid ? 'border-kong-primary/40' :
-                recipientAddress ? 'border-kong-accent-red/40' : 'border-kong-border/50'
+                recipientAddress ? 'border-kong-error/40' : 'border-kong-border/50'
               } rounded-md text-lg text-kong-text-primary focus:outline-none transition-colors duration-150`}
               placeholder="Enter recipient address"
               bind:value={recipientAddress}
-              on:input={handleAddressInput}
-              on:focus={() => addressFocused = true}
-              on:blur={() => addressFocused = false}
+              oninput={handleAddressInput}
+              onfocus={() => addressFocused = true}
+              onblur={() => addressFocused = false}
             />
             <div class="absolute inset-y-0 right-0 flex items-center gap-0.5">
               {#if addressValidation.isValid}
-                <div class="p-1.5 text-kong-accent-green">
+                <div class="p-1.5 text-kong-success">
                   <Check size={16} />
                 </div>
               {/if}
               <button
                 type="button"
                 class="p-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors duration-150"
-                on:click={handleAddressPaste}
+                onclick={handleAddressPaste}
                 use:tooltip={{ text: "Paste from clipboard", direction: "top" }}
               >
                 <Clipboard size={16} />
@@ -420,7 +424,7 @@
                 <button
                   type="button"
                   class="p-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors duration-150"
-                  on:click={handleScanClick}
+                  onclick={handleScanClick}
                   use:tooltip={{ text: "Scan QR code", direction: "top" }}
                 >
                   <Camera size={16} />
@@ -430,7 +434,7 @@
           </div>
           
           {#if addressValidation.addressType && addressValidation.isValid}
-            <div class="mt-1.5 text-xs text-kong-accent-green flex items-center gap-1">
+            <div class="mt-1.5 text-xs text-kong-success flex items-center gap-1">
               <Check size={12} />
               {addressValidation.addressType === 'icrc1' ? 'Valid ICRC-1 Account' : 
                addressValidation.addressType === 'principal' ? 'Valid Principal ID' : 'Valid ICP Account ID'}
@@ -447,14 +451,14 @@
             <button
               type="button"
               class="text-xs text-kong-primary hover:text-kong-primary/80 font-medium transition-colors duration-150 py-1 px-2 bg-kong-primary/5 rounded-full"
-              on:click={handleSendMax}
+              onclick={handleSendMax}
             >
               Send Max
             </button>
           </div>
           
           {#if amountValidation.errorMessage && amount}
-            <div class="text-kong-accent-red text-xs flex items-start gap-1 mb-1.5">
+            <div class="text-kong-error text-xs flex items-start gap-1 mb-1.5">
               <AlertCircle size={12} class="mt-0.5 flex-shrink-0" />
               <span>{amountValidation.errorMessage}</span>
             </div>
@@ -465,16 +469,16 @@
               id="amount-input"
               type="text"
               inputmode="decimal"
-              class={`w-full py-4 px-3 bg-kong-bg-light/30 border ${
+              class={`w-full py-4 px-3 bg-kong-bg-secondary/30 border ${
                 amountFocused ? 'border-kong-primary ring-1 ring-kong-primary/20' :
                 amountValidation.isValid ? 'border-kong-primary/40' :
-                amount ? 'border-kong-accent-red/40' : 'border-kong-border/50'
+                amount ? 'border-kong-error/40' : 'border-kong-border/50'
               } rounded-md text-lg text-kong-text-primary focus:outline-none transition-colors duration-150`}
               placeholder="0.00"
               bind:value={amount}
-              on:input={handleAmountInput}
-              on:focus={() => amountFocused = true}
-              on:blur={() => amountFocused = false}
+              oninput={handleAmountInput}
+              onfocus={() => amountFocused = true}
+              onblur={() => amountFocused = false}
             />
             <div class="absolute inset-y-0 right-0 flex items-center pr-3">
               <div class="flex flex-col items-end">
@@ -492,7 +496,7 @@
             <div class="text-kong-text-secondary">
               Max: <span class="font-medium">{maxAmount} {token.symbol}</span>
             </div>
-            <div class="flex items-center gap-1 text-kong-text-secondary/70 bg-kong-bg-light/30 px-2 py-1 rounded-full">
+            <div class="flex items-center gap-1 text-kong-text-secondary/70 bg-kong-bg-secondary/30 px-2 py-1 rounded-full">
               <Info size={12} />
               <span>Fee: {tokenFee ? formatBalance(tokenFee, token.decimals) : "..."} {token.symbol}</span>
             </div>
@@ -507,7 +511,7 @@
           fullWidth={true}
           isDisabled={!isFormValid || isValidating}
           type="submit"
-          className={`mt-2 ${!isFormValid || isValidating ? '!bg-kong-bg-light !text-kong-text-primary border-0' : ''}`}
+          className={`mt-2 ${!isFormValid || isValidating ? '!bg-kong-bg-secondary !text-kong-text-primary border-0' : ''}`}
         >
           <div class="flex items-center justify-center gap-2">
             {#if isValidating}
@@ -523,9 +527,9 @@
     {:else}
       <!-- Placeholder for form while token loads -->
       <div class="flex flex-col gap-4">
-        <div class="h-[58px] bg-kong-bg-light/10 border border-kong-border/30 rounded-lg animate-pulse"></div>
-        <div class="h-[80px] bg-kong-bg-light/10 border border-kong-border/30 rounded-lg animate-pulse"></div>
-        <div class="h-[48px] bg-kong-bg-light/10 border border-kong-border/30 rounded-lg animate-pulse mt-2"></div>
+        <div class="h-[58px] bg-kong-bg-secondary/10 border border-kong-border/30 rounded-lg animate-pulse"></div>
+        <div class="h-[80px] bg-kong-bg-secondary/10 border border-kong-border/30 rounded-lg animate-pulse"></div>
+        <div class="h-[48px] bg-kong-bg-secondary/10 border border-kong-border/30 rounded-lg animate-pulse mt-2"></div>
       </div>
     {/if}
   </div>

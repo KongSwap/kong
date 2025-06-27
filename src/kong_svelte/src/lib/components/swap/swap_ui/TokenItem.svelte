@@ -1,23 +1,9 @@
 <script lang="ts">
-  import { Star, BadgeCheck, BadgeX } from "lucide-svelte";
-  import Badge from "$lib/components/common/Badge.svelte";
+  import { Star } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatTokenName } from "$lib/utils/tokenFormatUtils";
 
-  const {
-    token,
-    index,
-    currentToken,
-    otherPanelToken,
-    isApiToken,
-    isFavorite,
-    enablingTokenId,
-    blockedTokenIds,
-    balance,
-    onTokenClick,
-    onFavoriteClick,
-    onEnableClick,
-  } = $props<{
+  const props = $props<{
     token: Kong.Token;
     index: number;
     currentToken: Kong.Token | null;
@@ -37,16 +23,16 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div
   class="token-item"
-  class:selected={currentToken?.address === token.address}
-  class:disabled={otherPanelToken?.address === token.address}
-  class:blocked={blockedTokenIds.includes(token.address)}
-  class:not-enabled={isApiToken}
-  onclick={onTokenClick}
+  class:selected={props.currentToken?.address === props.token.address}
+  class:disabled={props.otherPanelToken?.address === props.token.address}
+  class:blocked={props.blockedTokenIds.includes(props.token.address)}
+  class:not-enabled={props.isApiToken}
+  onclick={props.onTokenClick}
 >
   <!-- Token info section (left side) -->
   <div class="token-info">
     <TokenImages
-      tokens={[token]}
+      tokens={[props.token]}
       size={40}
       containerClass="token-logo-container"
     />
@@ -57,59 +43,52 @@
         <!-- svelte-ignore a11y-no-static-element-interactions -->
         <button
           class="favorite-button"
-          class:active={isFavorite}
-          onclick={onFavoriteClick}
-          title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+          class:active={props.isFavorite}
+          onclick={props.onFavoriteClick}
+          title={props.isFavorite ? "Remove from favorites" : "Add to favorites"}
         >
           <Star
             size={14}
-            fill={isFavorite ? "#ffd700" : "none"}
+            fill={props.isFavorite ? "#ffd700" : "none"}
           />
         </button>
-        <span class="token-symbol">{token.symbol}</span>
-        <div class="flex flex-wrap items-center">
-          {#if token?.metrics?.is_verified}
-            <Badge variant="green" size="xs" class="!p-0" tooltip="This token is verified by Kong" tooltipDirection="bottom"><BadgeCheck size="14" /></Badge>
-          {:else}
-            <Badge variant="yellow" size="xs" class="!p-0" tooltip="This token is not verified by Kong" tooltipDirection="bottom"><BadgeX size="14" /></Badge>
-          {/if}
-        </div>
+        <span class="token-symbol">{props.token.symbol}</span>
       </div>
-      <span class="token-name">{formatTokenName(token.name, 30)}</span>
+      <span class="token-name">{formatTokenName(props.token.name, 30)}</span>
     </div>
   </div>
 
   <!-- Token actions section (right side) -->
   <div class="text-sm token-right text-kong-text-primary">
-    {#if isApiToken}
+    {#if props.isApiToken}
       <!-- Enable button for API tokens -->
       <button
         class="enable-token-button"
-        onclick={onEnableClick}
-        disabled={enablingTokenId === token.address}
+        onclick={props.onEnableClick}
+        disabled={props.enablingTokenId === props.token.address}
       >
-        {#if enablingTokenId === token.address}
+        {#if props.enablingTokenId === props.token.address}
           <div class="button-spinner" />
         {:else}
           Enable
         {/if}
       </button>
-    {:else if balance}
+    {:else if props.balance}
       <!-- Balance display for enabled tokens -->
       <span class="flex flex-col text-right token-balance">
-        {#if balance.loading}
+        {#if props.balance.loading}
           <div class="balance-loading-indicator">
             <div class="balance-spinner"></div>
           </div>
         {:else}
-          {balance.tokens}
+          {props.balance.tokens}
           <span class="text-xs token-balance-label">
-            {balance.usd}
+            {props.balance.usd}
           </span>
         {/if}
       </span>
       <!-- Selected indicator -->
-      <!-- {#if currentToken?.address === token.address}
+      {#if props.currentToken?.address === props.token.address}
         <div class="selected-indicator">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -125,7 +104,7 @@
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
         </div>
-      {/if} -->
+      {/if}
     {/if}
   </div>
 </div>
@@ -165,7 +144,7 @@
   }
 
   .token-item.disabled::after {
-    /* content: "Selected in other panel"; */
+    content: "Selected in other panel";
     position: absolute;
     right: 1rem;
     top: 50%;
@@ -202,10 +181,6 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    
-    @media (max-width: 768px) {
-      gap: 0.25rem;
-    }
   }
 
   .favorite-button {

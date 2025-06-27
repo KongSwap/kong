@@ -36,7 +36,7 @@
   const sortOptions = [
     { value: "tvl", label: "TVL" },
     { value: "rolling_24h_volume", label: "Volume 24H" },
-    { value: "rolling_24h_apy", label: "APY" },
+    { value: "rolling_24h_apy", label: "APR" },
     { value: "price", label: "Price" }
   ];
 </script>
