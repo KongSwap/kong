@@ -187,16 +187,18 @@
       isBetting = true;
       betError = null;
 
-      const tokens = await fetchTokensByCanisterId([KONG_LEDGER_CANISTER_ID]);
-      const kongToken = tokens[0];
+      // Use the market's token ID instead of hardcoding KONG
+      const tokenId = market.token_id || KONG_LEDGER_CANISTER_ID;
+      const tokens = await fetchTokensByCanisterId([tokenId]);
+      const marketToken = tokens[0];
 
-      if (!kongToken) {
-        throw new Error("Failed to fetch KONG token information");
+      if (!marketToken) {
+        throw new Error("Failed to fetch token information for this market");
       }
 
       // Convert bet amount to scaled token units
-      const scaledAmount = toScaledAmount(amount.toString(), kongToken.decimals);
-      await placeBet(kongToken, BigInt(market.id), BigInt(outcomeIndex), scaledAmount);
+      const scaledAmount = toScaledAmount(amount.toString(), marketToken.decimals);
+      await placeBet(marketToken, BigInt(market.id), BigInt(outcomeIndex), scaledAmount);
 
       // Reset betting state
       betAmount = 0;
@@ -209,7 +211,7 @@
       showBetModal = false;
       toastStore.add({
         title: "Bet Placed",
-        message: `You bet ${amount} KONG on ${market.outcomes[outcomeIndex]}`,
+        message: `You bet ${amount} ${marketToken.symbol} on ${market.outcomes[outcomeIndex]}`,
         type: "success",
       });
 
