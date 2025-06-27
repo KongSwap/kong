@@ -1,12 +1,12 @@
 <script lang="ts">
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import { copyToClipboard } from "$lib/utils/clipboard";
 
   export let token: Kong.Token | null = null;
 </script>
 
-<Panel variant="transparent" type="main" className="token-info-panel">
+<Card className="token-info-panel">
   {#if token}
     <div class="token-info-content">
       <div class="token-header">
@@ -49,7 +49,7 @@
   {:else}
     <div class="empty-state">Select a token to view details</div>
   {/if}
-</Panel>
+</Card>
 
 <style lang="postcss">
   .token-info-content {

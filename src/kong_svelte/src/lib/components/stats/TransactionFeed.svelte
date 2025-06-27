@@ -5,6 +5,7 @@
   import { writable } from "svelte/store";
   import TransactionFeedItem from "./TransactionFeedItem.svelte";
   import { LoadingStateManager } from "$lib/utils/transactionUtils";
+  import Card from "$lib/components/common/Card.svelte";
 
   // Props
   let { token } = $props<{ token: Kong.Token }>();
@@ -128,7 +129,7 @@
   });
 </script>
 
-<div class="flex flex-col max-h-[36vh] overflow-hidden bg-kong-bg-secondary border border-kong-border/50 rounded-lg">
+<Card className="flex flex-col max-h-[36vh] overflow-hidden">
   {#if isLoading && !transactions.length}
     <div class="flex justify-center items-center p-6 flex-1">
       <span class="loading loading-spinner loading-md" />
@@ -184,7 +185,7 @@
        </div>
     {/if}
   {/if}
-</div>
+</Card>
 
 <style>
   :global(.overflow-auto::-webkit-scrollbar) {

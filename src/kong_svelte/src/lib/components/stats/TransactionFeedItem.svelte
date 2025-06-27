@@ -5,6 +5,7 @@
   import { formatPrincipalId } from "$lib/utils/transactionUtils";
   import { Wallet } from "lucide-svelte";
   import { goto } from "$app/navigation";
+    import TokenImages from "../common/TokenImages.svelte";
 
   interface Props {
     tx: FE.Transaction;
@@ -126,13 +127,8 @@
     isBuy ? "text-kong-success" : "text-kong-error"
   }`}>
     <div class="flex items-center gap-1">
+      <TokenImages tokens={[token]} size={18} />
       <span>{tokenAmount}</span>
-      <img 
-        src={token.logo_url} 
-        alt={token.symbol}
-        class="w-4 h-4 rounded-full"
-        onerror={(e) => (e.target as HTMLImageElement).style.display = 'none'}
-      />
     </div>
   </td>
 

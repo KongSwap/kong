@@ -336,6 +336,18 @@
     return `${formatBalance(Number(marketTokenInfo.activation_fee), marketTokenInfo.decimals)} ${marketTokenInfo.symbol}`;
   });
 
+  // Check if market is pending activation (has zero bets)
+  let isMarketPendingActivation = $derived.by(() => {
+    if (!market || !market.bet_counts) return false;
+    const totalBets = market.bet_counts.reduce((acc: number, curr: any) => acc + Number(curr), 0);
+    return totalBets === 0;
+  });
+
+  // Check if current user is the market creator
+  let isCurrentUserCreator = $derived(
+    market && $auth.account?.owner && market.creator?.toText() === $auth.account.owner
+  );
+
   // Resolution status checks
   let resolutionStatus = $derived.by(() => {
     const isUserCreated = isPendingResolution &&
@@ -480,6 +492,25 @@
             </Card>
           {/if}
 
+          <!-- Pending Activation Message for Non-Creators -->
+          {#if isMarketPendingActivation && !isCurrentUserCreator && !isMarketEndedWithNoBets}
+            <Card className="p-4 sm:p-6">
+              <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 mt-0.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-kong-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <h3 class="text-base font-semibold text-kong-text-primary mb-1">Market Pending Activation</h3>
+                  <p class="text-sm text-kong-text-secondary">
+                    This market is waiting to be activated by its creator. Once activated with an initial prediction, the market will be open for all users to participate.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          {/if}
+
           <!-- Outcomes Panel or Resolution Panel -->
           {#if isUserCreatedPendingResolution || isAdminPendingResolution}
             <ResolutionCard
@@ -487,7 +518,7 @@
               onMarketResolved={handleMarketResolved}
               isAdmin={isUserAdmin}
             />
-          {:else if !isMarketNeedsActivation && !isMarketEndedForNonResolver && !isMarketEndedWithNoBets}
+          {:else if !isMarketNeedsActivation && !isMarketEndedForNonResolver && !isMarketEndedWithNoBets && (!isMarketPendingActivation || isCurrentUserCreator)}
             <OutcomesList {market} {marketBets} onPlacePrediction={handleBet} isAdmin={isUserAdmin} />
           {/if}
 

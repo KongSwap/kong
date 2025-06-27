@@ -355,11 +355,17 @@
               >
                 Pending Resolution
               </span>
-            {:else}
+            {:else if market?.status?.Active !== undefined}
               <span
                 class="px-2 py-0.5 bg-kong-accent-blue/20 text-kong-accent-blue rounded-full font-medium"
               >
                 Active
+              </span>
+            {:else if market?.status?.PendingActivation !== undefined}
+              <span
+                class="px-2 py-0.5 bg-kong-accent-blue/20 text-kong-accent-blue rounded-full font-medium"
+              >
+                Pending Activation
               </span>
             {/if}
           </div>

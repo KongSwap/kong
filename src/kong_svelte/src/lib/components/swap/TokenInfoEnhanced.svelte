@@ -13,6 +13,7 @@
   import Dropdown from "$lib/components/common/Dropdown.svelte";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
   import { BadgeCheck, BadgeX } from "lucide-svelte";
+  import Card from "$lib/components/common/Card.svelte";
 
   let { fromToken = null, toToken = null, activeToken = $bindable() } = $props<{ 
     fromToken: Kong.Token | null;
@@ -158,7 +159,7 @@
   const priceFlash = $derived(activeTab === "from" ? fromPriceFlash : toPriceFlash);
 </script>
 
-<div class="relative text-kong-text-primary flex flex-col min-h-0 p-4 border border-kong-border/50 rounded-lg bg-kong-bg-secondary">
+<Card className="relative text-kong-text-primary flex flex-col min-h-0 p-4">
   {#if activeFromToken || activeToToken}
     <!-- Token Tabs -->
     <div class="flex gap-1 mb-3 bg-kong-bg-primary/50 p-1 rounded-lg">
@@ -372,7 +373,7 @@
       <p class="text-sm font-medium">Select tokens to view detailed information</p>
     </div>
   {/if}
-  </div>
+</Card>
 
 <style scoped>
   .flash-green-text {
