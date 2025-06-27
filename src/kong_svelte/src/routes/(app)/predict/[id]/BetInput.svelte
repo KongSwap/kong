@@ -18,7 +18,7 @@
       min="0"
       step="0.1"
       aria-label="Enter KONG amount"
-      class="w-full pl-14 pr-3 py-2 bg-kong-bg-secondary rounded border border-kong-border focus:border-kong-success focus:ring-1 focus:ring-kong-success transition-all font-medium text-right text-sm"
+      class="w-full pl-14 pr-3 py-2 bg-kong-bg-light rounded border border-kong-border focus:border-kong-accent-green focus:ring-1 focus:ring-kong-accent-green transition-all font-medium text-right text-sm"
       placeholder="0.00"
     />
   </div>
@@ -26,10 +26,10 @@
     {#each quickAmounts as quickAmount}
       <button
         aria-label={`Set prediction amount to ${quickAmount} KONG`}
-        class="px-2 py-1.5 bg-kong-bg-secondary hover:bg-kong-bg-primary text-xs rounded transition-all border border-kong-border hover:border-kong-success/50 font-medium group"
-        onclick={() => handleQuickAmount(quickAmount)}
+        class="px-2 py-1.5 bg-kong-bg-light hover:bg-kong-bg-dark text-xs rounded transition-all border border-kong-border hover:border-kong-accent-green/50 font-medium group"
+        on:click={() => handleQuickAmount(quickAmount)}
       >
-        <span class="text-kong-text-secondary group-hover:text-kong-success transition-colors">{quickAmount}</span>
+        <span class="text-kong-text-secondary group-hover:text-kong-text-accent-green transition-colors">{quickAmount}</span>
       </button>
     {/each}
   </div>

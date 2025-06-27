@@ -37,11 +37,7 @@
     isProcessing: false, // Combined fetching/initializing/updating flags
     currentTheme: $themeStore,
     currentPrice: 0,
-    visibilityRetries: 0,
-    maxVisibilityRetries: 10,
   });
-  
-  let visibilityTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   // Track previous values for change detection
   let previousState = $state({
@@ -127,8 +123,6 @@
       chartStore.set(null);
     }
     
-    // Reset visibility retries when conditions change
-    state.visibilityRetries = 0;
     fetchAndUpdateChart();
   });
 
@@ -138,7 +132,6 @@
     
     state.isProcessing = true;
     state.isLoading = true;
-    // Don't reset visibility retries here - only reset on actual visibility or prop changes
 
     try {
       // Early exit if no valid pool/tokens
@@ -195,57 +188,44 @@
   // Initialize chart
   const initChart = async () => {
     if (!chartContainer || !quoteToken?.id || !baseToken?.id) {
+      console.warn("[Chart] Missing required data:", { chartContainer: !!chartContainer, quoteTokenId: quoteToken?.id, baseTokenId: baseToken?.id });
       return;
     }
     
     // Check if the container is visible before initializing
-    // Use multiple checks as offsetParent can be null for fixed positioned elements
-    const isVisible = chartContainer.offsetParent !== null || 
-                     chartContainer.offsetWidth > 0 || 
-                     chartContainer.offsetHeight > 0 ||
-                     getComputedStyle(chartContainer).display !== 'none';
-    
-    if (!isVisible) {
-      if (state.visibilityRetries >= state.maxVisibilityRetries) {
-          state.isLoading = false;
-        state.visibilityRetries = 0; // Reset for next attempt
-        return;
-      }
-      
-      state.visibilityRetries++;
-      
-      // Clear any existing timeout
-      if (visibilityTimeoutId) {
-        clearTimeout(visibilityTimeoutId);
-      }
-      
+    if (chartContainer.offsetParent === null) {
+      console.log("[Chart] Container not visible, deferring initialization");
       // Try again after a delay
-      visibilityTimeoutId = setTimeout(() => {
+      setTimeout(() => {
         if (state.isMounted && !chart) {
           fetchAndUpdateChart();
         }
-      }, 1000); // Increased to 1 second to reduce frequency
+      }, 500);
       return;
     }
     
-    // Reset retry counter on successful visibility check
-    state.visibilityRetries = 0;
-    
     try {
+      console.log("[Chart] Starting initialization with:", { 
+        quoteToken: quoteToken.symbol, 
+        baseToken: baseToken.symbol, 
+        poolId 
+      });
       
       setTradingViewRootVars();
       
       // Load library first before checking dimensions
       try {
         await loadTradingViewLibrary();
+        console.log("[Chart] TradingView library loaded, window.TradingView:", !!window.TradingView);
       } catch (libError) {
         console.error("[Chart] Failed to load TradingView library:", libError);
         throw libError;
       }
       
-      let dimensions: {width: number, height: number};
+      let dimensions;
       try {
         dimensions = await checkDimensions();
+        console.log("[Chart] Container dimensions:", dimensions);
       } catch (dimError) {
         console.error("[Chart] Failed to get dimensions:", dimError);
         // Use fallback dimensions
@@ -254,6 +234,7 @@
       
       const pool = $livePools.find(p => p.pool_id === poolId);
       const price = pool?.price || 1000;
+      console.log("[Chart] Pool data:", { poolId, price, poolFound: !!pool });
       
       const datafeed = new KongDatafeed(
         quoteToken.id, baseToken.id, price, 
@@ -272,12 +253,14 @@
         quoteTokenDecimals: quoteToken.decimals || 8,
         baseTokenDecimals: baseToken.decimals || 8
       });
+      console.log("[Chart] Widget config:", config);
 
       const widget = new window.TradingView.widget(config);
       
       widget.datafeed = datafeed;
 
       widget.onChartReady(() => {
+        console.log("[Chart] Chart ready!");
         widget._ready = true;
         chartStore.set(widget);
         pool && updateTradingViewPriceScale(widget, pool);
@@ -319,6 +302,7 @@
         
         // Only log every 5th attempt to reduce console spam
         if (attempts % 5 === 0 || (width && height)) {
+          console.log(`[Chart] Dimension check attempt ${attempts}:`, { width, height, isVisible });
         }
         
         if (width && height && width > 0 && height > 0) {
@@ -383,12 +367,6 @@
   });
 
   onDestroy(() => {
-    // Clear any pending visibility timeout
-    if (visibilityTimeoutId) {
-      clearTimeout(visibilityTimeoutId);
-      visibilityTimeoutId = null;
-    }
-    
     if (!chart) return;
     
     try {

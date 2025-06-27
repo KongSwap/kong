@@ -17,7 +17,7 @@
 
   let { pool, token0, token1 }: Props = $props();
 
-  // Get actual pool for APY display
+  // Get actual pool for APR display
   let actualPool = $derived($livePools.find((p) => {
     return p.address_0 === pool.address_0 && p.address_1 === pool.address_1;
   }));
@@ -76,7 +76,7 @@
         >
       </div>
       <div class="stat-item">
-        <span class="stat-label">24h APY</span>
+        <span class="stat-label">24h APR</span>
         <span class="stat-value accent"
           >{formatToNonZeroDecimal(actualPool?.rolling_24h_apy)}%</span
         >

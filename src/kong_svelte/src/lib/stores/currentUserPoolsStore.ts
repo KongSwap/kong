@@ -49,15 +49,13 @@ function createCurrentUserPoolsStore() {
       set(initialState);
       activeTokenFetch = null;
       lastFetchedTokenIds = [];
-      initializationPromise = null;
-      lastInitializationPrincipal = null;
     },
 
     initialize: async () => {
       const currentAuth = get(auth);
       const currentPrincipal = currentAuth?.account?.owner || '';
       
-      // Return existing promise if already initializing for the same principal
+      // Check if already initialized or initializing for this principal
       if (initializationPromise && lastInitializationPrincipal === currentPrincipal) {
         return initializationPromise;
       }
@@ -65,23 +63,30 @@ function createCurrentUserPoolsStore() {
       // Create new initialization promise
       lastInitializationPrincipal = currentPrincipal;
       initializationPromise = (async () => {
+        // Set loading state, but don't reset the pools data yet
         update(s => ({ ...s, loading: true, error: null }));
         
         try {
           const actor = swapActor({ anon: true, requiresSigning: false });
+          
           const response = await actor.user_balances(currentPrincipal);
                   
           if ('Ok' in response) {
+            // Process the new raw data
             const rawPools = response.Ok.map((pool: any) => pool.LP);
+            
+            // Fetch tokens for the new pools
             await fetchTokensForPools(rawPools); 
           } else {
+            // Handle potential errors from the backend response structure if needed
             handleError("Failed to load user pools: Backend returned an error structure", response);
           }
         } catch (error) {
           handleError("Failed to load user pools", error);
         } finally {
+          // Set loading to false regardless of success or error
           update(s => ({ ...s, loading: false }));
-          // Clear promise only if this is still the current initialization
+          // Clear promise after completion
           if (lastInitializationPrincipal === currentPrincipal) {
             initializationPromise = null;
           }

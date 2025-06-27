@@ -3,7 +3,7 @@ import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { predictionActor } from "$lib/stores/auth";
 import { Principal } from "@dfinity/principal";
 import { notificationsStore } from "$lib/stores/notificationsStore";
-import type { MarketStatus, SortOption } from "../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
+import type { MarketStatus, SortOption } from "../../../../declarations/prediction_markets_backend_legacy/prediction_markets_backend.did";
 
 export async function getMarket(marketId: bigint) {
   const actor = predictionActor({anon: true});
@@ -15,9 +15,9 @@ export async function getAllMarkets(
   options: {
     start?: number;
     length?: number;
-    statusFilter?: "Active" | "Closed" | "Disputed" | "Voided" | "ExpiredUnresolved" | "PendingActivation";
+    statusFilter?: "Open" | "Closed" | "Disputed" | "Voided";
     sortOption?: {
-      type: "CreatedAt" | "TotalPool" | "EndTime";
+      type: "CreatedAt" | "TotalPool";
       direction: "Ascending" | "Descending";
     };
   } = {},
@@ -26,12 +26,10 @@ export async function getAllMarkets(
 
   const statusFilterValue: [] | [MarketStatus] = options.statusFilter
     ? [
-        options.statusFilter === "Active" ? { Active: null } as MarketStatus :
+        options.statusFilter === "Open" ? { Open: null } as MarketStatus :
         options.statusFilter === "Closed" ? { Closed: [] } as MarketStatus :
         options.statusFilter === "Disputed" ? { Disputed: null } as MarketStatus :
         options.statusFilter === "Voided" ? { Voided: null } as MarketStatus :
-        options.statusFilter === "ExpiredUnresolved" ? { ExpiredUnresolved: null } as MarketStatus :
-        options.statusFilter === "PendingActivation" ? { PendingActivation: null } as MarketStatus :
         undefined
       ].filter(Boolean) as [MarketStatus]
     : [];
@@ -39,10 +37,8 @@ export async function getAllMarkets(
   const sortOptionValue: [] | [SortOption] = options.sortOption
     ? [
         options.sortOption.type === "TotalPool"
-          ? { TotalPool: { [options.sortOption.direction]: null } } as SortOption
-          : options.sortOption.type === "EndTime"
-          ? { EndTime: { [options.sortOption.direction]: null } } as SortOption
-          : { CreatedAt: { [options.sortOption.direction]: null } } as SortOption
+          ? { TotalPool: options.sortOption.direction === "Ascending" ? { Ascending: null } : { Descending: null } }
+          : { CreatedAt: options.sortOption.direction === "Ascending" ? { Ascending: null } : { Descending: null } }
       ]
     : [];
 
@@ -147,7 +143,7 @@ export async function placeBet(
       throw new Error("Bet amount cannot be zero");
     }
 
-    const result = await actor.place_bet(marketId, outcomeIndex, bigIntAmount, []);
+    const result = await actor.place_bet({market_id: marketId, outcome_index: outcomeIndex, amount: bigIntAmount, token_id: []});
 
     if ("Err" in result) {
       // Handle specific error cases
@@ -197,10 +193,9 @@ export async function resolveMarketViaAdmin(
   try {
     const actor = predictionActor({anon: false, requiresSigning: false});
 
-    const result = await actor.resolve_via_admin({
-      market_id: marketId,
-      winning_outcomes: [winningOutcome]
-    });
+    // Convert marketId from string to number
+    const marketIdNumber = marketId;
+    const result = await actor.resolve_via_admin(marketIdNumber, [winningOutcome]);
 
     if ("Err" in result) {
       const error = result.Err as any;
@@ -225,72 +220,6 @@ export async function resolveMarketViaAdmin(
     });
   } catch (error) {
     console.error("Failed to resolve market via admin:", error);
-    throw error;
-  }
-}
-
-export async function proposeResolution(
-  marketId: bigint,
-  winningOutcome: bigint,
-): Promise<void> {
-  try {
-    const actor = predictionActor({anon: false, requiresSigning: true});
-
-    console.log("Calling propose_resolution with:", {
-      market_id: marketId,
-      winning_outcomes: [winningOutcome]
-    });
-
-    const result = await actor.propose_resolution({
-      market_id: marketId,
-      winning_outcomes: [winningOutcome]
-    });
-
-    console.log("propose_resolution result", result);
-
-    if ("Error" in result) {
-      const error = result.Error as any;
-      if ("MarketNotFound" in error) {
-        throw new Error("Market not found");
-      } else if ("MarketStillOpen" in error) {
-        throw new Error("Market is still open");
-      } else if ("AlreadyResolved" in error) {
-        throw new Error("Market has already been resolved");
-      } else if ("Unauthorized" in error) {
-        throw new Error("You are not authorized to propose resolution for this market");
-      } else if ("AwaitingAdminApproval" in error) {
-        throw new Error("Resolution is awaiting admin approval");
-      } else if ("AwaitingCreatorApproval" in error) {
-        throw new Error("Resolution is awaiting creator approval");
-      } else {
-        throw new Error(
-          `Failed to propose resolution: ${JSON.stringify(result.Error)}`,
-        );
-      }
-    }
-    
-    // Handle success cases
-    if ("AwaitingAdminApproval" in result) {
-      notificationsStore.add({
-        title: "Resolution Proposed",
-        message: `Your resolution proposal for market ${marketId} is awaiting admin approval`,
-        type: "success",
-      });
-    } else if ("AwaitingCreatorApproval" in result) {
-      notificationsStore.add({
-        title: "Resolution Proposed",
-        message: `Your resolution proposal for market ${marketId} is awaiting creator approval`,
-        type: "success",
-      });
-    } else if ("Success" in result) {
-      notificationsStore.add({
-        title: "Resolution Submitted",
-        message: `Market ${marketId} resolution has been submitted successfully`,
-        type: "success",
-      });
-    }
-  } catch (error) {
-    console.error("Failed to propose resolution:", error);
     throw error;
   }
 }
@@ -410,7 +339,8 @@ export async function getUserPendingClaims(principal: string) {
   const actor = predictionActor({anon: true});
   try {
     const pendingClaims = await actor.get_user_pending_claims(principal);
-    console.log("pendingClaims", pendingClaims)
+    console.log("pending claims", pendingClaims)
+    
     return pendingClaims;
   } catch (error) {
     console.error("Error in getUserPendingClaims:", error);
@@ -517,31 +447,5 @@ export async function setMarketFeatured(marketId: bigint, featured: boolean): Pr
   } catch (error) {
     console.error("Failed to set market featured status:", error);
     throw error;
-  }
-}
-
-export async function resolveMarket(
-  marketId: bigint,
-  winningOutcome: bigint,
-  userPrincipal: string,
-): Promise<void> {
-  // Check if current user is admin
-  const userIsAdmin = await isAdmin(userPrincipal);
-  
-  if (userIsAdmin) {
-    await resolveMarketViaAdmin(marketId, winningOutcome);
-  } else {
-    await proposeResolution(marketId, winningOutcome);
-  }
-}
-
-export async function getResolutionProposal(marketId: bigint) {
-  const actor = predictionActor({anon: true});
-  try {
-    const result = await actor.get_resolution_proposal(marketId);
-    return result[0] || null; // Extract the optional value
-  } catch (error) {
-    console.error("Error in getResolutionProposal:", error);
-    return null;
   }
 }

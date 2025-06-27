@@ -1,12 +1,10 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { page } from "$app/stores";
-  import { goto } from "$app/navigation";
-  import { browser } from "$app/environment";
-  import { getLatestBets } from "$lib/api/predictionMarket";
-  import { AlertTriangle } from "lucide-svelte";
+  import { placeBet, getAllBets, isAdmin } from "$lib/api/predictionMarket";
+  import { AlertTriangle, ChevronDown } from "lucide-svelte";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
+  import { toScaledAmount } from "$lib/utils/numberFormatUtils";
   import MarketSection from "./MarketSection.svelte";
   import BetModal from "./BetModal.svelte";
   import { toastStore } from "$lib/stores/toastStore";
@@ -19,53 +17,36 @@
   } from "$lib/stores/marketStore";
   import { debounce } from "lodash-es";
   import { startPolling, stopPolling } from "$lib/utils/pollingService";
-  import DropdownSelect from "$lib/components/common/DropdownSelect.svelte";
-  import { syncURLParams, getURLParams } from "$lib/utils/urlUtils";
-  import type { LatestBets } from "../../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
-  import RecentPredictions from "./RecentPredictions.svelte";
-  import PredictionMarketsHeader from "$lib/components/predict/PredictionMarketsHeader.svelte";
-  import { useBetModal } from "$lib/composables/useBetModal.svelte";
-  import { useUserMarketData } from "$lib/composables/useUserMarketData.svelte";
-  import UserUnresolvedMarketsCard from "./UserUnresolvedMarketsCard.svelte";
+  import { clickOutside } from "$lib/actions/clickOutside";
+  import Badge from "$lib/components/common/Badge.svelte";
+  import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
+  import { goto } from "$app/navigation";
+  import { walletProviderStore } from "$lib/stores/walletProviderStore";
 
-  // Recent bets state
-  let recentBets = $state<LatestBets[]>([]);
-  let previousBets: any[] = [];
-  let isInitialLoad = true;
+  // Modal state
+  let showBetModal = $state(false);
+  let selectedMarket = $state<any>(null);
+  let betAmount = $state(0);
+  let selectedOutcome = $state<number | null>(null);
+  let betError = $state<string | null>(null);
+  let isBetting = $state(false);
+  let isApprovingAllowance = $state(false);
+
+  let recentBets = $state<any[]>([]);
+  let previousBets = $state<any[]>([]);
+  let isInitialLoad = $state(true);
   let loadingBets = $state(false);
+  let isUserAdmin = $state(false);
 
-  // UI state
-  let selectedLayout = $state(3); // Default to 3 markets
+  // UI state for dropdowns
+  let statusDropdownOpen = $state(false);
+  let sortDropdownOpen = $state(false);
 
-  // Tokens
-  let kongToken = $state<any>(null);
-  
-  // Initialize composables
-  const betModal = useBetModal(kongToken);
-  const userData = useUserMarketData();
-
-  // Constants
-  const VALID_STATUS_FILTERS: StatusFilter[] = [
-    "all", "active", "pending", "closed", "disputed", "voided", "myMarkets"
-  ];
-  
-  const VALID_SORT_OPTIONS: SortOption[] = [
-    "newest", "pool_asc", "pool_desc", "end_time_asc", "end_time_desc"
-  ];
-
-  const LAYOUT_OPTIONS = [
-    { value: 1, label: "1 Market" },
-    { value: 2, label: "2 Markets" },
-    { value: 3, label: "3 Markets" },
-    { value: 4, label: "4 Markets" },
-  ];
-
-  // Validation helpers
-  const isValidStatusFilter = (filter: string | null): filter is StatusFilter => 
-    !!filter && VALID_STATUS_FILTERS.includes(filter as StatusFilter);
-
-  const isValidSortOption = (option: string | null): option is SortOption => 
-    !!option && VALID_SORT_OPTIONS.includes(option as SortOption);
+  // Store the market and outcome to open after authentication
+  let pendingMarket = $state<any>(null);
+  let pendingOutcome = $state<number | null>(null);
+  let tokens = $state([]);
+  let kongToken = $state(null);
 
   onDestroy(() => {
     // Stop the polling task
@@ -73,145 +54,201 @@
   });
 
   async function loadRecentBets() {
+    // Prevent concurrent calls
     if (loadingBets) return;
-    
     try {
       loadingBets = true;
       const startTime = Date.now();
+
+      // Store previous bets before updating
       previousBets = [...recentBets];
 
-      const bets = await getLatestBets();
-      recentBets = bets;
-      
-      // Minimum loading time to prevent flash
-      const elapsed = Date.now() - startTime;
-      if (elapsed < 500) {
-        await new Promise((resolve) => setTimeout(resolve, 500 - elapsed));
-      }
+      try {
+        recentBets = await getAllBets(0, 5);
 
-      if (!isInitialLoad) {
-        // Track new bets logic can be added here if needed
-        isInitialLoad = false;
+        // Minimum loading time of 500ms to prevent flash
+        const elapsed = Date.now() - startTime;
+        if (elapsed < 500) {
+          await new Promise((resolve) => setTimeout(resolve, 500 - elapsed));
+        }
+
+        // Only identify new bets if it's not the initial load
+        if (!isInitialLoad) {
+          new Set(
+            recentBets
+              .filter(
+                (newBet) =>
+                  !previousBets.some(
+                    (oldBet) => getBetId(oldBet) === getBetId(newBet),
+                  ),
+              )
+              .map(getBetId),
+          );
+        } else {
+          isInitialLoad = false;
+        }
+      } catch (error) {
+        console.error("Error fetching bets data:", error);
+        toastStore.add({
+          title: "Error Loading Predictions",
+          message: "Could not load recent predictions. Please try again later.",
+          type: "error",
+        });
+        recentBets = [];
       }
-    } catch (error) {
-      console.error("Error fetching bets data:", error);
-      toastStore.add({
-        title: "Error Loading Predictions",
-        message: "Could not load recent predictions. Please try again later.",
-        type: "error",
-      });
-      recentBets = [];
     } finally {
       loadingBets = false;
     }
   }
 
-  onMount(async () => {
-    // Parse URL parameters
-    const urlParams = getURLParams($page, ["status", "sort"]);
-    const initialOverrides = {
-      ...(isValidStatusFilter(urlParams.status) && { statusFilter: urlParams.status }),
-      ...(isValidSortOption(urlParams.sort) && { sortOption: urlParams.sort })
-    };
-
-    // Initialize stores and data
-    if ($auth.isConnected && $auth.account?.owner) {
-      marketStore.setCurrentUserPrincipal($auth.account.owner);
-    }
-
-    await marketStore.init(initialOverrides);
-
-    // Load token information
-    const tokens = await fetchTokensByCanisterId([KONG_LEDGER_CANISTER_ID]);
-    kongToken = tokens[0];
-
-    // Load initial data
-    await loadRecentBets();
-
-    // Start polling
-    startPolling("recentBets", () => {
-      loadRecentBets();
-      debouncedRefreshMarkets();
-    }, 30000);
-
-    // Restore layout preference
-    if (browser) {
-      const savedLayout = localStorage.getItem('preferedLayout');
-      if (savedLayout) selectedLayout = parseInt(savedLayout, 10);
-    }
-  });
-
-
-  // Debounced market refresh
-  const debouncedRefreshMarkets = debounce(() => {
-    marketStore.refreshMarkets();
-  }, 2000);
-  
-  // Handlers
-  async function handleMarketResolved() {
-    await marketStore.refreshMarkets();
-    await userData.loadUserClaims();
-    await userData.loadUserUnresolvedMarkets();
+  function getBetId(bet: any) {
+    return `${bet.timestamp}-${bet.user}`;
   }
 
-  // Dropdown options
-  const statusOptions = $derived([
-    { value: "all", label: "All" },
-    { value: "active", label: "Active" },
-    { value: "pending", label: "Pending" },
-    { value: "closed", label: "Closed" },
-    { value: "disputed", label: "Disputed" },
-    { value: "voided", label: "Voided" },
-    { 
-      value: "myMarkets", 
-      label: "My Markets",
-      disabled: !$auth.isConnected,
-      tooltip: "Please connect your wallet to view your markets"
-    },
-  ]);
-
-  const SORT_OPTIONS = [
-    { value: "newest", label: "Newest" },
-    { value: "pool_desc", label: "Pool Size (High to Low)" },
-    { value: "pool_asc", label: "Pool Size (Low to High)" },
-    { value: "end_time_asc", label: "End Time (Soonest First)" },
-    { value: "end_time_desc", label: "End Time (Latest First)" },
-  ];
-
-  // Derived values
-  const currentStatusLabel = $derived(
-    statusOptions.find(opt => opt.value === $marketStore.statusFilter)?.label || "All"
-  );
-
-  // Update market store and user data when auth state changes
   $effect(() => {
-    if (browser) {
-      if ($auth.isConnected && $auth.account?.owner) {
-        marketStore.setCurrentUserPrincipal($auth.account.owner);
-        userData.loadUserData();
-      } else {
-        marketStore.setCurrentUserPrincipal(null);
-      }
-    }
-  });
-
-  // Effects
-  $effect(() => {
-    // Save layout preference
-    if (browser && selectedLayout !== undefined) {
-      localStorage.setItem('preferedLayout', selectedLayout.toString());
-    }
-  });
-
-  $effect(() => {
-    // Update URL when filters change
-    if (browser && $marketStore.statusFilter && $marketStore.sortOption && !$marketStore.loading) {
-      syncURLParams($page, {
-        status: { param: "status", value: $marketStore.statusFilter },
-        sort: { param: "sort", value: $marketStore.sortOption }
+    if ($auth.isConnected) {
+      isAdmin($auth.account.owner).then((isAdmin) => {
+        isUserAdmin = isAdmin;
       });
     }
   });
+
+  onMount(async () => {
+    // Initialize market store
+    await marketStore.init();
+
+    tokens = await fetchTokensByCanisterId([KONG_LEDGER_CANISTER_ID]);
+    kongToken = tokens[0];
+
+    // Initial bets load
+    await loadRecentBets();
+
+    // Start polling for recent bets and refresh markets using the generic polling service
+    startPolling(
+      "recentBets",
+      () => {
+        loadRecentBets();
+        debouncedRefreshMarkets();
+      },
+      30000,
+    );
+  });
+
+  // Debounced market refresh to prevent too frequent updates
+  const debouncedRefreshMarkets = debounce(() => {
+    marketStore.refreshMarkets();
+  }, 10000);
+
+  function openBetModal(market: any, outcomeIndex?: number) {
+    // Check if user is authenticated
+    if (!$auth.isConnected) {
+      // Store the market and outcome to open after authentication
+      pendingMarket = market;
+      pendingOutcome = outcomeIndex !== undefined ? outcomeIndex : 0;
+      walletProviderStore.open(handleWalletLogin);
+      return;
+    }
+
+    // User is authenticated, proceed with opening bet modal
+    // First set all the values to initial state
+    showBetModal = false;
+    selectedMarket = null;
+    betAmount = 0;
+    selectedOutcome = null;
+    betError = null;
+
+    // Short delay to ensure clean state before opening
+    setTimeout(() => {
+      selectedMarket = market;
+      // Make sure we always have a selected outcome
+      selectedOutcome = outcomeIndex !== undefined ? outcomeIndex : 0;
+      showBetModal = true;
+    }, 50);
+  }
+
+  function closeBetModal() {
+    showBetModal = false;
+    // Don't immediately set selectedMarket to null, small delay to ensure proper cleanup
+    setTimeout(() => {
+      selectedMarket = null;
+      betAmount = 0;
+      selectedOutcome = null;
+      betError = null;
+    }, 100);
+  }
+
+  function handleWalletLogin() {
+    // If we have a pending market/outcome, open the bet modal after authentication
+    if (pendingMarket) {
+      openBetModal(pendingMarket, pendingOutcome);
+      pendingMarket = null;
+      pendingOutcome = null;
+    }
+  }
+
+  async function handleBet(amount: number) {
+    if (!selectedMarket || selectedOutcome === null) return;
+
+    try {
+      isBetting = true;
+      betError = null;
+
+      if (!kongToken) {
+        throw new Error("Failed to fetch KONG token information");
+      }
+
+      // Convert bet amount to scaled token units
+      const scaledAmount = toScaledAmount(amount.toString(), kongToken.decimals);
+
+      await placeBet(
+        kongToken,
+        BigInt(selectedMarket.id),
+        BigInt(selectedOutcome),
+        scaledAmount,
+      );
+
+      toastStore.add({
+        title: "Bet Placed",
+        message: `You bet ${amount} KONG on ${selectedMarket.outcomes[selectedOutcome]}`,
+        type: "success",
+      });
+
+      closeBetModal();
+
+      // Refresh markets after successful bet
+      await marketStore.refreshMarkets();
+    } catch (e) {
+      console.error("Bet error:", e);
+      betError = e instanceof Error ? e.message : "Failed to place bet";
+    } finally {
+      isBetting = false;
+    }
+  }
+
+  // Status display mapping
+  const statusOptions = [
+    { value: "all", label: "All" },
+    { value: "open", label: "Open" },
+    { value: "expired", label: "Pending" },
+    { value: "resolved", label: "Resolved" },
+    { value: "voided", label: "Voided" },
+  ];
+
+  // Sort options mapping
+  const sortOptions = [
+    { value: "newest", label: "Newest" },
+    { value: "pool_desc", label: "Pool Size (High to Low)" },
+    { value: "pool_asc", label: "Pool Size (Low to High)" },
+  ];
+
+  // Get current option label - make reactive with $derived
+  const currentStatusLabel = $derived(
+    statusOptions.find((option) => option.value === $marketStore.statusFilter)?.label || "All"
+  );
+
+  const currentSortLabel = $derived(
+    sortOptions.find((option) => option.value === $marketStore.sortOption)?.label || "Pool Size (High to Low)"
+  );
 </script>
 
 <svelte:head>
@@ -219,95 +256,198 @@
   <meta name="description" content="Predict the future and earn rewards" />
 </svelte:head>
 
-<div class="min-h-screen text-kong-text-primary">
-  <div class="mx-auto">
-    <!-- Prediction Markets Header -->
-    <PredictionMarketsHeader openBetModal={betModal.open} userClaims={userData.userClaims} />
+<div class="min-h-screen text-kong-text-primary px-4">
+  <div class="max-w-7xl mx-auto">
+    <div
+      class="text-center mb-8 flex flex-col md:flex-row md:justify-between md:items-center gap-6"
+    >
+      <div class="flex flex-col gap-2 w-full">
+        <h1
+          class="text-2xl flex items-center gap-3 justify-center md:justify-start drop-shadow-lg md:text-3xl font-bold text-kong-text-primary/80"
+        >
+          Prediction Markets
+        </h1>
+      </div>
 
-    <!-- Filters and Controls -->
-    <div class="border-b border-kong-text-primary/10 pb-4 mb-6 px-4">
-      <div class="flex flex-col lg:flex-row justify-between gap-4">
-        <!-- Category Filters -->
-        <div class="flex flex-wrap gap-2 items-center">
-          {#each $marketStore.categories as category}
-            <button
-              class="px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 hover:shadow-md
-                     {($marketStore.selectedCategory === category || (category === "All" && $marketStore.selectedCategory === null))
-                       ? 'bg-kong-primary/20 text-kong-text-primary border border-kong-primary shadow-md'
-                       : 'bg-kong-bg-secondary text-kong-text-secondary hover:bg-kong-bg-tertiary hover:text-kong-text-primary border border-kong-text-primary/10'}"
-              onclick={() => marketStore.setCategory(category === "All" ? null : category)}
+      <div class="flex gap-3 w-full justify-center md:justify-end">
+        {#if isUserAdmin}
+          <ButtonV2
+            theme="accent-green"
+            variant="solid"
+            size="md"
+            onclick={() => goto("/predict/create")}
+          >
+            Create Market
+          </ButtonV2>
+        {/if}
+        {#if $auth.isConnected}
+          <ButtonV2
+            theme="secondary"
+            variant="solid"
+            size="md"
+            onclick={() => goto("/predict/history")}
+          >
+            Prediction History
+          </ButtonV2>
+        {/if}
+      </div>
+    </div>
+
+    <!-- Admin Actions & User History -->
+    <div class="flex flex-col md:flex-row justify-between gap-3 mb-4">
+      <!-- Category Filters -->
+      <div class="flex flex-wrap gap-2 max-w-full overflow-x-auto items-center">
+        {#each $marketStore.categories as category}
+          <span
+            class="cursor-pointer"
+            onclick={() =>
+              marketStore.setCategory(category === "All" ? null : category)}
+          >
+            {#if $marketStore.selectedCategory === category || (category === "All" && $marketStore.selectedCategory === null)}
+              <Badge
+                variant="green"
+                size="sm"
+                pill={true}
+                icon="●"
+                class="border border-kong-accent-green font-medium"
+              >
+                {category}
+              </Badge>
+            {:else}
+              <Badge variant="gray" size="sm" pill={true}>
+                {category}
+              </Badge>
+            {/if}
+          </span>
+        {/each}
+      </div>
+
+      <!-- Filters Container -->
+      <div class="flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0">
+        <!-- Status Filter Dropdown -->
+        <div
+          class="relative status-dropdown flex-1 md:flex-none max-w-[48%] md:max-w-none"
+          use:clickOutside={() => (statusDropdownOpen = false)}
+        >
+          <button
+            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-surface-dark text-kong-text-primary hover:bg-kong-bg-light/30 transition-colors border border-kong-border/50"
+            onclick={(e) => {
+              e.stopPropagation();
+              statusDropdownOpen = !statusDropdownOpen;
+              sortDropdownOpen = false;
+            }}
+          >
+            <span class="whitespace-nowrap overflow-hidden text-ellipsis">
+              Status: {currentStatusLabel}
+            </span>
+            <ChevronDown class="w-3 h-3 ml-1 flex-shrink-0" />
+          </button>
+
+          {#if statusDropdownOpen}
+            <div
+              class="absolute top-full left-0 mt-1 z-50 bg-kong-surface-dark border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[120px] backdrop-blur-sm"
             >
-              {category}
-            </button>
-          {/each}
+              {#each statusOptions as option}
+                <button
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-light/30 {$marketStore.statusFilter ===
+                  option.value
+                    ? 'bg-kong-accent-green/20 text-kong-accent-green font-medium'
+                    : 'text-kong-text-primary'}"
+                  onclick={() => {
+                    marketStore.setStatusFilter(option.value as StatusFilter);
+                    statusDropdownOpen = false;
+                  }}
+                >
+                  {option.label}
+                </button>
+              {/each}
+            </div>
+          {/if}
         </div>
 
-        <!-- Filters Container -->
-        <div class="flex items-center gap-2">
-          <!-- Status Filter -->
-          <DropdownSelect
-            options={statusOptions}
-            value={$marketStore.statusFilter}
-            label="Status"
-            onChange={(value) => {
-              marketStore.setStatusFilter(value as StatusFilter);
+        <!-- Sorting Dropdown -->
+        <div
+          class="relative sort-dropdown flex-1 md:flex-none max-w-[48%] md:max-w-none"
+          use:clickOutside={() => (sortDropdownOpen = false)}
+        >
+          <button
+            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-surface-dark text-kong-text-primary hover:bg-kong-bg-light/30 transition-colors border border-kong-border/50"
+            onclick={(e) => {
+              e.stopPropagation();
+              sortDropdownOpen = !sortDropdownOpen;
+              statusDropdownOpen = false;
             }}
-            size="sm"
-            className="min-w-[120px]"
-          />
+          >
+            <span class="whitespace-nowrap overflow-hidden text-ellipsis">
+              Sort: {currentSortLabel}
+            </span>
+            <ChevronDown class="w-3 h-3 ml-1 flex-shrink-0" />
+          </button>
 
-          <!-- Sort Options -->
-          <DropdownSelect
-            options={SORT_OPTIONS}
-            value={$marketStore.sortOption}
-            label="Sort by"
-            onChange={(value) => marketStore.setSortOption(value as SortOption)}
-            size="sm"
-            className="min-w-[180px]"
-          />
-
-          <!-- Layout Toggle -->
-          <DropdownSelect
-            options={LAYOUT_OPTIONS}
-            value={selectedLayout}
-            label="Layout"
-            onChange={(value) => selectedLayout = value}
-            size="sm"
-            className="hidden lg:flex min-w-[120px]"
-          />
+          {#if sortDropdownOpen}
+            <div
+              class="absolute top-full right-0 mt-1 z-30 bg-kong-surface-dark border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[180px] backdrop-blur-sm"
+            >
+              {#each sortOptions as option}
+                <button
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-light/30 {$marketStore.sortOption ===
+                  option.value
+                    ? 'bg-kong-accent-green/20 text-kong-accent-green font-medium'
+                    : 'text-kong-text-primary'}"
+                  onclick={() => {
+                    marketStore.setSortOption(option.value as SortOption);
+                    sortDropdownOpen = false;
+                  }}
+                >
+                  {option.label}
+                </button>
+              {/each}
+            </div>
+          {/if}
         </div>
       </div>
     </div>
 
     <!-- New grid layout for markets and recent bets -->
     <div class="lg:grid lg:grid-cols-4 lg:gap-6">
-      <!-- Markets column - takes up 3/4 of the space -->
-      <div class="lg:col-span-3">
+      <!-- Markets column - takes up 4/5 of the space -->
+      <div class="lg:col-span-4">
         <!-- Market Sections -->
         {#if $marketStore.error}
-          <div class="text-center py-12 text-kong-error">
+          <div class="text-center py-12 text-kong-accent-red">
             <AlertTriangle class="w-12 h-12 mx-auto mb-4" />
             <p class="text-lg font-medium">{$marketStore.error}</p>
           </div>
         {:else}
           <div class="relative">
             <!-- Display markets based on status filter -->
-            {#if $filteredMarkets.length > 0}
+            {#if ($filteredMarkets.active && $filteredMarkets.active.length > 0) || ($marketStore.statusFilter !== "open" && (($filteredMarkets.expired_unresolved && $filteredMarkets.expired_unresolved.length > 0) || ($filteredMarkets.resolved && $filteredMarkets.resolved.length > 0)))}
               <MarketSection
-                markets={$filteredMarkets}
-                openBetModal={betModal.open}
-                userClaims={userData.userClaims}
-                onMarketResolved={handleMarketResolved}
-                columns={{
-                  mobile: 1,
-                  tablet: selectedLayout <= 2 ? selectedLayout : 2,
-                  desktop: selectedLayout
-                }}
+                markets={$marketStore.statusFilter === "resolved"
+                  ? $filteredMarkets.resolved.filter(
+                      (market) => "Closed" in market.status,
+                    )
+                  : $marketStore.statusFilter === "voided"
+                    ? $filteredMarkets.resolved.filter(
+                        (market) => "Voided" in market.status,
+                      )
+                    : $marketStore.statusFilter === "expired"
+                      ? $filteredMarkets.expired_unresolved
+                      : $marketStore.statusFilter === "all"
+                        ? [
+                            ...($filteredMarkets.active || []),
+                            ...($filteredMarkets.expired_unresolved || []),
+                            ...($filteredMarkets.resolved || []),
+                          ]
+                        : $filteredMarkets.active}
+                {openBetModal}
+                onMarketResolved={async () =>
+                  await marketStore.refreshMarkets()}
               />
             {:else}
               <!-- No Markets Message -->
               <div class="text-center py-12">
-                <div class="max-w-md mx-auto text-kong-text-secondary">
+                <div class="max-w-md mx-auto text-kong-pm-text-secondary">
                   <div class="mb-4 text-2xl">📉</div>
                   <p class="text-lg">No markets available</p>
                   <p class="text-sm mt-2">
@@ -321,31 +461,148 @@
           </div>
         {/if}
       </div>
-
-      <!-- Recent Bets column - takes up 1/4 of the space -->
-      <div class="mt-6 lg:mt-0 lg:sticky lg:top-0">
-        <div class="flex flex-col" style="max-height: 720px">
-          <!-- User's Unresolved Markets Card -->
-          <UserUnresolvedMarketsCard markets={userData.userUnresolvedMarkets} />
-          
-          <RecentPredictions
-            bets={recentBets}
-            loading={loadingBets && isInitialLoad}
-            maxHeight="100%"
-            showOutcomes={false}
-            className="!bg-kong-bg-secondary flex-1 min-h-0"
-            title="Recent Activity"
-          />
-        </div>
-      </div>
     </div>
   </div>
 </div>
 
 <!-- Betting Modal -->
 <BetModal
-  modalData={betModal.state}
-  onClose={betModal.close}
-  onBet={betModal.placeBet}
+  {showBetModal}
+  {selectedMarket}
+  {isBetting}
+  {isApprovingAllowance}
+  {betError}
+  {selectedOutcome}
+  bind:betAmount
+  onClose={closeBetModal}
+  onBet={handleBet}
 />
 
+<style lang="postcss" scoped>
+  /* Gradient Animation */
+  :global(.animate-gradient) {
+    background-size: 300% 300%;
+    animation: gradient 8s ease infinite;
+  }
+
+  :global(.bg-300) {
+    background-size: 300% 300%;
+  }
+
+  @keyframes gradient {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+      box-shadow: 0 0 8px rgba(255, 69, 0, 0.7);
+    }
+    50% {
+      transform: scale(1.1);
+      box-shadow: 0 0 16px rgba(255, 69, 0, 0.9);
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 8px rgba(255, 69, 0, 0.7);
+    }
+  }
+
+  @keyframes flameFlicker {
+    0%,
+    100% {
+      transform: scale(1);
+      filter: brightness(1);
+      box-shadow: 0 0 8px rgba(255, 69, 0, 0.7);
+    }
+    50% {
+      transform: scale(1.15);
+      filter: brightness(1.2);
+      box-shadow: 0 0 16px rgba(255, 69, 0, 0.9);
+    }
+  }
+
+  @keyframes flameGradient {
+    0% {
+      color: #ff4500;
+      stroke: #ff4500;
+    }
+    33% {
+      color: #ff6f00;
+      stroke: #ff6f00;
+    }
+    66% {
+      color: #ffa500;
+      stroke: #ffa500;
+    }
+    100% {
+      color: #ff4500;
+      stroke: #ff4500;
+    }
+  }
+
+  :global(.gradient-icon) {
+    background: linear-gradient(
+      to right,
+      var(--kong-accent-blue),
+      var(--kong-accent-green),
+      var(--kong-accent-purple)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: gradient 8s ease infinite;
+    background-size: 300% 300%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  :global(.gradient-icon svg) {
+    stroke: currentColor;
+  }
+
+  :global(.gradient-stroke) {
+    stroke: var(--kong-accent-green);
+    animation: strokeGradient 8s ease infinite;
+  }
+
+  @keyframes strokeGradient {
+    0% {
+      stroke: rgb(var(--accent-blue));
+    }
+    33% {
+      stroke: rgb(var(--accent-green));
+    }
+    66% {
+      stroke: rgb(var(--accent-purple));
+    }
+    100% {
+      stroke: rgb(var(--accent-blue));
+    }
+  }
+
+  /* Flash animation for new bets */
+  @keyframes flashNewBet {
+    0% {
+      background-color: rgb(34, 197, 94);
+      transform: scale(1.02);
+    }
+    50% {
+      background-color: rgba(34, 197, 94, 0.2);
+      transform: scale(1.02);
+    }
+    100% {
+      background-color: transparent;
+      transform: scale(1);
+    }
+  }
+</style>
