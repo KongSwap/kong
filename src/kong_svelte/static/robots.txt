@@ -1,4 +1,38 @@
+# Robots.txt for KongSwap.io
 User-agent: *
 Allow: /
 
+# Allow all major search engines
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot  
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+# Disallow crawling of specific paths that shouldn't be indexed
+Disallow: /api/
+Disallow: /admin/
+Disallow: /_app/
+Disallow: /temp/
+Disallow: /*?auth=*
+Disallow: /*?token=*
+Disallow: /*?session=*
+
+# Allow important directories
+Allow: /images/
+Allow: /static/
+Allow: /favicon*
+Allow: /*.css
+Allow: /*.js
+
+# Crawl delay
+Crawl-delay: 1
+
+# Sitemap locations
 Sitemap: https://kongswap.io/sitemap.xml 

@@ -1,59 +1,85 @@
 <script lang="ts">
-  import { CircleHelp } from "lucide-svelte";
+  import { CircleHelp, Wand } from "lucide-svelte";
+  import Badge from "$lib/components/common/Badge.svelte";
+  import { truncateAddress } from "$lib/utils/principalUtils";
+    import { goto } from "$app/navigation";
 
-  export let market: any;
-  export let isMarketResolved: boolean;
-  export let isPendingResolution: boolean;
-  export let isMarketVoided = false;
+  let { market } = $props();
+  
+  let imageError = $state(false);
+
+  // Handle image load error
+  function handleImageError() {
+    imageError = true;
+  }
+
+  // Validate image URL
+  function isValidImageUrl(url: string): boolean {
+    if (!url || url.length === 0) return false;
+    try {
+      const urlObj = new URL(url);
+      return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
 </script>
 
-<div class="!rounded animate-fadeIn mb-2">
-  <div class="flex items-center gap-2 sm:gap-3">
+<div class="mb-8">
+  <div class="flex items-center justify-center flex-col gap-3 sm:gap-4 max-w-full">
     <div
-      class="{market.image_url ? '' : 'p-2 sm:p-2 bg-kong-accent-green/10 rounded flex items-center justify-center'}"
+      class={isValidImageUrl(market.image_url) && !imageError
+        ? "rounded-kong-roundness"
+        : "mb-2 rounded-lg flex items-center justify-center"}
     >
-    {#if market.image_url.length > 0}
-      <img src={market.image_url} alt="Market Icon" class="w-[4.4rem] h-[4.4rem] object-cover">
-    {:else}
-      <CircleHelp
-        class="text-kong-text-accent-green w-8 h-8"
-      />
-    {/if}
+      {#if isValidImageUrl(market.image_url) && !imageError}
+        <img
+          src={market.image_url}
+          alt={market.category || "Market"}
+          class="max-h-36 max-w-xl object-cover rounded-lg mb-1"
+          loading="lazy"
+          onerror={handleImageError}
+        />
+      {:else}
+        <Wand
+          class="text-kong-text-secondary/60 w-24 h-24 sm:w-20 sm:h-20 bg-kong-bg-tertiary p-4 rounded-lg"
+        />
+      {/if}
     </div>
-    <div class="flex-1">
+    <div class="flex">
       <h1
-        class="text-xl sm:text-2xl lg:text-2xl font-bold text-kong-text-primary leading-tight"
+        class="text-xl sm:text-2xl lg:text-3xl font-semibold text-kong-text-primary"
       >
         {market.question}
       </h1>
-      {#if isMarketResolved || isPendingResolution || isMarketVoided}
-        <div class="flex items-center gap-2 mt-1">
-          {#if isMarketResolved}
-            <span
-              class="px-2 py-0.5 bg-kong-accent-green/20 text-kong-text-accent-green text-xs rounded-full"
-            >
-              Resolved
-            </span>
-            {#if market.resolved_by}
-              <span class="text-xs text-kong-text-secondary">
-                by {market.resolved_by[0].toString().slice(0, 8)}...
-              </span>
-            {/if}
-          {:else if isMarketVoided}
-            <span
-              class="px-2 py-0.5 bg-kong-accent-red/20 text-kong-text-accent-red text-xs rounded-full"
-            >
-              Voided
-            </span>
-          {:else if isPendingResolution}
-            <span
-              class="px-2 py-0.5 bg-yellow-500/20 text-yellow-500 text-xs rounded-full"
-            >
-              Pending Resolution
-            </span>
+    </div>
+    
+    <!-- Category and Creator Badges -->
+    <div class="flex items-center gap-2">
+      {#if market.category}
+        <Badge variant="gray" size="sm">
+          {#if 'AI' in market.category}
+            AI
+          {:else if 'Memes' in market.category}
+            Memes
+          {:else if 'Crypto' in market.category}
+            Crypto
+          {:else if 'Politics' in market.category}
+            Politics
+          {:else if 'Other' in market.category}
+            Other
           {/if}
-        </div>
+        </Badge>
+      {/if}
+      
+      {#if market.creator}
+        <Badge variant="purple" size="sm" class="hover:opacity-80 transition-opacity cursor-pointer" onclick={() => {
+          goto(`/wallets/${market.creator.toText()}`)
+        }}>
+          Created by {truncateAddress(market.creator.toText())}
+        </Badge>
       {/if}
     </div>
+    
   </div>
-</div> 
+</div>
