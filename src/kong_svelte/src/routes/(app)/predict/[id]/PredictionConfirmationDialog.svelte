@@ -5,7 +5,7 @@
   import { currentUserBalancesStore, loadBalances } from "$lib/stores/balancesStore";
   import { auth } from "$lib/stores/auth";
   import { estimateBetReturn } from "$lib/api/predictionMarket";
-    import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 
   let {
     open = $bindable(false),
