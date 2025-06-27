@@ -337,7 +337,7 @@
 </script>
 
 <Modal
-  {isOpen}
+  isOpen={isOpen && !showConfirmation}
   onClose={handleClose}
   title="Send {token?.name || 'Token'}"
   width="480px"
@@ -375,7 +375,7 @@
     <!-- Send Form -->
     {#if token}
       <form
-        on:submit|preventDefault={handleSubmit}
+        onsubmit={handleSubmit}
         class="flex flex-col gap-4 transition-all duration-300"
         style="opacity: {closing ? 0 : mounted ? 1 : 0}; transform: translateY({closing ? '-10px' : mounted ? 0 : '20px'}); transition-delay: {closing ? '0ms' : '100ms'};"
       >
@@ -398,9 +398,9 @@
               } rounded-md text-lg text-kong-text-primary focus:outline-none transition-colors duration-150`}
               placeholder="Enter recipient address"
               bind:value={recipientAddress}
-              on:input={handleAddressInput}
-              on:focus={() => addressFocused = true}
-              on:blur={() => addressFocused = false}
+              oninput={handleAddressInput}
+              onfocus={() => addressFocused = true}
+              onblur={() => addressFocused = false}
             />
             <div class="absolute inset-y-0 right-0 flex items-center gap-0.5">
               {#if addressValidation.isValid}
@@ -411,7 +411,7 @@
               <button
                 type="button"
                 class="p-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors duration-150"
-                on:click={handleAddressPaste}
+                onclick={handleAddressPaste}
                 use:tooltip={{ text: "Paste from clipboard", direction: "top" }}
               >
                 <Clipboard size={16} />
@@ -420,7 +420,7 @@
                 <button
                   type="button"
                   class="p-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors duration-150"
-                  on:click={handleScanClick}
+                  onclick={handleScanClick}
                   use:tooltip={{ text: "Scan QR code", direction: "top" }}
                 >
                   <Camera size={16} />
@@ -447,7 +447,7 @@
             <button
               type="button"
               class="text-xs text-kong-primary hover:text-kong-primary/80 font-medium transition-colors duration-150 py-1 px-2 bg-kong-primary/5 rounded-full"
-              on:click={handleSendMax}
+              onclick={handleSendMax}
             >
               Send Max
             </button>
@@ -472,9 +472,9 @@
               } rounded-md text-lg text-kong-text-primary focus:outline-none transition-colors duration-150`}
               placeholder="0.00"
               bind:value={amount}
-              on:input={handleAmountInput}
-              on:focus={() => amountFocused = true}
-              on:blur={() => amountFocused = false}
+              oninput={handleAmountInput}
+              onfocus={() => amountFocused = true}
+              onblur={() => amountFocused = false}
             />
             <div class="absolute inset-y-0 right-0 flex items-center pr-3">
               <div class="flex flex-col items-end">
