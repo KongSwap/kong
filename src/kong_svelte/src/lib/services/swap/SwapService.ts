@@ -654,6 +654,13 @@ export class SwapService {
 
         if ("Ok" in status) {
           const res = status.Ok[0];
+          
+          // Check if res exists and has expected structure
+          if (!res) {
+            attempts++;
+            this.pollingInterval = setTimeout(poll, this.FAST_POLLING_INTERVAL);
+            return;
+          }
 
           // Only show toast for new status updates
           if (res.statuses && res.statuses.length > 0) {            
@@ -675,19 +682,20 @@ export class SwapService {
             }
           }
 
-          if (res.statuses.find((s) => s.includes("Failed"))) {
+          if (res?.statuses?.find((s) => s.includes("Failed"))) {
             this.stopPolling();
+            const errorMessage = res.statuses.find((s) => s.includes("Failed"));
             swapStatusStore.updateSwap(swapId, {
               status: "Error",
               isProcessing: false,
-              error: res.statuses.find((s) => s.includes("Failed")),
+              error: errorMessage,
             });
             toastStore.dismiss(toastId);
-            toastStore.error(res.statuses.find((s) => s.includes("Failed")));
+            toastStore.error(errorMessage);
             return;
           }
 
-          if ("Swap" in res.reply) {
+          if (res.reply && "Swap" in res.reply) {
             const swapStatus = res.reply.Swap as SwapStatus;
             swapStatusStore.updateSwap(swapId, {
               status: swapStatus.status,
