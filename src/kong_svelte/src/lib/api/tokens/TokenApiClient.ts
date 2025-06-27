@@ -163,7 +163,6 @@ export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<Ko
     // Check cache
     const cached = tokenFetchCache.get(cacheKey);
     if (cached && (now - cached.timestamp) < CACHE_TTL) {
-      console.log('Using cached tokens for canister IDs:', validCanisterIds);
       return cached.promise;
     }
     

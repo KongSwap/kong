@@ -258,7 +258,7 @@
     }
   }
   
-  // Get live pool data for APR
+  // Get live pool data for APY
   let livePool = $derived($livePools.find(
     p => p.address_0 === address0 && p.address_1 === address1
   ));
@@ -444,7 +444,7 @@
               ` : ''}
             </div>
             <div class="flex items-center gap-1">
-              <span class="text-kong-text-secondary">APR (24h):</span>
+              <span class="text-kong-text-secondary">APY (24h):</span>
               <span class="text-kong-accent-green font-semibold">${formatToNonZeroDecimal((livePool?.rolling_24h_apy || 0).toString())}%</span>
             </div>
           </div>`,
