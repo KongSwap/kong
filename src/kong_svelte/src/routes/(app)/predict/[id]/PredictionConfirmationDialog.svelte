@@ -1,30 +1,11 @@
 <script lang="ts">
   import Dialog from "$lib/components/common/Dialog.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import { ArrowLeft, AlertCircle, Wallet, TrendingUp } from "lucide-svelte";
-  import { userTokens } from "$lib/stores/userTokens";
+  import { AlertCircle, TrendingUp } from "lucide-svelte";
   import { currentUserBalancesStore, loadBalances } from "$lib/stores/balancesStore";
-  import { formatBalance } from "$lib/utils/numberFormatUtils";
   import { auth } from "$lib/stores/auth";
   import { estimateBetReturn } from "$lib/api/predictionMarket";
-  
-  // Format token amounts that are already in token units (not smallest unit)
-  function formatTokenAmount(amount: number, maxDecimals: number = 4): string {
-    if (amount === 0) return "0";
-    
-    // For very small values, show more decimals
-    if (amount < 0.0001) {
-      return amount.toFixed(8).replace(/\.?0+$/, "");
-    }
-    
-    // For small values, show up to 6 decimals
-    if (amount < 0.01) {
-      return amount.toFixed(6).replace(/\.?0+$/, "");
-    }
-    
-    // For normal values, show up to maxDecimals
-    return amount.toFixed(maxDecimals).replace(/\.?0+$/, "");
-  }
+    import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 
   let {
     open = $bindable(false),
@@ -55,7 +36,6 @@
   
   // Default token info if not provided
   const defaultDecimals = 8;
-  const defaultSymbol = 'KONG';
   
   // Fetch balance when token or auth changes
   $effect(() => {
@@ -191,9 +171,8 @@
     return win;
   });
   
-  // Calculate potential return and profit from API response or fallback
+  // Calculate potential return and profit from API response
   let potentialReturn = $derived(() => {
-    // Try to use API response first
     if (winScenario()) {
       const decimals = token?.decimals ?? defaultDecimals;
       const expectedReturn = winScenario().expected_return;
@@ -204,20 +183,6 @@
       });
       return Number(expectedReturn) / Math.pow(10, decimals);
     }
-    
-    // Fallback calculation if API fails
-    if (amount() > 0 && percentage > 0) {
-      // Simple calculation: amount / (percentage / 100)
-      // This assumes winner takes all from losing side
-      const fallbackReturn = amount() / (percentage / 100);
-      console.log('Using fallback return:', {
-        amount: amount(),
-        percentage,
-        calculated: fallbackReturn
-      });
-      return fallbackReturn;
-    }
-    
     return 0;
   });
   
@@ -235,11 +200,6 @@
     const feeValue = estimatedReturn.estimated_platform_fee[0];
     if (!feeValue) return 0;
     return Number(feeValue) / Math.pow(10, decimals);
-  });
-  
-  // Check if we're using fallback calculation
-  let usingFallback = $derived(() => {
-    return amount() > 0 && !winScenario() && potentialReturn() > 0;
   });
 
   function handleClose() {
@@ -285,13 +245,13 @@
         <div>
           <div class="flex items-center justify-between mb-2">
             <label class="text-sm font-medium text-kong-text-secondary">
-              Enter amount ({token?.symbol || defaultSymbol})
+              Enter amount ({token?.symbol})
             </label>
             <span class="text-sm font-medium text-kong-text-primary">
               {#if loadingBalance}
                 <span class="animate-pulse">Loading...</span>
               {:else}
-                Balance: {formatTokenAmount(userBalance())} {token?.symbol || defaultSymbol}
+                Balance: {formatToNonZeroDecimal(userBalance())} {token?.symbol}
               {/if}
             </span>
           </div>
@@ -346,45 +306,40 @@
               <div class="h-4 bg-kong-bg-light rounded animate-pulse w-3/4"></div>
               <div class="h-6 bg-kong-bg-light rounded animate-pulse w-1/2"></div>
             </div>
-          {:else if potentialReturn() > 0}
+          {:else if estimatedReturn && winScenario()}
             <div class="space-y-3">
               <div class="flex items-center justify-between">
                 <span class="text-sm text-kong-text-secondary">Your prediction</span>
                 <span class="text-sm font-medium text-kong-text-primary">
-                  {formatTokenAmount(amount())} {token?.symbol || defaultSymbol}
+                  {formatToNonZeroDecimal(amount())} {token?.symbol}
                 </span>
               </div>
               {#if platformFee() > 0}
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-kong-text-secondary">Platform fee</span>
                   <span class="text-sm text-kong-text-secondary">
-                    -{formatTokenAmount(platformFee())} {token?.symbol || defaultSymbol}
+                    -{formatToNonZeroDecimal(platformFee())} {token?.symbol}
                   </span>
                 </div>
               {/if}
               <div class="flex items-center justify-between">
                 <span class="text-sm text-kong-text-secondary">If you win</span>
                 <span class="text-sm font-medium text-kong-text-primary">
-                  {usingFallback() ? '~' : ''}{formatTokenAmount(potentialReturn())} {token?.symbol || defaultSymbol}
+                  {formatToNonZeroDecimal(potentialReturn())} {token?.symbol}
                 </span>
               </div>
               <div class="flex items-center justify-between pt-3 border-t border-kong-border/50">
                 <span class="text-sm text-kong-text-secondary">Potential profit</span>
                 <div class="flex items-center gap-2">
                   <span class="text-lg font-bold {potentialProfit() >= 0 ? 'text-kong-success' : 'text-kong-error'}">
-                    {formatTokenAmount(potentialProfit())}
+                    {formatToNonZeroDecimal(potentialProfit())}
                   </span>
-                  <span class="text-sm {potentialProfit() >= 0 ? 'text-kong-success' : 'text-kong-error'}">{token?.symbol || defaultSymbol}</span>
+                  <span class="text-sm {potentialProfit() >= 0 ? 'text-kong-success' : 'text-kong-error'}">{token?.symbol}</span>
                 </div>
               </div>
-              {#if estimatedReturn?.uses_time_weighting && !usingFallback()}
+              {#if estimatedReturn?.uses_time_weighting}
                 <div class="text-xs text-kong-text-secondary/70 italic">
                   *Returns include time-weighted bonus for early predictions
-                </div>
-              {/if}
-              {#if usingFallback()}
-                <div class="text-xs text-kong-text-secondary/70 italic">
-                  *Estimated returns. Actual returns may vary based on fees and market mechanics.
                 </div>
               {/if}
               <div class="text-xs text-kong-text-secondary/70 italic">
@@ -404,7 +359,7 @@
         <div class="flex items-start gap-2 p-3 rounded-lg bg-kong-error/10 border border-kong-error/20">
           <AlertCircle class="w-4 h-4 text-kong-error mt-0.5 flex-shrink-0" />
           <div class="text-xs text-kong-error">
-            <p>Insufficient balance. You need {formatTokenAmount(Math.max(0, amount() - userBalance()))} more {token?.symbol || defaultSymbol}.</p>
+            <p>Insufficient balance. You need {formatToNonZeroDecimal(Math.max(0, amount() - userBalance()))} more {token?.symbol}.</p>
           </div>
         </div>
       {/if}
