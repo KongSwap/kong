@@ -225,8 +225,6 @@ export async function calculateRemoveLiquidityAmounts(
       lpTokenBigInt,
     );
 
-    console.log("result", result);
-
     if (!result.Ok) {
       throw new Error(result.Err || "Failed to calculate removal amounts");
     }
@@ -274,9 +272,6 @@ export async function addLiquidity(params: {
       tx_id_0 = [];
       tx_id_1 = [];
     } else {
-      console.log("token_0", params.token_0);
-      console.log("token_1", params.token_1);
-      console.log("adding icrc1 lp");
       // Handle ICRC1 tokens
       const [transfer0Result, transfer1Result, actorResult] = await Promise.all([
         IcrcService.transfer(

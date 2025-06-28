@@ -23,13 +23,11 @@
 	}: SyncProps = $props();
 
 	async function handleConfirm() { // Make async
-		console.log("[SyncConfirmModal] handleConfirm called via prop");
 		await onConfirm(); // Call the prop
 		// Parent decides if/when to close the modal
 	}
 
 	function handleCancel() {
-		console.log("[SyncConfirmModal] handleCancel called via prop");
 		onCancel(); // Call the prop
 		// Parent decides if/when to close the modal
 	}

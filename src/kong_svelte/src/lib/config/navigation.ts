@@ -11,7 +11,6 @@ import {
   Wallet,
   Coins,
   TrendingUpDown,
-  MessagesSquare
 } from "lucide-svelte";
 import type { ComponentType } from "svelte";
 
@@ -173,7 +172,6 @@ export const ACTION_BUTTONS: NavAction[] = [
   {
     id: "wallet",
     icon: Wallet,
-    label: "Wallet",
     action: "toggle",
     showWhen: "always",
     badge: "notifications"

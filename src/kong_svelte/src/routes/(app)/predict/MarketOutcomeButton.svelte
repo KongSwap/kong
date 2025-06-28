@@ -59,14 +59,6 @@
     ).toFixed(1),
   );
 
-  // Determine progress bar color based on type
-  const progressBarColor = $derived(
-    isYesNo
-      ? index === 0
-        ? "bg-kong-success/20"
-        : "bg-kong-error/20"
-      : "bg-kong-success/20",
-  );
 
   // Determine if the outcome is a winner
   const isWinner = $derived(isWinningOutcome(market, index));
@@ -99,7 +91,7 @@
 {#if isYesNo}
   <!-- Yes/No outcome button -->
   <button
-    class="w-full cursor-pointer py-1 px-5 text-center {$panelRoundness} font-medium text-lg group/outcome relative
+    class="w-full cursor-pointer py-1 px-5 text-center {$panelRoundness} font-medium group/outcome relative
       border transition-all duration-200
       {isWinner
       ? 'bg-kong-success/10 text-kong-success font-bold border-kong-success/30'
@@ -134,7 +126,7 @@
   <!-- Non Yes/No outcome button -->
   <button
     class="w-full py-2 px-3 text-left overflow-hidden flex items-center {$panelRoundness} 
-      relative border transition-all duration-200
+      relative border transition-all duration-200 text-sm
       {isWinner
       ? 'bg-kong-success/10 text-kong-success font-bold border-kong-success/30'
       : 'border-kong-border/20 hover:border-kong-border/40 bg-kong-bg-tertiary hover:bg-kong-primary/40'} 

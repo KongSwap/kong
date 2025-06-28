@@ -143,7 +143,6 @@
     try {
       const marketId = BigInt($page.params.id);
       const marketData = await getMarket(marketId);
-      console.log(marketData);
       market = marketData[0];
 
       // Check if current user is admin

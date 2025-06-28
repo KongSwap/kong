@@ -11,7 +11,6 @@ declare global {
 export async function loadTradingViewLibrary() {
   try {
     if (window.TradingView) {
-      console.log("[TradingView] Library already loaded");
       return;
     }
 
@@ -22,15 +21,11 @@ export async function loadTradingViewLibrary() {
     script.async = true;
     script.crossOrigin = 'anonymous';
 
-    console.log("[TradingView] Loading library from:", script.src);
-
     const loadPromise = new Promise((resolve, reject) => {
       script.onload = () => {
-        console.log("[TradingView] Script loaded, checking initialization...");
         // Add a small delay to ensure the library is fully initialized
         setTimeout(() => {
           if (window.TradingView) {
-            console.log("[TradingView] Library initialized successfully");
             resolve(true);
           } else {
             console.error("[TradingView] Library failed to initialize - window.TradingView is undefined");
@@ -45,12 +40,6 @@ export async function loadTradingViewLibrary() {
     });
 
     document.head.appendChild(script);
-    console.log("[TradingView] Script element added to DOM");
-    
-    // Check if script is actually in the DOM
-    const addedScript = document.querySelector(`script[src="${script.src}"]`);
-    console.log("[TradingView] Script found in DOM:", !!addedScript);
-    
     await loadPromise;
   } catch (error) {
     console.error('[TradingView] Error in loadTradingViewLibrary:', error);

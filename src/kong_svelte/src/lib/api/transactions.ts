@@ -107,10 +107,7 @@ export const fetchChartData = async (
   try {
     const response = await fetch(url);
     const data = await response.json();
-    
-    console.log("[API] Response status:", response.status);
-    console.log("[API] Response data sample:", data?.slice(0, 2));
-    
+
     if (!response.ok) {
       console.error('[API] Chart data error:', { status: response.status, data });
       return [];

@@ -26,10 +26,6 @@
     claims.filter(claim => claim.market_id.toString() === marketId)
   );
 
-  $effect(() => {
-    console.log("marketClaims", marketClaims);
-  });
-
   let totalClaimable = $derived(
     marketClaims.reduce((sum, claim) => sum + Number(claim.claimable_amount), 0)
   );

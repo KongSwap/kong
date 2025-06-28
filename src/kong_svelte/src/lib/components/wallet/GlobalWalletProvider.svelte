@@ -5,7 +5,16 @@
   import { auth } from "$lib/stores/auth";
   
   // Extract walletProviderStore state
-  let isOpen = $derived($walletProviderStore.isOpen);
+  let storeState = $state({isOpen: false});
+  
+  $effect(() => {
+    const unsubscribe = walletProviderStore.subscribe(state => {
+      storeState = state;
+    });
+    return unsubscribe;
+  });
+  
+  let isOpen = $derived(storeState.isOpen);
   
   // Handle successful login
   function handleLogin() {

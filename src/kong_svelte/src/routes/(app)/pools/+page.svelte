@@ -367,8 +367,6 @@
 
   const handleSearchInputChange = (value: string) => {
     searchInput = value;
-
-    console.log("searchInput", searchInput);
     
     if ($activePoolView === "user") {
       currentUserPoolsStore.setSearchQuery(value);

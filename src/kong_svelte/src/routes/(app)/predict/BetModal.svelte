@@ -190,9 +190,6 @@
       );
       if (token && token.metrics && token.metrics.price) {
         modalState.tokenPriceUsd = Number(token.metrics.price);
-        console.log(
-          `Updated token price: ${modalState.tokenPriceUsd} USD for ${token.symbol}`,
-        );
       } else {
         modalState.tokenPriceUsd = 0; // Default fallback
       }
@@ -208,10 +205,6 @@
 
     const token = $userTokens.tokens.find(
       (token) => token.address === modalState.tokenId,
-    );
-    console.log(
-      "Refreshing balance for token:",
-      token?.symbol || modalState.tokenId,
     );
 
     if (token) {
@@ -352,18 +345,12 @@
   function setPercentage(percentage: number) {
     // Use tokenBalance directly if maxAmount is negative or zero
     if (modalState.maxAmount <= 0 && modalState.tokenBalance > 0) {
-      console.log(
-        "Using tokenBalance instead of maxAmount for percentage calculation",
-      );
       // Apply percentage to token balance but reserve some for fees (~10%)
       const reservedPercent = 10;
       const availablePercent = 100 - reservedPercent;
       const adjustedBalance = modalState.tokenBalance * (availablePercent / 100);
       const calculatedAmount = (adjustedBalance * percentage) / 100;
       betAmount = Number(calculatedAmount.toFixed(8));
-      console.log(
-        `Set bet amount to ${betAmount} (${percentage}% of ${adjustedBalance})`,
-      );
 
       // Ensure USD mode is also updated
       if (modalState.inputMode === "usd" && modalState.tokenPriceUsd > 0) {
@@ -374,9 +361,6 @@
     } else if (modalState.maxAmount > 0) {
       const calculatedAmount = (modalState.maxAmount * percentage) / 100;
       betAmount = Number(calculatedAmount.toFixed(8));
-      console.log(
-        `Set bet amount to ${betAmount} (${percentage}% of max ${modalState.maxAmount})`,
-      );
 
       // Ensure USD mode is also updated
       if (modalState.inputMode === "usd" && modalState.tokenPriceUsd > 0) {

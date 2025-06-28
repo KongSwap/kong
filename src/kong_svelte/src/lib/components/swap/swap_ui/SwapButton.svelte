@@ -6,8 +6,8 @@
 
   // ===== CONSTANTS =====
   const SCALE_VALUES = {
-    press: 0.98,
-    hover: 1.02,
+    press: 0.99,
+    hover: 1.01,
     normal: 1
   };
 
@@ -187,7 +187,7 @@
 <style>
   /* ===== BASE BUTTON STYLES ===== */
   .swap-button {
-    border: 1px solid var(--swap-button-border-color, rgb(var(--ui-border) / 0.3));
+    border: 0px solid var(--swap-button-border-color, rgb(var(--ui-border) / 0.3));
     border-radius: var(--swap-button-roundness, 9999px);
     color: var(--swap-button-text-color, rgb(var(--text-light)));
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
@@ -248,7 +248,6 @@
   
   button.hover-effect:hover:not(:disabled) {
     transform: translateY(-2px);
-    border-color: rgba(var(--text-light) / 0.25);
   }
   
   button.pressed {

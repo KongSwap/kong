@@ -50,7 +50,6 @@
         amount: largeAllowance,
         spender: canisters.predictionMarkets.canisterId,
       }).then(hasAllowance => {
-        console.log(`Allowance check for ${token.symbol}: ${hasAllowance ? 'sufficient' : 'insufficient'}`);
         needsAllowance = !hasAllowance;
       }).catch(error => {
         console.error("Failed to check allowance:", error);
@@ -114,15 +113,6 @@
         try {
           const decimals = token?.decimals ?? defaultDecimals;
           const betAmountInSmallestUnit = BigInt(Math.floor(amount() * Math.pow(10, decimals)));
-          
-          console.log('Estimating return with:', {
-            marketId: marketId.toString(),
-            outcomeIndex,
-            betAmount: betAmountInSmallestUnit.toString(),
-            tokenAddress: token?.address,
-            decimals,
-            token
-          });
           
           const estimate = await estimateBetReturn(
             marketId,
@@ -200,11 +190,7 @@
     if (winScenario()) {
       const decimals = token?.decimals ?? defaultDecimals;
       const expectedReturn = winScenario().expected_return;
-      console.log('Using API return:', {
-        expectedReturn,
-        decimals,
-        calculated: Number(expectedReturn) / Math.pow(10, decimals)
-      });
+  
       return Number(expectedReturn) / Math.pow(10, decimals);
     }
     return 0;

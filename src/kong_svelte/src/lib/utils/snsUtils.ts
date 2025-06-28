@@ -67,7 +67,6 @@ export class SNSService {
     beforeProposal?: bigint
   ): Promise<ProposalResponse> {
     try {
-      console.log('Fetching SNS proposals for canister:', governanceCanisterId);
       const governanceActor = createAnonymousActorHelper(governanceCanisterId, snsIdlFactory);
 
       const result = await governanceActor.list_proposals({
@@ -77,8 +76,6 @@ export class SNSService {
         include_reward_status: [] as number[],
         include_status: [] as number[]
       });
-
-      console.log('Raw SNS proposals response:', result);
 
       function determineStatus(proposal: any): GovernanceProposal['status'] {
         if (proposal.failed_timestamp_seconds > 0n) return 'failed';
@@ -108,8 +105,6 @@ export class SNSService {
         failed_timestamp_seconds: proposal.failed_timestamp_seconds,
         is_eligible_for_rewards: proposal.is_eligible_for_rewards
       }));
-
-      console.log('Mapped SNS proposals:', mappedProposals);
 
       return {
         proposals: mappedProposals,
@@ -142,10 +137,7 @@ export class ICPGovernanceService {
     beforeProposal?: bigint
   ): Promise<ProposalResponse> {
     try {
-      console.log('Fetching ICP proposals for canister:', governanceCanisterId);
-      const governanceActor = createAnonymousActorHelper(governanceCanisterId, icpIdlFactory);
-      console.log('ICP governance actor methods:', Object.keys(governanceActor));
-      
+      const governanceActor = createAnonymousActorHelper(governanceCanisterId, icpIdlFactory);      
       const requestParams = {
         limit: BigInt(limit),
         before_proposal: beforeProposal ? [{ id: beforeProposal }] : [],
@@ -155,13 +147,8 @@ export class ICPGovernanceService {
         include_all_manage_neuron_proposals: [],
         omit_large_fields: []
       };
-      
-      console.log('ICP API request params:', requestParams);
-      
+            
       const result = await governanceActor.list_proposals(requestParams);
-
-      console.log('Raw ICP proposals response:', result);
-      console.log('ICP proposals count:', result.proposal_info?.length || 0);
 
       // ICP status mapping - these are the integer values from the IDL
       function determineStatus(statusInt: number): GovernanceProposal['status'] {
@@ -197,8 +184,6 @@ export class ICPGovernanceService {
         failed_timestamp_seconds: proposal.failed_timestamp_seconds,
         is_eligible_for_rewards: proposal.reward_status === 1 // 1 means eligible for rewards
       }));
-
-      console.log('Mapped ICP proposals:', mappedProposals);
 
       return {
         proposals: mappedProposals,

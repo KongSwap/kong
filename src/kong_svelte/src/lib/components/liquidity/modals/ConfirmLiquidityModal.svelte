@@ -161,7 +161,6 @@
   title={isCreatingPool ? "Create Pool" : "Add Liquidity"}
   onClose={handleCancel}
   isOpen={show}
-  variant="solid"
   width="460px"
   height="auto"
   {modalKey}

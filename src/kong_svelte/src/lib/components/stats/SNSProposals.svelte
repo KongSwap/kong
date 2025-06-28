@@ -30,14 +30,6 @@
       error = null;
       errorDetails = null;
 
-      console.log('Loading proposals with params:', {
-        governanceCanisterId,
-        type,
-        limit,
-        lastProposalId,
-        isLoadMore
-      });
-
       const service = type === 'sns' ? snsService : icpGovernanceService;
       const result = await service.getProposals(governanceCanisterId, limit, lastProposalId);
 

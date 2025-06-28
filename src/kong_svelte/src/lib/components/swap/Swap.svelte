@@ -238,7 +238,6 @@
         token: $swapState.payToken,
         amount: payAmount,
       }).then(hasAllowance => {
-        console.log(`Allowance check for ${$swapState.payToken.symbol}: ${hasAllowance ? 'sufficient' : 'insufficient'}`);
         // Store whether we need allowance
         swapState.update(state => ({
           ...state,
