@@ -20,8 +20,6 @@
     Wallet,
     X,
   } from "lucide-svelte";
-  import WalletSidebar from "$lib/components/common/WalletSidebar.svelte";
-  import { walletSidebarStore } from "$lib/stores/walletSidebarStore";
 
   // Props
   let { isMobile = false } = $props();
@@ -95,21 +93,9 @@
   function handleConnect() {
     if (!$auth.isConnected) {
       walletProviderStore.open();
-      return;
     }
-    const activeTab =
-      $notificationsStore.unreadCount > 0 ? "notifications" : "wallet";
-    toggleWalletSidebar(activeTab);
   }
 
-  function toggleWalletSidebar(tab: "notifications" | "chat" | "wallet" = "notifications") {
-    walletSidebarStore.setActiveTab(tab);
-    walletSidebarStore.toggle();
-  }
-
-  // Subscribe to wallet sidebar store
-  const showWalletSidebar = $derived($walletSidebarStore.isOpen);
-  const walletSidebarActiveTab = $derived($walletSidebarStore.activeTab);
 
   const mobileHeaderButtons = $derived([
     {
@@ -139,7 +125,7 @@
           handleConnect();
         }
       },
-      isSelected: showWalletSidebar && walletSidebarActiveTab === "wallet",
+      isSelected: false,
       isWalletButton: true,
       badgeCount: $notificationsStore.unreadCount,
       loading: $isAuthenticating,
@@ -199,7 +185,7 @@
           handleConnect();
         }
       },
-      isSelected: showWalletSidebar && walletSidebarActiveTab === "wallet",
+      isSelected: false,
       show: true,
       isWalletButton: true,
       badgeCount: $notificationsStore.unreadCount,
@@ -275,11 +261,6 @@
   {/each}
 </div>
 
-<WalletSidebar
-  isOpen={showWalletSidebar}
-  activeTab={walletSidebarActiveTab}
-  onClose={() => walletSidebarStore.close()}
-/>
 
 <style scoped lang="postcss">
   .nav-panel-button {

@@ -12,7 +12,6 @@
   import { settingsStore } from "$lib/stores/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/stores/swapStore";
-  import { sidebarStore } from "$lib/stores/sidebarStore";
   import { currentUserBalancesStore } from "$lib/stores/balancesStore";
   import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { browser } from "$app/environment";
@@ -213,7 +212,7 @@
 
   async function handleSwapClick(): Promise<void> {
     if (!$auth.isConnected) {
-      sidebarStore.toggleExpand();
+      walletProviderStore.open();
       return;
     }
 
