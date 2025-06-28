@@ -6,15 +6,10 @@
   import { browser } from "$app/environment";
   import { notificationsStore } from "$lib/stores/notificationsStore";
   import { themeStore } from "$lib/stores/themeStore";
-  import { searchStore } from "$lib/stores/searchStore";
-  import { userTokens } from "$lib/stores/userTokens";
-  import { walletProviderStore } from "$lib/stores/walletProviderStore";
+  import { navigationStore } from "$lib/stores/navigationStore";
+  import { navActions } from "$lib/services/navActions";
   import { logoPath } from "$lib/stores/derivedThemeStore";
-  import { loadBalances } from "$lib/stores/balancesStore";
   import { getThemeById } from "$lib/themes/themeRegistry";
-  import { copyToClipboard } from "$lib/utils/clipboard";
-  import { faucetClaim } from "$lib/api/tokens/TokenApiClient";
-  import { getAccountIds } from "$lib/utils/accountUtils";
   import {
     Droplet,
     Settings as SettingsIcon,
@@ -135,12 +130,18 @@
 
   // State
   let isMobile = $derived(app.isMobile);
-  let navOpen = $state(false);
-  let activeDropdown = $state<Extract<NavTabId, "more"> | null>(null);
-  let showWalletSidebar = $state(false);
-  let walletSidebarActiveTab = $state<WalletTab>("notifications");
-  let isClaiming = $state(false);
+  let navState = $state($navigationStore);
+  let activeDropdown = $derived(navState.activeDropdown);
+  let showWalletSidebar = $derived(navState.walletSidebarOpen);
+  let walletSidebarActiveTab = $derived(navState.walletSidebarTab);
   let closeTimeout: ReturnType<typeof setTimeout>;
+  
+  // Subscribe to navigation store updates
+  $effect(() => {
+    navigationStore.subscribe(state => {
+      navState = state;
+    });
+  });
   
   // Track if settings are initialized
   let settingsInitialized = $state(false);
@@ -194,11 +195,6 @@
         $themeStore === "microswap"),
   );
 
-  const showFaucetOption = $derived(
-    $auth.isConnected &&
-      (process.env.DFX_NETWORK === "local" ||
-        process.env.DFX_NETWORK === "staging"),
-  );
 
   const walletButtonThemeProps = $derived({
     customBgColor: browser
@@ -216,60 +212,19 @@
   const allTabs = Object.keys(NAV_CONFIG) as NavTabId[];
 
   // Functions
-  function toggleWalletMenu(tab: WalletTab = "notifications") {
-    walletSidebarActiveTab = tab;
-    showWalletSidebar = !showWalletSidebar;
-  }
-
   function handleConnect() {
     if (!$auth.isConnected) {
-      walletProviderStore.open();
+      navActions.connectWallet();
       return;
     }
-    const tab =
-      $notificationsStore.unreadCount > 0 ? "notifications" : "wallet";
-    toggleWalletMenu(tab);
-  }
-
-  function handleOpenSearch() {
-    searchStore.open();
+    navigationStore.toggleWalletSidebar();
   }
 
   function mobileMenuAction(action: () => void | Promise<void>) {
     return () => {
       action();
-      navOpen = false;
+      navigationStore.closeMobileMenu();
     };
-  }
-
-  async function claimTokens() {
-    if (isClaiming) return;
-    isClaiming = true;
-    try {
-      await faucetClaim();
-      await loadBalances($userTokens.tokens, $auth.account.owner, true);
-    } finally {
-      isClaiming = false;
-    }
-  }
-
-  function copyPrincipalId() {
-    const principalToCopy = $auth?.account?.owner;
-    if (principalToCopy) {
-      copyToClipboard(principalToCopy);
-    }
-  }
-
-  function copyAccountId() {
-    if ($auth.isConnected && $auth.account?.owner) {
-      const accountId = getAccountIds(
-        $auth.account.owner,
-        $auth.account.subaccount,
-      ).main;
-      if (accountId) {
-        copyToClipboard(accountId);
-      }
-    }
   }
 
   // Effects
@@ -290,13 +245,13 @@
       if (
         diffX > SWIPE_THRESHOLD &&
         touchStartX < EDGE_SWIPE_ZONE &&
-        !navOpen
+        !navState.mobileMenuOpen
       ) {
-        navOpen = true;
+        navigationStore.openMobileMenu();
       }
       // Swipe left to close menu (when open)
-      else if (diffX < -SWIPE_THRESHOLD && navOpen) {
-        navOpen = false;
+      else if (diffX < -SWIPE_THRESHOLD && navState.mobileMenuOpen) {
+        navigationStore.closeMobileMenu();
       }
     };
 
@@ -316,40 +271,37 @@
     {
       label: "Settings",
       icon: SettingsIcon,
-      onClick: mobileMenuAction(() => goto("/settings")),
+      onClick: mobileMenuAction(() => navActions.navigate("/settings")),
       show: true,
     },
     {
       label: "Search",
       icon: Search,
-      onClick: mobileMenuAction(handleOpenSearch),
+      onClick: mobileMenuAction(() => navActions.openSearch()),
       show: true,
     },
     {
       label: "Claim Tokens",
       icon: Droplet,
-      onClick: mobileMenuAction(async () => {
-        if (isClaiming) return;
-        await claimTokens();
-      }),
-      show: showFaucetOption,
+      onClick: mobileMenuAction(() => navActions.claimTokens()),
+      show: navActions.isDevelopment() && $auth.isConnected,
     },
     {
       label: "Copy Principal ID",
       icon: Copy,
-      onClick: mobileMenuAction(copyPrincipalId),
+      onClick: mobileMenuAction(() => navActions.copyPrincipalId()),
       show: $auth.isConnected,
     },
     {
       label: "Copy Account ID",
       icon: Copy,
-      onClick: mobileMenuAction(copyAccountId),
+      onClick: mobileMenuAction(() => navActions.copyAccountId()),
       show: $auth.isConnected,
     },
     {
       label: "Notifications",
       icon: Bell,
-      onClick: mobileMenuAction(() => toggleWalletMenu("notifications")),
+      onClick: mobileMenuAction(() => navigationStore.toggleWalletSidebar("notifications")),
       badgeCount: $notificationsStore.unreadCount,
       show: true,
     },
@@ -441,7 +393,7 @@
       {#if isMobile}
         <button
           class="h-[34px] w-[34px] flex items-center justify-center"
-          onclick={() => (navOpen = !navOpen)}
+          onclick={() => navigationStore.toggleMobileMenu()}
         >
           <Menu size={20} color={isLightTheme ? "black" : "white"} />
         </button>
@@ -472,10 +424,10 @@
                   : null}
                 onShowDropdown={() => {
                   clearTimeout(closeTimeout);
-                  activeDropdown = navItem.tabId as Extract<NavTabId, "more">;
+                  navigationStore.showDropdown(navItem.tabId as NavTabId);
                 }}
                 onHideDropdown={() => {
-                  closeTimeout = setTimeout(() => (activeDropdown = null), 150);
+                  closeTimeout = setTimeout(() => navigationStore.hideDropdown(), 150);
                 }}
                 onTabChange={(tab) => (activeTab = tab as NavTabId)}
                 defaultPath={navItem.defaultPath}
@@ -518,19 +470,16 @@
     {/if}
 
     <div class="flex items-center gap-2">
-      <NavPanel {isMobile} onWalletClick={() => {
-        const tab = $notificationsStore.unreadCount > 0 ? "notifications" : "wallet";
-        toggleWalletMenu(tab);
-      }} />
+      <NavPanel {isMobile} onWalletClick={() => navigationStore.toggleWalletSidebar()} />
     </div>
   </div>
 </div>
 
-{#if navOpen && isMobile}
+{#if navState.mobileMenuOpen && isMobile}
   <div class="fixed inset-0 z-50" transition:fade={{ duration: 200 }}>
     <div
       class="fixed inset-0 bg-kong-bg-primary/60 backdrop-blur-sm"
-      onclick={() => (navOpen = false)}
+      onclick={() => navigationStore.closeMobileMenu()}
     ></div>
     <div
       class="fixed top-0 left-0 h-full w-[85%] max-w-[320px] flex flex-col bg-kong-bg-primary border-r border-kong-border shadow-lg max-[375px]:w-[90%] max-[375px]:max-w-[300px]"
@@ -547,7 +496,7 @@
         />
         <button
           class="w-9 h-9 flex items-center justify-center rounded-full text-kong-text-secondary hover:text-kong-text-primary bg-kong-text-primary/10 hover:bg-kong-text-primary/15 transition-colors duration-200"
-          onclick={() => (navOpen = false)}
+          onclick={() => navigationStore.closeMobileMenu()}
         >
           <X size={16} />
         </button>
@@ -561,7 +510,7 @@
               options={group.options}
               {activeTab}
               onTabChange={(tab) => (activeTab = tab as NavTabId)}
-              onClose={() => (navOpen = false)}
+              onClose={() => navigationStore.closeMobileMenu()}
             />
           {/each}
         </div>
@@ -606,9 +555,9 @@
 {/if}
 
 <WalletSidebar
-  isOpen={showWalletSidebar}
-  activeTab={walletSidebarActiveTab}
-  onClose={() => (showWalletSidebar = false)}
+  isOpen={navState.walletSidebarOpen}
+  activeTab={navState.walletSidebarTab}
+  onClose={() => navigationStore.closeWalletSidebar()}
 />
 
 <style scoped lang="postcss">
