@@ -364,7 +364,6 @@
 
 <Modal
   {isOpen}
-  variant="solid"
   {onClose}
   title="Download Transaction History"
   width="480px"

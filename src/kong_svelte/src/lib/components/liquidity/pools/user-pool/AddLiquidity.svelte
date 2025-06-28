@@ -11,6 +11,9 @@
     calculateToken1FromPrice, 
     calculateToken0FromPrice
   } from "$lib/utils/liquidityUtils";
+  import { auth } from "$lib/stores/auth";
+  import { AllowancePrecheck } from "$lib/services/icrc/AllowancePrecheck";
+  import { canisters } from "$lib/config/auth.config";
 
   interface Props {
     userPool: any;
@@ -29,7 +32,9 @@
     isCalculating: false,
     activeInputIndex: null as number | null, // Track which input is actively being typed in
     error: null as string | null,
-    calculationId: 0
+    calculationId: 0,
+    needsAllowance0: false,
+    needsAllowance1: false
   });
 
   // Check if pool has existing liquidity
@@ -72,6 +77,40 @@
 
     return { exceeding, anyExceeding: exceeding[0] || exceeding[1], errorMessage };
   });
+
+  // Check allowances when tokens change or auth changes
+  $effect(() => {
+    if ($auth.isConnected && token0 && token1) {
+      checkAllowances();
+    }
+  });
+
+  // Check if ICRC-2 tokens have sufficient allowances
+  async function checkAllowances() {
+    // Check token0 allowance if it's ICRC-2
+    if (token0?.standards?.includes("ICRC-2")) {
+      const hasAllowance = await AllowancePrecheck.checkAllowanceOnly({
+        token: token0,
+        amount: BigInt(10 ** 18), // Large amount to check if any allowance exists
+        spender: canisters.kongBackend.canisterId,
+      });
+      state.needsAllowance0 = !hasAllowance;
+    } else {
+      state.needsAllowance0 = false;
+    }
+
+    // Check token1 allowance if it's ICRC-2
+    if (token1?.standards?.includes("ICRC-2")) {
+      const hasAllowance = await AllowancePrecheck.checkAllowanceOnly({
+        token: token1,
+        amount: BigInt(10 ** 18), // Large amount to check if any allowance exists
+        spender: canisters.kongBackend.canisterId,
+      });
+      state.needsAllowance1 = !hasAllowance;
+    } else {
+      state.needsAllowance1 = false;
+    }
+  }
 
   // Input handler with debouncing and cancellation
   function handleAmountChange(inputIndex: 0 | 1, value: string) {
@@ -200,6 +239,10 @@
       return;
     }
 
+    // Store allowance needs in liquidity store for ConfirmModal
+    liquidityStore.setNeedsAllowance(0, state.needsAllowance0);
+    liquidityStore.setNeedsAllowance(1, state.needsAllowance1);
+
     state.error = null;
     onShowConfirmModal();
   }
@@ -217,7 +260,7 @@
   <TokenInput
     token={token0}
     tokenBalance={balances[0]}
-    bind:displayValue={state.displayValues[0]}
+    displayValue={state.displayValues[0]}
     isExceedingBalance={validation.exceeding[0]}
     isLoading={state.isCalculating && state.activeInputIndex === 1}
     disabled={state.isCalculating && state.activeInputIndex === 1}
@@ -231,7 +274,7 @@
     <TokenInput
       token={token1}
       tokenBalance={balances[1]}
-      bind:displayValue={state.displayValues[1]}
+      displayValue={state.displayValues[1]}
       isExceedingBalance={validation.exceeding[1]}
       isLoading={state.isCalculating && state.activeInputIndex === 0}
       disabled={state.isCalculating && state.activeInputIndex === 0}

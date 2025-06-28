@@ -103,7 +103,6 @@
 
 <Modal
   {isOpen}
-  variant="transparent"
   {onClose}
   title={`Confirm ${token.symbol} Transfer`}
   width="min(480px, 92vw)"

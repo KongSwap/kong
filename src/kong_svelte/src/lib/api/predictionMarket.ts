@@ -273,18 +273,11 @@ export async function forceResolveMarket(
   winningOutcome: bigint,
 ): Promise<void> {
   try {
-    console.log("forceResolveMarket called with:", {
-      marketId,
-      winningOutcome,
-    });
     const actor = predictionActor({ anon: false, requiresSigning: true });
-    console.log("Actor created, calling force_resolve_market...");
-
     const result = await actor.force_resolve_market({
       market_id: marketId,
       winning_outcomes: [winningOutcome],
     });
-    console.log("force_resolve_market result:", result);
 
     if ("Err" in result) {
       const error = result.Err as any;
@@ -316,9 +309,6 @@ export async function forceResolveMarket(
     }
   } catch (error) {
     console.error("Failed to force resolve market:", error);
-    console.error("Error type:", typeof error);
-    console.error("Error details:", JSON.stringify(error, null, 2));
-
     // Check if it's a signing/authentication error
     if (error instanceof Error && error.message.includes("Sign")) {
       throw new Error(
@@ -336,18 +326,10 @@ export async function proposeResolution(
 ): Promise<void> {
   try {
     const actor = predictionActor({ anon: false, requiresSigning: true });
-
-    console.log("Calling propose_resolution with:", {
-      market_id: marketId,
-      winning_outcomes: [winningOutcome],
-    });
-
     const result = await actor.propose_resolution({
       market_id: marketId,
       winning_outcomes: [winningOutcome],
     });
-
-    console.log("propose_resolution result", result);
 
     if ("Error" in result) {
       const error = result.Error as any;
@@ -498,8 +480,6 @@ export async function getUserClaims(principal: string) {
   const actor = predictionActor({ anon: true });
   try {
     const claims = await actor.get_user_claims(principal);
-    console.log("claims", claims);
-
     return claims;
   } catch (error) {
     console.error("Error in getUserClaims:", error);
@@ -511,7 +491,6 @@ export async function getUserPendingClaims(principal: string) {
   const actor = predictionActor({ anon: true });
   try {
     const pendingClaims = await actor.get_user_pending_claims(principal);
-    console.log("pendingClaims", pendingClaims);
     return pendingClaims;
   } catch (error) {
     console.error("Error in getUserPendingClaims:", error);

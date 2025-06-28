@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { Droplets, Plus } from "lucide-svelte";
-  import { sidebarStore } from "$lib/stores/sidebarStore";
+  import { walletProviderStore } from "$lib/stores/walletProviderStore";
 
   interface EmptyStateProps {
     isUserPool: boolean;
@@ -41,7 +41,7 @@
     </p>
     <button
       class="px-6 py-2.5 bg-kong-primary text-white rounded-lg hover:bg-kong-primary-hover transition-all duration-200 flex items-center gap-2 shadow-md"
-      onclick={() => sidebarStore.open()}
+      onclick={() => walletProviderStore.open()}
     >
       <svg
         width="20"

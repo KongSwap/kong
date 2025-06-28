@@ -49,8 +49,8 @@ const BLOCKED_TOKEN_IDS = [];
 
 export class SwapService {
   // Transaction monitoring state
-  private static FAST_POLLING_INTERVAL = 100; // 100ms polling interval
-  private static MAX_ATTEMPTS = 200; // 30 seconds total monitoring time
+  private static FAST_POLLING_INTERVAL = 250; // 250ms polling interval
+  private static MAX_ATTEMPTS = 200; // 50 seconds total monitoring time
   private static pollingInterval: NodeJS.Timeout | null = null;
   private static startTime: number;
 

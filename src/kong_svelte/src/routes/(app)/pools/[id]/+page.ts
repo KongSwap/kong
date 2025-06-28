@@ -35,12 +35,6 @@ export const load: PageLoad = async ({ params }) => {
     throw new Error('Invalid pool ID format');
   }
   
-  console.log('[+page.ts] Parsed pool ID:', { 
-    original: params.id, 
-    address0, 
-    address1 
-  });
-  
   return {
     poolId: params.id,
     address0,

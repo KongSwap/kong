@@ -129,7 +129,6 @@
   onClose={handleClose}
   title="Receive {token?.name}"
   width="480px"
-  variant="transparent"
   height="auto"
   className="receive-token-modal"
 >

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { browser } from "$app/environment";
-  import Panel from "./Panel.svelte";
+  import Card from "./Card.svelte";
   import { fade } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
   import Portal from "svelte-portal";
@@ -8,15 +8,15 @@
   import { tick } from "svelte";
   import { X } from "lucide-svelte";
   import { modalStack } from "$lib/stores/modalStore";
-  import { transparentPanel, panelRoundness } from "$lib/stores/derivedThemeStore";
   import { app } from "$lib/state/app.state.svelte";
 
   // Props
   let {
+    children,
+    titleSlot,
     isOpen = $bindable(),
-    modalKey = Math.random().toString(36).substr(2, 9),
+    modalKey = Math.random().toString(36).substring(2, 9),
     title = "",
-    variant = transparentPanel ? "transparent" : "solid",
     width = "600px",
     height = "auto",
     minHeight = "auto",
@@ -28,10 +28,11 @@
     isPadded = false,
     target = "#portal-target"
   } = $props<{
+    children?: () => any;
+    titleSlot?: () => any;
     isOpen?: boolean;
     modalKey?: string;
     title?: string | HTMLElement;
-    variant?: "solid" | "transparent";
     width?: string;
     height?: string;
     minHeight?: string;
@@ -235,11 +236,9 @@
         onclick={(e) => e.stopPropagation()}
         transition:fade={{ duration: 150, delay: 100, easing: cubicOut }}
       >
-        <Panel
-          width="100%"
-          height={modalHeight}
-          className="flex flex-col overflow-hidden !{$panelRoundness} {className} {isPadded ? 'px-4' : ''}"
-          zIndex={undefined}
+        <Card
+          className="flex flex-col overflow-hidden {className} {isPadded ? 'px-4' : ''} bg-kong-bg-primary"
+          hasHeader={false}
         >
           <div
             class="modal-content flex flex-col overflow-hidden"
@@ -256,15 +255,17 @@
             <header
               class="flex justify-between items-center flex-shrink-0 pb-2"
             >
-              <!-- Title can be provided via slot or prop -->
+              <!-- Title can be provided via snippet or prop -->
               <div class="flex-grow">
-                <slot name="title">
+                {#if titleSlot}
+                  {@render titleSlot()}
+                {:else}
                   <h2 class="text-lg font-semibold modal-title">
                     {#if typeof title === "string" && !title.includes("<")}
                       {title}
                     {/if}
                   </h2>
-                </slot>
+                {/if}
               </div>
               <button
                 class="!flex !items-center hover:text-kong-error !border-0 !shadow-none group relative"
@@ -279,10 +280,10 @@
             <div
               class="flex-1 overflow-y-auto scrollbar-custom min-h-0 {className}"
             >
-              <slot></slot>
+              {@render children?.()}
             </div>
           </div>
-        </Panel>
+        </Card>
       </div>
     </div>
   {/if}

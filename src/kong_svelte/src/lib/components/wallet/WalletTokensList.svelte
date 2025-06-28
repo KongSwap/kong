@@ -53,6 +53,7 @@
 		onBalancesLoaded?: () => void;
 		showUsdValues?: boolean; // <-- Add prop for USD visibility
 		onRefresh?: () => void; // <-- Add onRefresh prop from parent
+		onNavigate?: (path: string) => void; // <-- Add onNavigate prop for navigation with sidebar close
 	};
 
 	let { 
@@ -63,7 +64,8 @@
 		onTokenAdded = () => {},
 		onBalancesLoaded = () => {},
 		showUsdValues = true, // <-- Destructure with default
-		onRefresh = undefined // <-- Destructure onRefresh prop
+		onRefresh = undefined, // <-- Destructure onRefresh prop
+		onNavigate = undefined // <-- Destructure onNavigate prop
 	}: WalletTokensListProps = $props();
 
 	// --- Solana State ---
@@ -575,10 +577,13 @@
 				// }
 
 				const url = `/pools/${token0Id}_${token1Id}`;	
-				goto(url);
-				// Optionally call the prop if the parent needs to react *before* navigation
-				// onAction(action, selectedToken);
-				shouldCloseDropdown = false; // Keep dropdown open during navigation
+				// Use onNavigate if provided, otherwise use goto directly
+				if (onNavigate) {
+					onNavigate(url);
+				} else {
+					goto(url);
+				}
+				shouldCloseDropdown = true; // Close dropdown after navigation
 				break;
 			case 'info':
 			case 'swap':

@@ -12,7 +12,6 @@
   import { settingsStore } from "$lib/stores/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/stores/swapStore";
-  import { sidebarStore } from "$lib/stores/sidebarStore";
   import { currentUserBalancesStore } from "$lib/stores/balancesStore";
   import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { browser } from "$app/environment";
@@ -213,7 +212,7 @@
 
   async function handleSwapClick(): Promise<void> {
     if (!$auth.isConnected) {
-      sidebarStore.toggleExpand();
+      walletProviderStore.open();
       return;
     }
 
@@ -239,7 +238,6 @@
         token: $swapState.payToken,
         amount: payAmount,
       }).then(hasAllowance => {
-        console.log(`Allowance check for ${$swapState.payToken.symbol}: ${hasAllowance ? 'sufficient' : 'insufficient'}`);
         // Store whether we need allowance
         swapState.update(state => ({
           ...state,

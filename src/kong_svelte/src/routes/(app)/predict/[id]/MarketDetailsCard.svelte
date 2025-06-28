@@ -7,7 +7,7 @@
   import type { Market } from "$lib/types/predictionMarket";
   import { userTokens } from "$lib/stores/userTokens";
   import { isAdmin } from "$lib/api/predictionMarket";
-  import Icon from "@iconify/svelte";
+  import IconifyIcon from "@iconify/svelte";
   import {
     shareToTwitter,
     shareToFacebook,
@@ -389,35 +389,35 @@
               class="p-1.5 rounded hover:bg-kong-bg-secondary text-kong-text-secondary/70 hover:text-kong-text-primary transition-colors"
               aria-label="Share on X"
             >
-              <Icon icon="ri:twitter-x-fill" class="w-6 h-6" />
+              <IconifyIcon icon="ri:twitter-x-fill" class="w-6 h-6" />
             </button>
             <button
               onclick={() => shareToTelegram(marketUrl(), market.question)}
               class="p-1.5 rounded hover:bg-kong-bg-secondary text-kong-text-secondary/70 hover:text-kong-text-primary transition-colors"
               aria-label="Share on Telegram"
             >
-              <Icon icon="ri:telegram-fill" class="w-6 h-6" />
+              <IconifyIcon icon="ri:telegram-fill" class="w-6 h-6" />
             </button>
             <button
               onclick={() => shareToTikTok(marketUrl())}
               class="p-1.5 rounded hover:bg-kong-bg-secondary text-kong-text-secondary/70 hover:text-kong-text-primary transition-colors"
               aria-label="Share on TikTok"
             >
-              <Icon icon="ri:tiktok-fill" class="w-6 h-6" />
+              <IconifyIcon icon="ri:tiktok-fill" class="w-6 h-6" />
             </button>
             <button
               onclick={() => shareToFacebook(marketUrl())}
               class="p-1.5 rounded hover:bg-kong-bg-secondary text-kong-text-secondary/70 hover:text-kong-text-primary transition-colors"
               aria-label="Share on Facebook"
             >
-              <Icon icon="ri:facebook-fill" class="w-6 h-6" />
+              <IconifyIcon icon="ri:facebook-fill" class="w-6 h-6" />
             </button>
             <button
               onclick={() => shareToReddit(marketUrl(), market.question)}
               class="p-1.5 rounded hover:bg-kong-bg-secondary text-kong-text-secondary/70 hover:text-kong-text-primary transition-colors"
               aria-label="Share on Reddit"
             >
-              <Icon icon="ri:reddit-fill" class="w-6 h-6" />
+              <IconifyIcon icon="ri:reddit-fill" class="w-6 h-6" />
             </button>
           </div>
         </div>

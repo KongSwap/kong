@@ -48,7 +48,6 @@
         token1.address,
         pool.balance
       );
-      console.log(result)
       const fee0 = new BigNumber(result.lpFee0.toString()).div(new BigNumber(10).pow(token0.decimals))
       const fee1 = new BigNumber(result.lpFee1.toString()).div(new BigNumber(10).pow(token1.decimals))
       estimatedAmounts = [fee0.toString(), fee1.toString()];
@@ -262,10 +261,6 @@
 
   .earnings-container {
     @apply mb-3;
-  }
-
-  .loading {
-    @apply hover:bg-kong-bg-secondary/50;
   }
 
   .earnings-label {

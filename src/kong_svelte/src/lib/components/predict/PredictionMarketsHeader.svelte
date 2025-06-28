@@ -164,16 +164,6 @@
 </div>
 
 <style>
-  /* Hide scrollbar but keep functionality */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-
   /* Enhanced shine animation for gradient text */
   :global(.animate-shine) {
     background-size: 400% 100%;

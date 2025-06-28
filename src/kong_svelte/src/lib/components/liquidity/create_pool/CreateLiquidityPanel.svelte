@@ -45,6 +45,9 @@
   
   import { debounce } from "$lib/utils/debounce";
   import { useLiquidityPanel } from "./composables/useLiquidityPanel";
+  import { panelRoundness } from "$lib/stores/derivedThemeStore";
+  import { AllowancePrecheck } from "$lib/services/icrc/AllowancePrecheck";
+  import { canisters } from "$lib/config/auth.config";
 
   // Constants
   const ALLOWED_TOKEN_SYMBOLS = ["ICP", "ckUSDT"];
@@ -219,6 +222,40 @@
     }
   };
 
+  // Check allowances when tokens change or when auth changes
+  $effect(() => {
+    if ($auth.isConnected && $liquidityStore.token0 && $liquidityStore.token1) {
+      checkAllowances();
+    }
+  });
+
+  // Check if ICRC-2 tokens have sufficient allowances
+  async function checkAllowances() {
+    // Check token0 allowance if it's ICRC-2
+    if ($liquidityStore.token0?.standards?.includes("ICRC-2")) {
+      const hasAllowance = await AllowancePrecheck.checkAllowanceOnly({
+        token: $liquidityStore.token0,
+        amount: BigInt(10 ** 18), // Large amount to check if any allowance exists
+        spender: canisters.kongBackend.canisterId,
+      });
+      liquidityStore.setNeedsAllowance(0, !hasAllowance);
+    } else {
+      liquidityStore.setNeedsAllowance(0, false);
+    }
+
+    // Check token1 allowance if it's ICRC-2
+    if ($liquidityStore.token1?.standards?.includes("ICRC-2")) {
+      const hasAllowance = await AllowancePrecheck.checkAllowanceOnly({
+        token: $liquidityStore.token1,
+        amount: BigInt(10 ** 18), // Large amount to check if any allowance exists
+        spender: canisters.kongBackend.canisterId,
+      });
+      liquidityStore.setNeedsAllowance(1, !hasAllowance);
+    } else {
+      liquidityStore.setNeedsAllowance(1, false);
+    }
+  }
+
   // Action handlers
   async function handleCreatePool() {
     if (!token0 || !token1) return;
@@ -235,6 +272,8 @@
       const amount1 = parseTokenAmount(amount1Str, token1.decimals);
       
       if (!amount0 || !amount1) throw new Error("Invalid amounts");
+      
+      // Allowance needs are already set in the store by checkAllowances()
       
       showConfirmModal = true;
     } catch (error) {
@@ -267,6 +306,8 @@
         liquidityStore.setAmount(1, calculatedAmount1.toString());
       }
 
+      // Allowance needs are already set in the store by checkAllowances()
+      
       showConfirmModal = true;
     } catch (error) {
       toastStore.error(error.message || "Failed to add liquidity");

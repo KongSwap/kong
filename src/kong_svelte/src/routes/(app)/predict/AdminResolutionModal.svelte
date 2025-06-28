@@ -21,21 +21,14 @@
   }
 
   async function handleForceResolve() {
-    console.log("handleForceResolve called");
-    console.log("selectedOutcome:", selectedOutcome);
-    console.log("market:", market);
-    
     if (selectedOutcome === null) {
-      console.log("No outcome selected, showing error");
       toastStore.error("Please select a winning outcome");
       return;
     }
 
     try {
-      console.log("Starting force resolution...");
       isSubmitting = true;
       await forceResolveMarket(market.id, selectedOutcome);
-      console.log("Force resolution successful");
       toastStore.success(`Market has been force resolved successfully`);
       onResolved();
       close();
@@ -86,7 +79,6 @@
               ? 'border-kong-success bg-kong-success/10 font-semibold text-kong-success'
               : 'border-kong-border hover:border-kong-success hover:bg-kong-success/5'}"
           on:click={() => {
-            console.log("Outcome selected:", index, outcome);
             selectedOutcome = BigInt(index);
           }}
           disabled={isSubmitting}

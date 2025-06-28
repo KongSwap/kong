@@ -1,36 +1,24 @@
 <script lang="ts">
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
   import { tooltip } from "$lib/actions/tooltip";
-  import { auth } from "$lib/stores/auth";
+  import { auth, isAuthenticating } from "$lib/stores/auth";
   import { notificationsStore } from "$lib/stores/notificationsStore";
-  import { isAuthenticating } from "$lib/stores/auth";
-  import { goto } from "$app/navigation";
-  import { searchStore } from "$lib/stores/searchStore";
-  import { walletProviderStore } from "$lib/stores/walletProviderStore";
-  import { copyToClipboard } from "$lib/utils/clipboard";
-  import { faucetClaim } from "$lib/api/tokens/TokenApiClient";
-  import { getAccountIds } from "$lib/utils/accountUtils";
-  import { loadBalances } from "$lib/stores/balancesStore";
-  import { userTokens } from "$lib/stores/userTokens";
-  import {
-    Droplet,
-    Settings as SettingsIcon,
-    Copy,
-    Search,
-    Wallet,
-    X,
-  } from "lucide-svelte";
-  import WalletSidebar from "$lib/components/common/WalletSidebar.svelte";
-  import { walletSidebarStore } from "$lib/stores/walletSidebarStore";
+  import { navActions } from "$lib/services/navActions";
+  import { ACTION_BUTTONS, shouldShowAction } from "$lib/config/navigation";
+  import type { NavAction } from "$lib/config/navigation";
+  import { X } from "lucide-svelte";
 
   // Props
-  let { isMobile = false } = $props();
+  let { 
+    isMobile = false,
+    onWalletClick = () => {}
+  } = $props();
 
   // Helper function to get the directional rounding class part
   function getRoundingSuffix(roundness: string | null): string {
     if (!roundness || roundness === 'rounded-none') return 'none';
-    if (roundness === 'rounded') return ''; // For base 'rounded', suffix is empty -> rounded-l/rounded-r
-    return `-${roundness.substring(8)}`; // e.g., "rounded-lg" -> "-lg"
+    if (roundness === 'rounded') return '';
+    return `-${roundness.substring(8)}`;
   }
   
   // Compute directional classes reactively
@@ -38,185 +26,72 @@
   let leftRoundnessClass = $derived(roundingSuffix === 'none' ? '' : `rounded-l${roundingSuffix}`);
   let rightRoundnessClass = $derived(roundingSuffix === 'none' ? '' : `rounded-r${roundingSuffix}`);
 
-  // Base config for standard desktop icon buttons
-  const baseDesktopIconButton = {
-    variant: "icon" as const,
-    isWalletButton: false,
-    badgeCount: null,
-    label: null,
-    type: "standard" as const,
-    isSelected: false,
-    loading: false,
-    iconSize: 18,
-    class: "",
-  };
 
-  // Base config for mobile header buttons
-  const baseMobileHeaderButton = {
-    variant: "mobile" as const,
-    iconSize: 14,
-    isSelected: false,
-    isWalletButton: false,
-    badgeCount: null,
-    show: true,
-    loading: false,
-    clickableDuringLoading: false,
-  };
+  // Filter and process buttons based on current state
+  let visibleButtons = $derived.by(() => {
+    const isDev = navActions.isDevelopment();
+    const isConnected = $auth.isConnected;
+    
+    return ACTION_BUTTONS
+      .filter(button => {
+        // Filter out mobile-specific buttons for desktop and vice versa
+        if (!isMobile) {
+          // Desktop: Hide copy account ID and notifications (they're in dropdown/sidebar)
+          if (button.id === 'copy-account' || button.id === 'notifications') return false;
+        } else {
+          // Mobile: Show only essential buttons
+          const mobileButtons = ['search', 'copy-principal', 'wallet'];
+          if (!mobileButtons.includes(button.id)) return false;
+        }
+        
+        return shouldShowAction(button, isConnected, isDev);
+      })
+      .map(button => ({
+        ...button,
+        onClick: () => handleButtonClick(button),
+        isLoading: button.id === 'wallet' && $isAuthenticating,
+        badgeCount: getBadgeCount(button)
+      }));
+  });
 
-  // Compute account ID reactively
-  let accountId = $derived(
-    $auth.isConnected && $auth.account?.owner
-      ? getAccountIds($auth.account.owner, $auth.account.subaccount).main
-      : "",
-  );
-
-  const showFaucetOption = $derived(
-    $auth.isConnected &&
-      (process.env.DFX_NETWORK === "local" ||
-        process.env.DFX_NETWORK === "staging"),
-  );
-
-  async function claimTokens() {
-    await faucetClaim();
-    await loadBalances($userTokens.tokens, $auth.account.owner, true);
-  }
-
-  function handleOpenSearch() {
-    searchStore.open();
-  }
-
-  function copyPrincipalId() {
-    const principalToCopy = $auth?.account?.owner;
-    if (principalToCopy) {
-      copyToClipboard(principalToCopy);
+  function handleButtonClick(action: NavAction) {
+    switch (action.id) {
+      case 'settings':
+        navActions.navigate(action.path!);
+        break;
+      case 'search':
+        navActions.openSearch();
+        break;
+      case 'faucet':
+        navActions.claimTokens();
+        break;
+      case 'copy-principal':
+        navActions.copyPrincipalId();
+        break;
+      case 'copy-account':
+        navActions.copyAccountId();
+        break;
+      case 'notifications':
+        onWalletClick();
+        break;
+      case 'wallet':
+        if ($isAuthenticating) {
+          navActions.disconnectWallet();
+        } else if (!$auth.isConnected) {
+          navActions.connectWallet();
+        } else {
+          onWalletClick();
+        }
+        break;
     }
   }
 
-  function handleConnect() {
-    if (!$auth.isConnected) {
-      walletProviderStore.open();
-      return;
+  function getBadgeCount(button: NavAction): number {
+    if (button.badge === 'notifications') {
+      return $notificationsStore.unreadCount;
     }
-    const activeTab =
-      $notificationsStore.unreadCount > 0 ? "notifications" : "wallet";
-    toggleWalletSidebar(activeTab);
+    return 0;
   }
-
-  function toggleWalletSidebar(tab: "notifications" | "chat" | "wallet" = "notifications") {
-    walletSidebarStore.setActiveTab(tab);
-    walletSidebarStore.toggle();
-  }
-
-  // Subscribe to wallet sidebar store
-  const showWalletSidebar = $derived($walletSidebarStore.isOpen);
-  const walletSidebarActiveTab = $derived($walletSidebarStore.activeTab);
-
-  const mobileHeaderButtons = $derived([
-    {
-      ...baseMobileHeaderButton,
-      icon: Search,
-      onClick: handleOpenSearch,
-      tooltipText: "",
-      label: null,
-      class: "",
-    },
-    {
-      ...baseMobileHeaderButton,
-      icon: Copy,
-      onClick: copyPrincipalId,
-      tooltipText: "Copy Principal ID",
-      show: $auth.isConnected,
-      label: null,
-      class: "",
-    },
-    {
-      ...baseMobileHeaderButton,
-      icon: Wallet,
-      onClick: () => {
-        if ($isAuthenticating) {
-          auth.disconnect();
-        } else {
-          handleConnect();
-        }
-      },
-      isSelected: showWalletSidebar && walletSidebarActiveTab === "wallet",
-      isWalletButton: true,
-      badgeCount: $notificationsStore.unreadCount,
-      loading: $isAuthenticating,
-      disabled: false,
-      tooltipText: "",
-      label: null,
-      class: "",
-    },
-  ]);
-
-  const desktopButtons = $derived([
-    {
-      ...baseDesktopIconButton,
-      icon: SettingsIcon,
-      onClick: () => goto("/settings"),
-      tooltipText: "",
-      show: true,
-      label: null,
-      class: "",
-    },
-    {
-      ...baseDesktopIconButton,
-      icon: Search,
-      onClick: handleOpenSearch,
-      tooltipText: "",
-      show: true,
-      label: null,
-      class: "",
-    },
-    {
-      ...baseDesktopIconButton,
-      icon: Droplet,
-      onClick: claimTokens,
-      tooltipText: "Claim test tokens",
-      show: showFaucetOption,
-      label: null,
-      class: "",
-    },
-    {
-      ...baseDesktopIconButton,
-      type: "copy",
-      icon: Copy,
-      onClick: copyPrincipalId,
-      tooltipText: "Copy Principal ID",
-      show: $auth.isConnected,
-      label: null,
-      class: "",
-    },
-    // Wallet Button (Specific properties)
-    {
-      type: "wallet" as const,
-      icon: Wallet,
-      onClick: () => {
-        if ($isAuthenticating) {
-          auth.disconnect();
-        } else {
-          handleConnect();
-        }
-      },
-      isSelected: showWalletSidebar && walletSidebarActiveTab === "wallet",
-      show: true,
-      isWalletButton: true,
-      badgeCount: $notificationsStore.unreadCount,
-      tooltipText: null,
-      loading: $isAuthenticating,
-      disabled: false,
-      label: null,
-      class: "",
-      iconSize: 18,
-    },
-  ]);
-
-  // Use the appropriate buttons based on mobile state
-  const buttons = $derived(isMobile ? mobileHeaderButtons : desktopButtons);
-  
-  // Filter visible buttons for proper indexing
-  const visibleButtons = $derived(buttons.filter(button => button.show !== false));
 </script>
 
 <div
@@ -226,60 +101,51 @@
 >
   {#each visibleButtons as button, i}
     <button
-      class="nav-panel-button {button.class || ''} {button.isSelected
-        ? 'selected'
-        : ''} {button.isWalletButton ? 'wallet-button' : ''} {isMobile
+      class="nav-panel-button {button.id === 'wallet' ? 'wallet-button' : ''} {isMobile
         ? 'mobile'
-        : ''} {i === 0 ? 'first-button' : ''} {i === visibleButtons.length - 1 ? 'last-button' : ''} {i === 0 ? leftRoundnessClass : ''} {i === visibleButtons.length - 1 ? rightRoundnessClass : ''}"
+        : ''} {i === 0 ? leftRoundnessClass : ''} {i === visibleButtons.length - 1 ? rightRoundnessClass : ''}"
       onclick={button.onClick}
-      use:tooltip={button.tooltipText
-        ? { text: button.tooltipText, direction: "bottom" }
+      use:tooltip={button.tooltip
+        ? { text: button.tooltip, direction: "bottom" }
         : null}
-      aria-label={button.tooltipText || button.label || "Button"}
+      aria-label={button.tooltip || button.label || "Button"}
     >
-        <div class="relative z-10">
-          {#if button.loading}
-            <div class="spinner">
-              {#if button.isWalletButton}
-                <div
-                  class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                >
-                  <X size={button.iconSize || 18} />
-                </div>
-                <div
-                  class="absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-200"
-                >
-                  <div class="spinner-inner"></div>
-                </div>
-              {/if}
-            </div>
-          {:else}
-            {@const Icon = button.icon}
-            <Icon size={button.iconSize || 18} />
-            {#if button.badgeCount > 0}
-              <span
-                class="notification-badge absolute {isMobile
-                  ? '-top-2 -right-2'
-                  : '-top-2 -right-2'} min-w-[16px] h-4 px-1 rounded-full bg-kong-error text-white text-[10px] font-medium flex items-center justify-center"
+      <div class="relative z-10">
+        {#if button.isLoading}
+          <div class="spinner">
+            {#if button.id === 'wallet'}
+              <div
+                class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
               >
-                {button.badgeCount}
-              </span>
+                <X size={isMobile ? 14 : 18} />
+              </div>
+              <div
+                class="absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-200"
+              >
+                <div class="spinner-inner"></div>
+              </div>
             {/if}
+          </div>
+        {:else}
+          {@const Icon = button.icon}
+          <Icon size={isMobile ? 14 : 18} />
+          {#if button.badgeCount > 0}
+            <span
+              class="notification-badge absolute -top-2 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-kong-error text-white text-[10px] font-medium flex items-center justify-center"
+            >
+              {button.badgeCount}
+            </span>
           {/if}
-        </div>
-
-        {#if button.label && !isMobile}
-          <span>{button.loading ? undefined : button.label}</span>
         {/if}
-      </button>
+      </div>
+
+      {#if button.label && !isMobile}
+        <span>{button.isLoading ? undefined : button.label}</span>
+      {/if}
+    </button>
   {/each}
 </div>
 
-<WalletSidebar
-  isOpen={showWalletSidebar}
-  activeTab={walletSidebarActiveTab}
-  onClose={() => walletSidebarStore.close()}
-/>
 
 <style scoped lang="postcss">
   .nav-panel-button {

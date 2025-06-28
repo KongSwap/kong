@@ -225,7 +225,6 @@
   loading={isAddingCustomToken}
   width="550px"
   isPadded={true}
-  variant="solid"
 >
   <div class="flex flex-col px-2">
     <p class="text-sm text-kong-text-secondary mb-4">

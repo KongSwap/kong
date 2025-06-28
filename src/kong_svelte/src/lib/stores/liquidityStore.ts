@@ -6,6 +6,8 @@ interface LiquidityState {
     amount0: string;
     amount1: string;
     initialPrice: string;
+    needsAllowance0: boolean;
+    needsAllowance1: boolean;
 }
 
 function createLiquidityStore() {
@@ -15,6 +17,8 @@ function createLiquidityStore() {
         amount0: "",
         amount1: "",
         initialPrice: "",
+        needsAllowance0: false,
+        needsAllowance1: false,
     });
 
     return {
@@ -37,6 +41,12 @@ function createLiquidityStore() {
                 initialPrice: price
             }));
         },
+        setNeedsAllowance: (index: 0 | 1, needsAllowance: boolean) => {
+            update(s => ({
+                ...s,
+                [index === 0 ? 'needsAllowance0' : 'needsAllowance1']: needsAllowance
+            }));
+        },
         resetAmounts: () => {
             update(s => ({
                 ...s,
@@ -52,6 +62,8 @@ function createLiquidityStore() {
                 amount0: "",
                 amount1: "",
                 initialPrice: "",
+                needsAllowance0: false,
+                needsAllowance1: false,
             });
         },
     };

@@ -11,6 +11,9 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { loadBalance } from "$lib/stores/balancesStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
+  import { IcrcService } from "$lib/services/icrc/IcrcService";
+  import { canisters } from "$lib/config/auth.config";
+  import { auth } from "$lib/stores/auth";
 
   const dispatch = createEventDispatcher();
 
@@ -25,6 +28,8 @@
   $: token1 = $liquidityStore.token1;
   $: amount0 = $liquidityStore.amount0;
   $: amount1 = $liquidityStore.amount1;
+  $: needsAllowance0 = $liquidityStore.needsAllowance0;
+  $: needsAllowance1 = $liquidityStore.needsAllowance1;
 
   let isLoading = false;
   let error: string | null = null;
@@ -54,26 +59,44 @@
     error = null;
 
     try {
+      const amount0Parsed = parseTokenAmount(
+        $liquidityStore.amount0,
+        token0.decimals,
+      );
+      const amount1Parsed = parseTokenAmount(
+        $liquidityStore.amount1,
+        token1.decimals,
+      );
+
+      // For ICRC-2 tokens, request allowances right before the transaction
+      // This follows the same pattern as SwapService.ts
+      if (token0.standards?.includes("ICRC-2") && needsAllowance0) {
+        await IcrcService.requestIcrc2Allowance(
+          token0,
+          amount0Parsed,
+          canisters.kongBackend.canisterId
+        );
+      }
+
+      if (token1.standards?.includes("ICRC-2") && needsAllowance1) {
+        await IcrcService.requestIcrc2Allowance(
+          token1,
+          amount1Parsed,
+          canisters.kongBackend.canisterId
+        );
+      }
+
+      const params = {
+        token_0: token0,
+        amount_0: amount0Parsed,
+        token_1: token1,
+        amount_1: amount1Parsed,
+      };
+
       if (isCreatingPool) {
         // Create pool logic
-        const amount0 = parseTokenAmount(
-          $liquidityStore.amount0,
-          token0.decimals,
-        );
-        const amount1 = parseTokenAmount(
-          $liquidityStore.amount1,
-          token1.decimals,
-        );
-
-        const params = {
-          token_0: token0,
-          amount_0: amount0,
-          token_1: token1,
-          amount_1: amount1,
-        };
-
         toastStore.info(
-          `Adding liquidity to ${token0.symbol}/${token1.symbol} pool...`,
+          `Creating ${token0.symbol}/${token1.symbol} pool...`,
         );
         const result = await createPool(params);
 
@@ -94,22 +117,6 @@
         }
       } else {
         // Add liquidity logic
-        const amount0 = parseTokenAmount(
-          $liquidityStore.amount0,
-          token0.decimals,
-        );
-        const amount1 = parseTokenAmount(
-          $liquidityStore.amount1,
-          token1.decimals,
-        );
-
-        const params = {
-          token_0: token0,
-          amount_0: amount0,
-          token_1: token1,
-          amount_1: amount1,
-        };
-
         const addLiquidityResult = await addLiquidity(params);
 
         if (addLiquidityResult) {
@@ -154,7 +161,6 @@
   title={isCreatingPool ? "Create Pool" : "Add Liquidity"}
   onClose={handleCancel}
   isOpen={show}
-  variant="solid"
   width="460px"
   height="auto"
   {modalKey}

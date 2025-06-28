@@ -47,7 +47,6 @@
     try {
       loadingResolutionDetails = true;
       const details = await getResolutionProposal(BigInt(market.id));
-      console.log("details", details);
       existingResolutionDetails = details;
       
       // Resolution has already been submitted, don't allow changes
@@ -65,10 +64,6 @@
     try {
       resolving = true;
       resolutionError = null;
-      
-      console.log("Debug - Market creator:", market.creator?.toText());
-      console.log("Debug - Current user:", $auth.account?.owner);
-      console.log("Debug - Are they equal?", market.creator?.toText() === $auth.account?.owner);
       
       await proposeResolution(
         BigInt(market.id),
