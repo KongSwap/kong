@@ -77,7 +77,8 @@
           showUsdValues,
           onRefresh: () => {
             refreshBalances(true);
-          }
+          },
+          onNavigate: navigateAndClose
         });
       }
     },
