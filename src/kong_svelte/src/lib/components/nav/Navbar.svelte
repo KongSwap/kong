@@ -216,7 +216,7 @@
   const allTabs = Object.keys(NAV_CONFIG) as NavTabId[];
 
   // Functions
-  function toggleWalletSidebar(tab: WalletTab = "notifications") {
+  function toggleWalletMenu(tab: WalletTab = "notifications") {
     walletSidebarActiveTab = tab;
     showWalletSidebar = !showWalletSidebar;
   }
@@ -228,7 +228,7 @@
     }
     const tab =
       $notificationsStore.unreadCount > 0 ? "notifications" : "wallet";
-    toggleWalletSidebar(tab);
+    toggleWalletMenu(tab);
   }
 
   function handleOpenSearch() {
@@ -349,7 +349,7 @@
     {
       label: "Notifications",
       icon: Bell,
-      onClick: mobileMenuAction(() => toggleWalletSidebar("notifications")),
+      onClick: mobileMenuAction(() => toggleWalletMenu("notifications")),
       badgeCount: $notificationsStore.unreadCount,
       show: true,
     },
@@ -518,7 +518,10 @@
     {/if}
 
     <div class="flex items-center gap-2">
-      <NavPanel {isMobile} />
+      <NavPanel {isMobile} onWalletClick={() => {
+        const tab = $notificationsStore.unreadCount > 0 ? "notifications" : "wallet";
+        toggleWalletMenu(tab);
+      }} />
     </div>
   </div>
 </div>

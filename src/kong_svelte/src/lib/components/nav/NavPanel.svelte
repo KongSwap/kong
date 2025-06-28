@@ -22,7 +22,10 @@
   } from "lucide-svelte";
 
   // Props
-  let { isMobile = false } = $props();
+  let { 
+    isMobile = false,
+    onWalletClick = () => {}
+  } = $props();
 
   // Helper function to get the directional rounding class part
   function getRoundingSuffix(roundness: string | null): string {
@@ -93,6 +96,9 @@
   function handleConnect() {
     if (!$auth.isConnected) {
       walletProviderStore.open();
+    } else {
+      // Call the parent's wallet click handler when connected
+      onWalletClick();
     }
   }
 
