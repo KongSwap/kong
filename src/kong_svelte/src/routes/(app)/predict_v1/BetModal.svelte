@@ -145,8 +145,7 @@
 
 <Modal
   isOpen={showBetModal}
-  variant="transparent"
-  on:close={handleClose}
+  onClose={handleClose}
   modalKey={state.modalId + (showBetModal ? "-open" : "-closed")}
   title={selectedMarket?.question || "Place Your Bet"}
   width="min(95vw, 500px)"

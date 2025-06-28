@@ -175,7 +175,6 @@
   onClose={props.onClose}
   width="600px"
   isPadded={true}
-  variant="solid"
 >
   <div class="flex flex-col">
     <!-- Search and tabs -->

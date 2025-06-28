@@ -11,7 +11,6 @@
 
 <Modal
   {isOpen}
-  variant="transparent"
   {onClose}
   title="Transaction Details"
   width="400px"

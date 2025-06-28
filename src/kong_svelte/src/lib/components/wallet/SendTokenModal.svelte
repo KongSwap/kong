@@ -341,7 +341,6 @@
   onClose={handleClose}
   title="Send {token?.name || 'Token'}"
   width="480px"
-  variant="transparent"
   height="auto"
   className={`send-token-modal ${closing ? "modal-closing" : ""}`}
   isPadded={true}

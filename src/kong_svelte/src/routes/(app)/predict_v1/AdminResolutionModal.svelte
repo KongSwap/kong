@@ -40,7 +40,7 @@
   }
 </script>
 
-<Modal {isOpen} on:close={close} variant="transparent" title="Resolve Market">
+<Modal {isOpen} onClose={close} title="Resolve Market">
   <div class="p-4">
     <p class="text-lg text-kong-text-secondary mb-4">{market?.question}</p>
     

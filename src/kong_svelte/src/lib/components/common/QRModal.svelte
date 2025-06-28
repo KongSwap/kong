@@ -26,7 +26,6 @@
   title={$qrModalStore.title}
   width="min(90vw, 500px)"
   height="auto"
-  variant="transparent"
 >
   <div class="flex flex-col items-center md:py-4 px-2 gap-4 text-center">
     <div class="relative w-full mx-auto px-4">

@@ -53,7 +53,6 @@
             {wallet}
             isRecent={true}
             recentTimestamp={recentWallet.timestamp}
-            {isConnecting}
             isClicked={clickedWalletInfo?.id === wallet.id && clickedWalletInfo?.source === 'recent'}
             isDisabled={isConnecting && !(clickedWalletInfo?.id === wallet.id && clickedWalletInfo?.source === 'recent')}
             showRemove={true}
