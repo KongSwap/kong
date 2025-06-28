@@ -32,6 +32,15 @@
     open = false;
     onClose("button");
   }
+
+  $effect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = '';
+      };
+    }
+  });
 </script>
 
 {#if open}
