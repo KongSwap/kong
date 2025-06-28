@@ -30,9 +30,9 @@ const routeMetadata: Record<string, RouteMetadata> = {
     keywords: ['Internet Computer DEX', 'internet computer protocol', 'kong crypto', 'internet computer', 'ICP DeFi', 'ICP swap', 'ckBTC swap', 'ckETH swap', 'ICP trading', 'Internet Computer DeFi', 'DFINITY DEX', 'ICP prediction markets', 'ICP token exchange', 'icpswap', 'icp trading', 'internet computer trading', 'internet computer swap', 'dfinity swap', 'dfinity trading']
   },
   '/predict': {
-    title: 'Crypto Prediction Markets | Bet on Bitcoin, ICP & DeFi Outcomes - KongSwap',
-    description: 'Trade prediction markets on crypto events. Bet on Bitcoin price, ICP adoption, DeFi trends. Earn rewards by predicting market outcomes on Internet Computer.',
-    image: 'https://kongswap.io/images/predictionmarket-og.png',
+    title: 'Crypto Prediction Markets | Bet on Bitcoin, ICP & Real World Events - KongSwap',
+    description: 'Trade prediction markets on crypto events. Bet on Bitcoin price, ICP adoption, Real World Events. Earn rewards by predicting market outcomes on Internet Computer.',
+    image: 'https://kongswap.io/images/predictionmarket-og.jpg',
     keywords: ['ICP prediction markets', 'Bitcoin prediction markets', 'Internet Computer betting', 'Bitcoin prediction betting', 'DFINITY prediction markets', 'ckBTC price prediction', 'Internet Computer prediction betting', 'ICP prediction', 'btc prediction markets', 'crypto prediction markets', 'prediction markets Internet Computer', 'decentralized prediction markets']
   },
   '/swap': {

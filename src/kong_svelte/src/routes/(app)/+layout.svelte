@@ -2,7 +2,6 @@
   import { page } from "$app/stores";
   import Navbar from "$lib/components/nav/Navbar.svelte";
   import Toast from "$lib/components/common/Toast.svelte";
-  import AddToHomeScreen from "$lib/components/common/AddToHomeScreen.svelte";
   import QRModal from "$lib/components/common/QRModal.svelte";
   import GlobalSearch from "$lib/components/search/GlobalSearch.svelte";
   import { searchStore } from "$lib/stores/searchStore";
@@ -173,7 +172,6 @@
       </main>
     </PageWrapper>
   <Toast />
-  <AddToHomeScreen />
   <QRModal />
   <GlobalSearch
     isOpen={$searchStore.isOpen}

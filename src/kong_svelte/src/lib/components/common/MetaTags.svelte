@@ -50,6 +50,7 @@
   <meta property="og:locale" content="en_US" />
   <meta property="og:site_name" content="KongSwap" />
   <meta property="og:title" content={title} />
+  <meta property="og:logo" content={logo} />
   <meta property="og:description" content={optimizedDescription} />
   <meta property="og:image" content={image} />
   <meta property="og:image:alt" content={title} />

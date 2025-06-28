@@ -263,10 +263,6 @@
     @apply mb-3;
   }
 
-  .loading {
-    @apply hover:bg-kong-bg-secondary/50;
-  }
-
   .earnings-label {
     @apply text-xs text-kong-text-primary/60 font-medium;
   }

@@ -400,29 +400,6 @@
   $: shouldShowActivationUI = isMarketNeedsActivation && isMarketCreator && !marketCreatorIsAdmin && !isMarketPendingActivation && !isMarketActive;
 </script>
 
-<svelte:head>
-  <title>{market?.question} - KongSwap</title>
-  <meta name="description" content={market?.question} />
-  <meta
-    property="og:title"
-    content="{market?.question} - KongSwap Prediction Market"
-  />
-  <meta
-    property="og:description"
-    content="Make your predictions on future events at KongSwap!"
-  />
-  <meta
-    property="og:image"
-    content="https://kongswap.io/images/predictionmarket-og.png"
-  />
-  <meta
-    property="og:url"
-    content="{$page.url.origin}/predict_v1/{$page.params.id}"
-  />
-  <meta property="og:type" content="website" />
-  <meta name="twitter:card" content="summary_large_image" />
-</svelte:head>
-
 <div class="min-h-screen text-kong-text-primary px-2 sm:px-4">
   <div class="max-w-6xl mx-auto">
     <button

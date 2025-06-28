@@ -9,7 +9,7 @@ const config = {
     adapter: adapter({
       pages: "dist",
       assets: "dist",
-      fallback: "index.html",
+      fallback: "404.html",
       precompress: false,
       strict: false,
     }),
@@ -24,6 +24,7 @@ const config = {
       handleHttpError: ({ path, referrer, message }) => {
         // Ignore specific paths that require client-side rendering
         if (
+          path === "/" ||
           path === "/swap" ||
           path === "/pools" ||
           path.startsWith("/pools/") ||
