@@ -18,6 +18,8 @@
   import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
   import { themeStore } from "$lib/stores/themeStore";
   import { settingsStore } from "$lib/stores/settingsStore";
+  import { fade, fly } from "svelte/transition";
+  import { cubicOut } from "svelte/easing";
 
   let { children } = $props<{
     children: any;
@@ -27,17 +29,17 @@
   let defaultTokens = $state<Kong.Token[]>([]);
   let themeReady = $state(false);
   let loadingTimeout: number | null = $state(null);
-  
+
   // Track background transition state
   let backgroundTransitioning = $state(false);
-  let previousPath = $state('');
+  let previousPath = $state("");
   let pageKey = $state(0);
-  
+
   // Determine if current page should have themed background
   const hasThemedBackground = $derived(
-    $page.url.pathname === '/' || 
-    $page.url.pathname.startsWith('/pro') || 
-    $page.url.pathname.includes('/competition')
+    $page.url.pathname === "/" ||
+      $page.url.pathname.startsWith("/pro") ||
+      $page.url.pathname.includes("/competition"),
   );
 
   async function init() {
@@ -129,18 +131,21 @@
       userTokens.enableTokens(defaultTokens);
     }
   });
-  
+
   // Handle page transitions
   $effect(() => {
     const currentPath = $page.url.pathname;
     if (previousPath && previousPath !== currentPath) {
       // Increment key to trigger transition
       pageKey++;
-      
+
       // Check if we're transitioning between themed and non-themed pages
-      const wasThemed = previousPath === '/' || previousPath.startsWith('/pro') || previousPath.includes('/competition');
+      const wasThemed =
+        previousPath === "/" ||
+        previousPath.startsWith("/pro") ||
+        previousPath.includes("/competition");
       const isThemed = hasThemedBackground;
-      
+
       if (wasThemed !== isThemed) {
         backgroundTransitioning = true;
         setTimeout(() => {
@@ -152,65 +157,43 @@
   });
 </script>
 
-
-<div class="flex flex-col min-h-screen w-full origin-center overflow-hidden app-container bg-kong-bg-primary" 
-     class:bg-transition={backgroundTransitioning}
+<div
+  class="flex flex-col min-h-screen w-full origin-center overflow-hidden app-container bg-kong-bg-primary"
+  class:bg-transition={backgroundTransitioning}
 >
   {#if !themeReady}
-  <LoadingIndicator message="Loading..." fullHeight />
-{:else}
-    <PageWrapper page={$page.url.pathname} enableBackground={hasThemedBackground}>
+    <LoadingIndicator message="Loading..." fullHeight />
+  {:else}
+    <PageWrapper
+      page={$page.url.pathname}
+      enableBackground={hasThemedBackground}
+    >
       <div id="navbar-section" class="bg-transparent navbar-section">
         <Navbar />
       </div>
-      <main class="flex relative">
-        <div class="w-full mx-auto relative">
-          <div class="page-content w-full">
-            {@render children?.()}
-          </div>
-        </div>
-      </main>
+      {#key $page.url.pathname}
+        <main
+          class="w-full mx-auto relative"
+          in:fade={{ duration: 250, delay: 100 }}
+        >
+          {@render children?.()}
+        </main>
+      {/key}
     </PageWrapper>
-  <Toast />
-  <QRModal />
-  <GlobalSearch
-    isOpen={$searchStore.isOpen}
-    on:close={() => searchStore.close()}
-  />
-  <KeyboardShortcutsHelp />
-  <GlobalWalletProvider />
-  <GlobalSignatureModal />
-{/if}
+    <Toast />
+    <QRModal />
+    <GlobalSearch
+      isOpen={$searchStore.isOpen}
+      on:close={() => searchStore.close()}
+    />
+    <KeyboardShortcutsHelp />
+    <GlobalWalletProvider />
+    <GlobalSignatureModal />
+  {/if}
 </div>
 
 <style scoped lang="postcss">
-  /* Ensure content is visible */
-  main {
-    min-height: 0; /* Fix flexbox issue */
-  }
-  
-  /* Page content transitions */
-  .page-content {
-    opacity: 1;
-    transform: translateY(0);
-    transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-                transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  
-  /* Smooth color transitions for theme changes */
-  :global(html) {
-    background-color: rgb(var(--bg-primary));
-  }
-  
-  :global(body) {
-    transition: background-color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    background-color: rgb(var(--bg-primary));
-    min-height: 100vh;
-  }
-  
-
   .app-container.bg-transition {
     transition-duration: 0.8s;
   }
-
 </style>
