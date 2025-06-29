@@ -20,6 +20,7 @@
 	title="Token Sync Results"
 	onClose={onClose}
 	width="400px"
+	isPadded={true}
 >
 	<div class="p-4">
 		{#if syncStatus}

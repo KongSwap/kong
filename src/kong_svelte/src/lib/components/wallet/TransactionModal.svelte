@@ -15,6 +15,7 @@
   title="Transaction Details"
   width="400px"
   height="auto"
+  isPadded={true}
 >
   {#if transaction}
     <div class="p-4 space-y-4">
