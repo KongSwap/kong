@@ -237,7 +237,7 @@
         transition:fade={{ duration: 150, delay: 100, easing: cubicOut }}
       >
         <Card
-          className="flex flex-col overflow-hidden {className} {isPadded ? 'px-4' : ''} bg-kong-bg-primary"
+          className="flex flex-col overflow-hidden {className} {isPadded ? 'p-4' : ''} bg-kong-bg-primary"
           hasHeader={false}
         >
           <div
