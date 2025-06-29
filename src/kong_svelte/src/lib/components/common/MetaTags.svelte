@@ -46,43 +46,6 @@
     <meta name="keywords" content={tags.join(', ')} />
   {/if}
   
-  <!-- Open Graph Tags -->
-  <meta property="og:locale" content="en_US" />
-  <meta property="og:site_name" content="KongSwap" />
-  <meta property="og:title" content={title} />
-  <meta property="og:logo" content={logo} />
-  <meta property="og:description" content={optimizedDescription} />
-  <meta property="og:image" content={image} />
-  <meta property="og:image:alt" content={title} />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:type" content={type} />
-  <meta property="og:url" content={url} />
-  {#if type === 'article' && publishedTime}
-    <meta property="article:published_time" content={publishedTime} />
-  {/if}
-  {#if type === 'article' && modifiedTime}
-    <meta property="article:modified_time" content={modifiedTime} />
-  {/if}
-  {#if type === 'article' && section}
-    <meta property="article:section" content={section} />
-  {/if}
-  {#if type === 'article' && tags.length > 0}
-    {#each tags as tag}
-      <meta property="article:tag" content={tag} />
-    {/each}
-  {/if}
-
-  <!-- Twitter Card Tags -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:site" content="@kongswapx" />
-  <meta name="twitter:creator" content="@kongswapx" />
-  <meta name="twitter:title" content={title} />
-  <meta name="twitter:description" content={optimizedDescription} />
-  <meta name="twitter:image" content={image} />
-  <meta name="twitter:image:alt" content={title} />
-  <meta name="twitter:domain" content={siteDomain} />
-
   <!-- Additional SEO Meta Tags -->
   <meta name="application-name" content="KongSwap" />
   <meta name="apple-mobile-web-app-title" content="KongSwap" />

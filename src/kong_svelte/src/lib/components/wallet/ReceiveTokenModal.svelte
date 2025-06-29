@@ -130,6 +130,7 @@
   title="Receive {token?.name}"
   width="480px"
   height="auto"
+  isPadded={true}
   className="receive-token-modal"
 >
   <div class="p-4 flex flex-col gap-4">

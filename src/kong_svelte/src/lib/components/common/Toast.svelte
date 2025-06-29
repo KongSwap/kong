@@ -30,8 +30,8 @@
   const ICON_COLORS = {
     success: "text-kong-success",
     error: "text-kong-error",
-    warning: "text-kong-accent-yellow",
-    info: "text-kong-accent-blue",
+    warning: "text-kong-warning",
+    info: "text-kong-info",
   } as const;
 
   const DEFAULT_DURATION = 5000;
@@ -170,8 +170,8 @@
   }
 
   .toast-container {
+    @apply shadow;
     @apply w-full pointer-events-auto backdrop-blur-md bg-kong-bg-primary/95;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0, 0, 0, 0.1);
     @apply rounded-md border border-kong-border/20;
     animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
@@ -190,13 +190,13 @@
 
   /* Warning Toast */
   .toast-warning {
-    @apply border-l-2 border-l-kong-accent-yellow; 
+    @apply border-l-2 border-l-kong-warning; 
     background-image: linear-gradient(to right, rgba(235, 203, 139, 0.08), transparent 30%);
   }
 
   /* Info Toast */
   .toast-info {
-    @apply border-l-2 border-l-kong-accent-blue;
+    @apply border-l-2 border-l-kong-info;
     background-image: linear-gradient(to right, rgba(129, 161, 193, 0.08), transparent 30%);
   }
 
@@ -240,7 +240,7 @@
 
     .toast-container {
       @apply rounded-md p-3 shadow-lg;
-      background: theme('colors.kong.bg-dark/98');
+      background: theme('colors.kong.bg-primary/98');
     }
   }
 

@@ -38,6 +38,7 @@
 	title="Confirm Token Sync"
 	onClose={handleCancel} 
 	width="450px"
+	isPadded={true}
 >
 	<div class="p-4">
 		<div class="mb-6">
