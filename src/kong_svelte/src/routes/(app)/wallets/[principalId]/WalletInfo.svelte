@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import Dialog from "$lib/components/common/Dialog.svelte";
   import { Copy, Search } from "lucide-svelte";
   import { goto } from "$app/navigation";
@@ -40,7 +40,7 @@
   }
 </script>
 
-<Panel variant="transparent">
+<Card isPadded={true}>
   <div class="flex flex-col space-y-2">
     <h2 class="text-sm uppercase font-medium text-kong-text-primary">
       Wallet Address
@@ -67,7 +67,7 @@
       </button>
     </div>
   </div>
-</Panel>
+</Card>
 
 <Dialog
   title="Search Wallet"

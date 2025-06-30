@@ -6,15 +6,12 @@
   import { ArrowRightLeft, ChevronLeft, ChevronRight } from "lucide-svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { walletDataStore, WalletDataService } from "$lib/services/wallet";
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
   import { page } from "$app/state";
 
   // Get layout props
-  let { initialDataLoading, initError } = $props<{
-    initialDataLoading: boolean;
-    initError: string | null;
-  }>();
+  let { principal } = $props<{ principal?: string }>();
 
   // Reactive store for the principal
   const currentPrincipal = writable(page.params.principalId);
@@ -33,6 +30,7 @@
 
   // Keep track of the URL timestamp to detect changes
   let lastTimestamp = $state(page.url.searchParams.get("t") || "");
+  let lastPrincipalId = $state("");
 
   // Create a derived store for wallet data
   const walletData = derived(
@@ -43,6 +41,26 @@
   // Helper function to find token by canister ID
   function findToken(address: string): Kong.Token | undefined {
     return $walletData?.tokens?.find((t) => t.address === address);
+  }
+
+  // Load only tokens when needed
+  async function loadTokensIfNeeded(principalId: string) {
+    if (!principalId || principalId === "anonymous") {
+      return;
+    }
+    
+    // Check if we already have tokens for this principal
+    if ($walletDataStore.currentWallet === principalId && 
+        $walletDataStore.tokens.length > 0) {
+      return;
+    }
+    
+    try {
+      // Only load tokens, not balances
+      await WalletDataService.loadTokensOnly(principalId);
+    } catch (error) {
+      console.error("Failed to load token data:", error);
+    }
   }
 
   async function loadPage(pageNumber: number, forPrincipal: string) {
@@ -125,15 +143,12 @@
     }
   }
 
-  // Helper to ensure wallet data is loaded and then initialize data
-  async function ensureWalletDataAndLoadSwaps(principalId: string) {
+  // Helper to ensure tokens are loaded and then initialize data
+  async function ensureTokensAndLoadSwaps(principalId: string) {
     try {
-      // Check if we need to load wallet data first
-      if (!$walletData?.tokens || $walletData.tokens.length === 0) {
-        await WalletDataService.initializeWallet(principalId);
-      }
+      await loadTokensIfNeeded(principalId);
     } catch (error) {
-      console.error("Failed to load wallet data:", error);
+      console.error("Failed to load token data:", error);
     } finally {
       // Load swap data regardless of token loading success/failure
       initializeData(principalId);
@@ -159,10 +174,8 @@
   });
 
   onMount(() => {
-    // Only load additional data if initial wallet loading is complete
-    if (!initialDataLoading) {
-      ensureWalletDataAndLoadSwaps($currentPrincipal);
-    }
+    // Load data on mount
+    ensureTokensAndLoadSwaps($currentPrincipal);
   });
 
   // Watch for changes in URL parameters AND the timestamp query parameter
@@ -170,28 +183,15 @@
   $effect(() => {
     const newPrincipal = page.params.principalId;
     const urlTimestamp = page.url.searchParams.get("t") || "";
-    const currentUrl = page.url.pathname + page.url.search;
 
-    if (newPrincipal !== $currentPrincipal || urlTimestamp !== lastTimestamp) {
+    if (newPrincipal !== lastPrincipalId || (newPrincipal === lastPrincipalId && urlTimestamp !== lastTimestamp)) {
       // Update our tracking variables
       currentPrincipal.set(newPrincipal);
       lastTimestamp = urlTimestamp;
+      lastPrincipalId = newPrincipal;
 
-      // Only load additional data if initial wallet loading is complete
-      if (!initialDataLoading) {
-        ensureWalletDataAndLoadSwaps(newPrincipal);
-      }
-    }
-  });
-
-  // Watch for initialDataLoading state changes
-  $effect(() => {
-    if (initialDataLoading === false && $currentPrincipal) {
-      // Check if we have tokens loaded
-      const hasTokens = $walletData?.tokens?.length > 0;
-
-      // When layout loading completes, load token and swap data
-      ensureWalletDataAndLoadSwaps($currentPrincipal);
+      // Load data for the new principal
+      ensureTokensAndLoadSwaps(newPrincipal);
     }
   });
 </script>
@@ -200,7 +200,7 @@
   <title>Recent Swaps by {$currentPrincipal} - KongSwap</title>
 </svelte:head>
 
-<Panel variant="transparent">
+<Card isPadded={true}>
   <div class="flex items-center justify-between mb-4">
     <h3 class="text-sm uppercase font-medium text-kong-text-primary">
       Recent Swaps
@@ -211,13 +211,7 @@
   </div>
 
   <div>
-    {#if initialDataLoading}
-      <LoadingIndicator message="Initializing wallet data..." />
-    {:else if initError}
-      <div class="text-center py-8 text-kong-error">
-        {initError}
-      </div>
-    {:else if $isLoading}
+    {#if $isLoading}
       <LoadingIndicator message="Loading swap transactions..." />
     {:else if $swapTransactions.length === 0}
       <div class="text-center py-8 text-kong-text-secondary">
@@ -387,7 +381,7 @@
         <div class="flex">
           <button
             class="px-1 sm:px-2 py-1 rounded-l-md border border-kong-bg-primary hover:bg-kong-bg-primary/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={$currentPage === 1 || $isLoading || initialDataLoading}
+            disabled={$currentPage === 1 || $isLoading}
             onclick={() => goToPage($currentPage - 1)}
             aria-label="Previous page"
           >
@@ -396,9 +390,7 @@
 
           <button
             class="px-1 sm:px-2 py-1 rounded-r-md border-t border-r border-b border-kong-bg-primary hover:bg-kong-bg-primary/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={$currentPage === $totalPages ||
-              $isLoading ||
-              initialDataLoading}
+            disabled={$currentPage === $totalPages || $isLoading}
             onclick={() => goToPage($currentPage + 1)}
             aria-label="Next page"
           >
@@ -408,4 +400,4 @@
       </div>
     </div>
   </div>
-</Panel>
+</Card>

@@ -1,11 +1,10 @@
 <script lang="ts">
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import {
     BarChart2,
     Coins,
     Droplets,
     ArrowRightLeft,
-    Shield,
     MessageSquare,
     TrendingUp,
   } from "lucide-svelte";
@@ -41,7 +40,7 @@
   }
 </script>
 
-<Panel variant="transparent">
+<Card isPadded={true}>
   <div class="flex flex-col space-y-2">
     {#each tabs as tab}
       <button
@@ -58,4 +57,4 @@
       </button>
     {/each}
   </div>
-</Panel>
+</Card>

@@ -3,73 +3,29 @@
   import SideNav from "./SideNav.svelte";
   import ValueOverview from "./ValueOverview.svelte";
   import { WalletDataService, walletDataStore } from "$lib/services/wallet";
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import { Copy, CheckCircle } from "lucide-svelte";
 
   let { children } = $props<{ children: any }>();
 
-  // Track initialization state
-  let isLoading = $derived($walletDataStore.isLoading);
-  let error = $state<string | null>(null);
+  // Track display state
   let showCopiedIndicator = $state(false);
   
   // Get principal from the URL params
   let principal = $derived(page.params.principalId);
 
-  // Keep track of the last loaded principal to prevent repeated loading
-  let lastLoadedPrincipal = $state<string | null>(null);
+  // Get loading state from store (pages will update this)
+  let isLoading = $derived($walletDataStore.isLoading);
+  let error = $derived($walletDataStore.error);
 
-  // Single function to load wallet data
-  async function loadWalletData() {
-    try {
-      // Update local error state
-      error = null;
-      
-      // Skip if no principal or anonymous
-      if (!principal || principal === "anonymous") {
-        throw new Error("No wallet connected");
-      }
-            
-      // This will handle loading state internally in the store
-      await WalletDataService.initializeWallet(principal);
-    } catch (err) {
-      console.error("Failed to load wallet data:", err);
-      error = err instanceof Error ? err.message : "Failed to load wallet data";
-    }
-  }
-
-  // Monitor wallet data changes
+  // Monitor principal changes to reset wallet data
   $effect(() => {
-    const walletData = $walletDataStore;
-    // Update local error state only when it changes
-    if (walletData.error) {
-      error = walletData.error;
-    }
-  });
-
-  // Load data when principalId changes
-  $effect(() => {
-    // Make a stable non-reactive check by getting values once at the start of the effect
     const currentPrincipal = principal;
-    const previousPrincipal = lastLoadedPrincipal;
-    const isAlreadyLoading = $walletDataStore.isLoading;
     const currentWallet = $walletDataStore.currentWallet;
-    const hasBalances = Object.keys($walletDataStore.balances || {}).length > 0;
     
-    if (currentPrincipal && currentPrincipal !== previousPrincipal) {
-      // Always load data if the principal changed or we don't have balances
-      // But avoid reloading if we're already loading for this principal
-      if ((currentWallet !== currentPrincipal || !hasBalances) && 
-          !(isAlreadyLoading && currentWallet === currentPrincipal)) {
-        lastLoadedPrincipal = currentPrincipal;
-        loadWalletData();
-      } else {
-        lastLoadedPrincipal = currentPrincipal;
-      }
-    } else if (!currentPrincipal && previousPrincipal) {
-      // Reset wallet data if no principal
+    // If principal changed and we have data for a different wallet, reset the store
+    if (currentPrincipal && currentWallet && currentPrincipal !== currentWallet) {
       WalletDataService.reset();
-      lastLoadedPrincipal = null;
     }
   });
 
@@ -103,10 +59,10 @@
   <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
     <!-- Navigation Column -->
     <div class="space-y-6">
-      <ValueOverview {principal} {isLoading} {error} />
+      <ValueOverview {principal} />
       
-      <!-- Principal ID Panel with Copy Button -->
-      <Panel>
+      <!-- Principal ID Card with Copy Button -->
+      <Card isPadded={true}>
         <div class="flex flex-col gap-3">
           <h3 class="text-sm uppercase font-medium text-kong-text-primary">Wallet ID</h3>
           
@@ -135,14 +91,14 @@
             </div>
           {/if}
         </div>
-      </Panel>
+      </Card>
       
       <SideNav {principal} />
     </div>
     <!-- Content Area -->
     <div class="lg:col-span-3 space-y-6">
-      <!-- Pass isLoading and error to child components via slot props -->
-      {@render children?.({initialDataLoading: isLoading, initError: error})}
+      <!-- Pass principal to child components via slot props -->
+      {@render children?.({principal})}
     </div>
   </div>
 </div>

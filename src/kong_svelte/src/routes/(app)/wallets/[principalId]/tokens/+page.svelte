@@ -1,7 +1,7 @@
 <script lang="ts">
   import WalletTokenList from "./WalletTokenList.svelte";
   import { WalletDataService, walletDataStore } from "$lib/services/wallet";
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
   import LoadingEllipsis from "$lib/components/common/LoadingEllipsis.svelte";
   import { page } from "$app/state";
@@ -16,13 +16,10 @@
   import { getPortfolioHistory } from "$lib/utils/portfolio/portfolioHistory";
   import { calculatePerformanceMetrics } from "$lib/utils/portfolio/performanceMetrics";
 
-  let { initialDataLoading, initError } = $props<{
-    initialDataLoading: boolean;
-    initError: string | null;
-  }>();
-  let isLoading = $state(initialDataLoading);
+  let { principal } = $props<{ principal?: string }>();
+  let isLoading = $state(false);
   let isLoadingHistory = $state(false);
-  let loadingError = $state<string | null>(initError);
+  let loadingError = $state<string | null>(null);
   let portfolioHistory = $state<PortfolioHistory[]>([]);
   let performanceMetrics = $state({
     dailyChange: 0,
@@ -30,6 +27,31 @@
   });
 
   let walletData = $derived($walletDataStore);
+  let currentPrincipalId = $state<string>("");
+
+  // Load wallet data when component mounts or principal changes
+  async function loadWalletData(principalId: string) {
+    if (!principalId || principalId === "anonymous") {
+      return;
+    }
+    
+    // Check if we already have data for this principal
+    if ($walletDataStore.currentWallet === principalId && 
+        $walletDataStore.tokens.length > 0 &&
+        Object.keys($walletDataStore.balances).length > 0) {
+      return;
+    }
+    
+    try {
+      isLoading = true;
+      await WalletDataService.initializeWallet(principalId);
+    } catch (error) {
+      console.error("Failed to load wallet data:", error);
+      loadingError = error instanceof Error ? error.message : "Failed to load wallet data";
+    } finally {
+      isLoading = false;
+    }
+  }
 
   // Reactive calculations for overview metrics
   let tokensWithBalance = $derived(
@@ -128,22 +150,28 @@
   // Debounced history loading
   let historyLoadTimeout: number | null = null;
 
-  // Combined effect for data loading and state management
+  // Load data when principal changes
+  $effect(() => {
+    const newPrincipal = page.params.principalId;
+    if (newPrincipal && newPrincipal !== currentPrincipalId) {
+      currentPrincipalId = newPrincipal;
+      resetPerformanceData();
+      loadWalletData(newPrincipal);
+    } else if (newPrincipal && !$walletDataStore.currentWallet) {
+      // Initial load
+      loadWalletData(newPrincipal);
+    }
+  });
+
+  // Load history when balances are available
   $effect(() => {
     const principal = page.params.principalId;
-    const walletState = $walletDataStore; // Use store directly for reactivity
+    const walletState = $walletDataStore;
     const hasBalances = Object.keys(walletState.balances).length > 0;
     const hasTokens = walletState.tokens.length > 0;
-    const isStoreLoading = walletState.isLoading;
 
-    // Update local error state from layout or store
-    loadingError = initError || walletState.error;
-
-    // Update local loading state based on layout and store
-    const shouldBeLoading = initialDataLoading || isStoreLoading;
-    if (isLoading !== shouldBeLoading) {
-      isLoading = shouldBeLoading;
-    }
+    // Update local error state from store
+    loadingError = walletState.error;
 
     // Clear any pending history load timeout
     if (historyLoadTimeout !== null) {
@@ -151,12 +179,10 @@
       historyLoadTimeout = null;
     }
 
-    // Load history only when the store is stable for the correct principal
-    // and we have both tokens and balances.
+    // Load history only when we have both tokens and balances for the correct principal
     if (
       principal &&
       walletState.currentWallet === principal &&
-      !isStoreLoading &&
       hasTokens &&
       hasBalances &&
       !isLoadingHistory &&
@@ -167,33 +193,7 @@
         () => loadHistory(principal),
         100,
       ) as unknown as number;
-    } else if (
-      principal &&
-      walletState.currentWallet === principal &&
-      !isStoreLoading &&
-      hasTokens &&
-      !hasBalances
-    ) {
-      // If we have tokens but no balances, and the store isn't loading, something might be wrong
-      // or the parent layout hasn't finished balance loading. Just wait.
-    } else if (
-      principal &&
-      walletState.currentWallet !== principal &&
-      !isStoreLoading
-    ) {
-      // If the store has finished loading but for the wrong wallet, wait for layout to correct.
     }
-
-    // Reset history if principal changes
-    $effect(() => {
-      const currentPrincipal = page.params.principalId;
-      if (
-        portfolioHistory.length > 0 &&
-        walletState.currentWallet !== currentPrincipal
-      ) {
-        resetPerformanceData();
-      }
-    });
   });
 </script>
 
@@ -202,8 +202,8 @@
 </svelte:head>
 
 <div class="space-y-6">
-  <!-- Tokens Overview Panel -->
-  <Panel>
+  <!-- Tokens Overview Card -->
+  <Card isPadded={true}>
     <div class="flex items-center justify-between">
       <h3 class="text-sm uppercase font-medium text-kong-text-primary">
         Tokens Overview
@@ -279,10 +279,10 @@
         </div>
       </div>
     </div>
-  </Panel>
+  </Card>
 
-  <!-- Token List Panel -->
-  <Panel variant="transparent">
+  <!-- Token List Card -->
+  <Card isPadded={true}>
     <div class="flex flex-col gap-4">
       <!-- Header with Filter Toggle -->
       <div class="flex items-center justify-between mb-4">
@@ -297,7 +297,7 @@
       <!-- Content -->
       {#if isDataLoading}
         <LoadingIndicator
-          message={initialDataLoading
+          message={isLoading
             ? "Initializing wallet data..."
             : "Loading balances..."}
         />
@@ -321,5 +321,5 @@
         />
       {/if}
     </div>
-  </Panel>
+  </Card>
 </div>

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getMarketsByCreator } from "$lib/api/predictionMarket";
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import { formatDistanceToNow } from "$lib/utils/dateUtils";
   import {
     TrendingUp,
@@ -16,6 +16,8 @@
   import { toShortNumber } from "$lib/utils/numberFormatUtils";
   import MarketCard from "../../../predict/MarketCard.svelte";
   import { useBetModal } from "$lib/composables/useBetModal.svelte";
+  import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens";
 
   let { data } = $props();
   let { principalId } = data;
@@ -24,9 +26,10 @@
   let loading = $state(true);
   let error = $state<string | null>(null);
   let totalMarkets = $state(0);
+  let kongToken = $state<any>(null);
 
-  // Bet modal handling
-  const { betModalState, openBetModal, closeBetModal } = useBetModal();
+  // Bet modal handling - initialized after KONG token is loaded
+  let betModal = $state<any>(null);
 
   // Check if this is the current user's wallet
   const isOwnWallet = $derived($auth.account?.owner === principalId);
@@ -92,13 +95,26 @@
     return $userTokens.tokens.find((t) => t.address === tokenId);
   }
 
-  // Load markets on mount
+  // Load KONG token and initialize bet modal
+  async function loadKongToken() {
+    try {
+      const tokens = await fetchTokensByCanisterId([KONG_LEDGER_CANISTER_ID]);
+      kongToken = tokens[0];
+      // Initialize bet modal after KONG token is loaded
+      betModal = useBetModal(kongToken);
+    } catch (err) {
+      console.error("Failed to load KONG token:", err);
+    }
+  }
+
+  // Load markets and KONG token on mount
   $effect(() => {
+    loadKongToken();
     loadUserMarkets();
   });
 </script>
 
-<Panel className="mt-4">
+<Card isPadded={true}>
   <div class="mb-6">
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-2">
@@ -160,7 +176,7 @@
         <MarketCard
           {market}
           showEndTime={true}
-          {openBetModal}
+          openBetModal={betModal?.open || (() => {})}
           onMarketResolved={handleMarketResolved}
           hasClaim={false}
           isUserAdmin={false}
@@ -177,7 +193,7 @@
       </div>
     {/if}
   {/if}
-</Panel>
+</Card>
 
 <style>
   /* Custom styles if needed */

@@ -24,14 +24,11 @@
   import { calculatePortfolioValue, formatCurrency } from "$lib/utils/portfolioUtils";
 
   // Get props passed from layout
-  let { initialDataLoading, initError } = $props<{
-    initialDataLoading?: boolean;
-    initError?: string | null;
-  }>();
+  let { principal } = $props<{ principal?: string }>();
 
   // Use derived values from the store for loading state
-  let isLoading = $derived(initialDataLoading ?? $walletDataStore.isLoading);
-  let loadingError = $derived(initError ?? $walletDataStore.error);
+  let isLoading = $derived($walletDataStore.isLoading);
+  let loadingError = $derived($walletDataStore.error);
   let totalValue = $state<number>(0);
 
   // Track the current principal ID to detect changes
@@ -39,6 +36,26 @@
 
   // Whale threshold - percentage of total supply that makes a holder a "whale"
   const WHALE_THRESHOLD = 1; // 1% of total supply
+
+  // Load wallet data when component mounts or principal changes
+  async function loadWalletData(principalId: string) {
+    if (!principalId || principalId === "anonymous") {
+      return;
+    }
+    
+    // Check if we already have data for this principal
+    if ($walletDataStore.currentWallet === principalId && 
+        $walletDataStore.tokens.length > 0 &&
+        Object.keys($walletDataStore.balances).length > 0) {
+      return;
+    }
+    
+    try {
+      await WalletDataService.initializeWallet(principalId);
+    } catch (error) {
+      console.error("Failed to load wallet data:", error);
+    }
+  }
 
   // Calculate tokens with non-zero balances
   let tokensWithBalance = $derived(
@@ -58,20 +75,15 @@
     }
   });
 
-  // Reset data when principal ID changes
+  // Load data when principal changes
   $effect(() => {
-    if (page.params.principalId !== currentPrincipalId) {
-      // Force a complete reset of the wallet data
-      WalletDataService.reset();
-
-      // Reset the total value and UI state
-      totalValue = 0;
-
-      // Update the current principal ID
-      currentPrincipalId = page.params.principalId;
-
-      // Re-initialize wallet data for the new principal
-      WalletDataService.initializeWallet(page.params.principalId);
+    const newPrincipal = page.params.principalId;
+    if (newPrincipal && newPrincipal !== currentPrincipalId) {
+      currentPrincipalId = newPrincipal;
+      loadWalletData(newPrincipal);
+    } else if (newPrincipal && !$walletDataStore.currentWallet) {
+      // Initial load
+      loadWalletData(newPrincipal);
     }
   });
 
@@ -116,6 +128,34 @@
 
   // Tooltip text for whale indicator
   const whaleTooltipText = `This wallet holds at least ${WHALE_THRESHOLD}% of the token's total supply, making it a significant holder ("whale").`;
+
+  // Get theme colors from CSS variables
+  function getThemeColors(): string[] {
+    if (typeof window === 'undefined') {
+      // Fallback colors for SSR
+      return ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#6B7280'];
+    }
+    
+    const computedStyle = getComputedStyle(document.documentElement);
+    
+    // Get RGB values from CSS variables and convert to hex
+    const rgbToHex = (rgb: string): string => {
+      const [r, g, b] = rgb.split(' ').map(n => parseInt(n));
+      return '#' + [r, g, b].map(x => {
+        const hex = x.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      }).join('');
+    };
+    
+    return [
+      rgbToHex(computedStyle.getPropertyValue('--semantic-info').trim()),      // Blue
+      rgbToHex(computedStyle.getPropertyValue('--semantic-success').trim()),   // Green
+      rgbToHex(computedStyle.getPropertyValue('--semantic-warning').trim()),   // Yellow/Orange
+      rgbToHex(computedStyle.getPropertyValue('--semantic-error').trim()),     // Red
+      rgbToHex(computedStyle.getPropertyValue('--brand-primary').trim()),      // Primary brand color
+      rgbToHex(computedStyle.getPropertyValue('--text-secondary').trim()),     // Gray for "Others"
+    ];
+  }
 
   // Clean up when component is destroyed
   onDestroy(() => {
@@ -351,13 +391,7 @@
                 >
                   <div
                     class="w-3 h-3 rounded-full"
-                    style="background-color: {[
-                      '#3B82F6',
-                      '#10B981',
-                      '#F59E0B',
-                      '#EF4444',
-                      '#8B5CF6',
-                    ][i]}"
+                    style="background-color: {getThemeColors()[i]}"
                   ></div>
                   <div class="flex-1 flex items-center gap-2">
                     <TokenImages tokens={[token]} size={20} />
@@ -392,7 +426,7 @@
             <div
               class="flex items-center gap-2 hover:bg-kong-bg-primary/40 p-2 rounded-md transition-colors"
             >
-              <div class="w-3 h-3 rounded-full bg-kong-text-secondary"></div>
+              <div class="w-3 h-3 rounded-full" style="background-color: {getThemeColors()[5]}"></div>
               <div class="flex-1">Others</div>
               <div class="text-right">
                 <div class="font-medium">{othersPercentage.toFixed(1)}%</div>
@@ -424,14 +458,7 @@
                   {@const topFive = sortedBalances.slice(0, 5)}
                   {@const others = sortedBalances.slice(5)}
 
-                  {@const colors = [
-                    "#3B82F6",
-                    "#10B981",
-                    "#F59E0B",
-                    "#EF4444",
-                    "#8B5CF6",
-                    "#6B7280",
-                  ]}
+                  {@const colors = getThemeColors()}
 
                   <!-- Create SVG pie slices -->
                   {#if totalValue > 0}
@@ -510,7 +537,7 @@
                     {/each}
 
                     <!-- Center circle for total value -->
-                    <circle cx="50" cy="50" r="25" fill="#1E1E1E" />
+                    <circle cx="50" cy="50" r="25" fill="rgb(var(--bg-secondary))" />
                   {/if}
                 {/if}
               </svg>

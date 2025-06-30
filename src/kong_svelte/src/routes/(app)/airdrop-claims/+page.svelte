@@ -1,10 +1,9 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { auth } from "$lib/stores/auth";
   import { ClaimsService } from "$lib/services/claims";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import ClaimCard from "./ClaimCard.svelte";
   import PageHeader from "$lib/components/common/PageHeader.svelte";
   import { Loader2, Award } from "lucide-svelte";
@@ -60,12 +59,11 @@
     isProcessingAll = false;
   }
 
-  onMount(() => {
-    fetchClaims();
-  });
-
   $effect(() => {
-    if ($auth.isConnected) fetchClaims();
+    // Fetch claims once auth is initialized
+    if ($auth.isInitialized) {
+      fetchClaims();
+    }
   });
 </script>
 
@@ -77,7 +75,7 @@
   />
 </svelte:head>
 
-<div class="container mx-auto max-w-[1300px]">
+<div class="container mx-auto max-w-[1300px] px-4">
   <PageHeader
     title="Airdrop Claims"
     description="View and process your claimable airdrop tokens"
@@ -152,49 +150,43 @@
   </PageHeader>
 
   {#if !$auth.isConnected}
-    <Panel variant="solid" type="main" className="max-w-lg mx-auto mt-4">
+    <Card>
       <div class="p-6 text-center">
         <p class="mb-4">Please connect your wallet to view your claims</p>
         <ButtonV2 theme="accent-blue" onclick={() => auth.initialize()}>
           Connect Wallet
         </ButtonV2>
       </div>
-    </Panel>
+    </Card>
   {:else if isLoading}
     <div class="flex justify-center items-center py-12">
       <LoadingIndicator message="Loading claims..." />
     </div>
   {:else if error}
-    <Panel variant="solid" type="main" className="max-w-lg mx-auto mt-4">
+    <Card>
       <div class="p-6 text-center">
         <p class="text-red-500 mb-4">{error}</p>
         <ButtonV2 theme="primary" onclick={fetchClaims}>Try Again</ButtonV2>
       </div>
-    </Panel>
+    </Card>
   {:else if claims.length === 0}
-    <Panel variant="solid" type="main" className="max-w-lg mx-auto mt-4">
+    <Card>
       <div class="p-6 text-center">
         <p>You don't have any claimable tokens at the moment</p>
       </div>
-    </Panel>
+    </Card>
   {:else}
     <div
-      class="grid px-4 gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 animate-fade-in mt-4"
+      class="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 animate-fade-in mt-4"
     >
       {#each claims as claim (claim.claim_id)}
-        <Panel
-          variant="solid"
-          type="main"
-          className="h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-1 backdrop-blur-sm"
-        >
-          <ClaimCard
-            {claim}
-            {isProcessing}
-            {isProcessingAll}
-            {processingClaimId}
-            onProcess={processClaim}
-          />
-        </Panel>
+        <ClaimCard
+          {claim}
+          {isProcessing}
+          {isProcessingAll}
+          {processingClaimId}
+          onProcess={processClaim}
+        />
       {/each}
     </div>
   {/if}

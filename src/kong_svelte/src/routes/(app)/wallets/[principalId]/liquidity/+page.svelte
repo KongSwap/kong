@@ -4,7 +4,7 @@
   import { browser } from "$app/environment";
   import { walletPoolListStore } from "$lib/stores/walletPoolListStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import { Droplets, SlidersHorizontal, TrendingUp, DollarSign, ArrowDownUp, Info } from "lucide-svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { tooltip } from "$lib/actions/tooltip";
@@ -12,15 +12,39 @@
   import { afterNavigate, goto } from "$app/navigation";
   import { WalletDataService, walletDataStore } from "$lib/services/wallet";
   
-  let { initialDataLoading, initError } = $props<{ initialDataLoading: boolean, initError: string | null }>();
+  let { principal } = $props<{ principal?: string }>();
   
-  let principal = $state(page.params.principalId);
-  let isLoading = $state(initialDataLoading || false);
-  let loadingError = $state<string | null>(initError);
+  let currentPrincipal = $state(page.params.principalId);
+  let isLoading = $state(false);
+  let loadingError = $state<string | null>(null);
   
   let selectedPoolId: string | null = $state(null);
   let tooltipPosition = $state({ x: 0, y: 0 });
   let showTooltip = $state(false);
+  
+  // Load only tokens when component mounts or principal changes
+  async function loadTokensForPools(principalId: string) {
+    if (!principalId || principalId === "anonymous") {
+      return;
+    }
+    
+    // Check if we already have tokens for this principal
+    if ($walletDataStore.currentWallet === principalId && 
+        $walletDataStore.tokens.length > 0) {
+      return;
+    }
+    
+    try {
+      isLoading = true;
+      // Only load tokens, not balances
+      await WalletDataService.loadTokensOnly(principalId);
+    } catch (error) {
+      console.error("Failed to load token data:", error);
+      loadingError = error instanceof Error ? error.message : "Failed to load token data";
+    } finally {
+      isLoading = false;
+    }
+  }
   
   // Format currency (since formatCurrency is not available)
   function formatCurrency(value: number): string {
@@ -140,62 +164,70 @@
     }
   }
 
-  // Synchronize with wallet data store
+  // Load data when principal changes
   $effect(() => {
-    // Update local loading state based on props and wallet data store
-    isLoading = initialDataLoading || $walletDataStore.isLoading;
+    const newPrincipal = page.params.principalId;
     
-    // Update local error state
-    loadingError = initError || $walletDataStore.error;
-    
-    // Get current principal from URL
-    const currentPrincipal = page.params.principalId;
-    
-    // Check if we need to update our local principal
-    if (currentPrincipal && currentPrincipal !== principal) {
-      
+    if (newPrincipal && newPrincipal !== currentPrincipal) {
+      // Reset state when principal changes
+      currentPrincipal = newPrincipal;
       allPools = [];
       isLoading = true;
       walletPoolListStore.reset();
       
-      principal = currentPrincipal;
-    }
-    
-    if (currentPrincipal && 
-        $walletDataStore.currentWallet === currentPrincipal && 
-        $walletDataStore.tokens.length > 0 && 
-        !$walletDataStore.isLoading) {
-      
-      if ($walletPoolListStore.walletId !== currentPrincipal || 
-          $walletPoolListStore.processedPools.length === 0) {
-        loadPoolData(currentPrincipal);
-      }
+      // Load tokens and pools
+      loadTokensAndPools(newPrincipal);
+    } else if (newPrincipal && !currentPrincipal) {
+      // Initial load
+      currentPrincipal = newPrincipal;
+      loadTokensAndPools(newPrincipal);
     }
   });
   
   // Update allPools when walletPoolListStore changes
   $effect(() => {
     // Get current principal from URL to ensure we're using the latest value
-    const currentPrincipal = page.params.principalId;
+    const principalFromUrl = page.params.principalId;
     
     // Update loading state based on walletPoolListStore
-    if ($walletPoolListStore.walletId === currentPrincipal) {
-      isLoading = $walletPoolListStore.loading;
+    if ($walletPoolListStore.walletId === principalFromUrl) {
+      isLoading = $walletPoolListStore.loading || $walletDataStore.isLoading;
     }
     
     // Clear allPools if the walletPoolListStore has data for a different wallet
     if ($walletPoolListStore.walletId && 
-        $walletPoolListStore.walletId !== currentPrincipal) {
+        $walletPoolListStore.walletId !== principalFromUrl) {
       allPools = [];
       return;
     }
     
     // Update allPools from walletPoolListStore only if it matches the current principal
     if ($walletPoolListStore.processedPools.length > 0 && 
-        $walletPoolListStore.walletId === currentPrincipal) {
+        $walletPoolListStore.walletId === principalFromUrl) {
       allPools = [...$walletPoolListStore.processedPools];
     }
+    
+    // Update error state
+    loadingError = $walletPoolListStore.error || $walletDataStore.error;
   });
+  
+  // Combined function to load tokens and pools
+  async function loadTokensAndPools(principalId: string) {
+    if (!principalId || principalId === "anonymous") {
+      return;
+    }
+    
+    try {
+      // First load tokens
+      await loadTokensForPools(principalId);
+      
+      // Then load pools
+      await loadPoolData(principalId);
+    } catch (error) {
+      console.error("Error loading liquidity data:", error);
+      loadingError = error instanceof Error ? error.message : "Failed to load liquidity data";
+    }
+  }
   
   // Load pool data for a principal
   async function loadPoolData(principalId: string) {
@@ -204,9 +236,6 @@
     // Always reset allPools when loading data for a different principal
     if ($walletPoolListStore.walletId !== principalId) {
       allPools = [];
-      
-      // Set loading state to true when fetching new data
-      isLoading = true;
       
       // Reset the store to ensure we don't have stale data
       if ($walletPoolListStore.walletId !== principalId) {
@@ -221,16 +250,7 @@
     }
     
     try {
-      
-      // Set loading state to true when fetching new data
-      isLoading = true;
-      
       await walletPoolListStore.fetchPoolsForWallet(principalId);
-      
-      // Check if pools were loaded successfully
-      if ($walletPoolListStore.processedPools.length === 0) {
-      } else {
-      }
     } catch (error) {
       console.error("Error loading pool data:", error);
       loadingError = error instanceof Error ? error.message : "Failed to load pool data";
@@ -248,11 +268,11 @@
   // Also check data when navigating to this page
   afterNavigate(() => {
     // Get current principal from URL to ensure we're using the latest value
-    const currentPrincipal = page.params.principalId;
+    const principalFromUrl = page.params.principalId;
     
     // Update our local principal if needed
-    if (currentPrincipal !== principal) {
-      principal = currentPrincipal;
+    if (principalFromUrl !== currentPrincipal) {
+      currentPrincipal = principalFromUrl;
       
       // Reset pools data when principal changes during navigation
       allPools = [];
@@ -261,23 +281,13 @@
       walletPoolListStore.reset();
     }
     
-    if (currentPrincipal && 
+    if (principalFromUrl && 
         !$walletPoolListStore.loading && 
-        ($walletPoolListStore.walletId !== currentPrincipal || 
+        ($walletPoolListStore.walletId !== principalFromUrl || 
          $walletPoolListStore.processedPools.length === 0)) {
       
-      // If wallet data is already loaded, load pools
-      if ($walletDataStore.currentWallet === currentPrincipal && 
-          $walletDataStore.tokens.length > 0 && 
-          !$walletDataStore.isLoading) {
-        loadPoolData(currentPrincipal);
-      } else {
-        // If wallet data is not loaded yet, set loading state
-        isLoading = true;
-        
-        // Initialize wallet data which will then trigger pool loading
-        WalletDataService.initializeWallet(currentPrincipal);
-      }
+      // Load tokens and pools
+      loadTokensAndPools(principalFromUrl);
     }
   });
   
@@ -296,12 +306,12 @@
 </script>
 
 <svelte:head>
-  <title>Liquidity Positions for {principal} - KongSwap</title>
+  <title>Liquidity Positions for {currentPrincipal} - KongSwap</title>
 </svelte:head>
 
 <div class="space-y-6">
-  <!-- Summary Panel -->
-  <Panel>
+  <!-- Summary Card -->
+  <Card isPadded={true}>
     <div class="flex items-center justify-between mb-4">
       <h3 class="text-sm uppercase font-medium text-kong-text-primary">Liquidity Overview</h3>
       <div class="p-2 rounded-lg bg-kong-primary/10">
@@ -368,10 +378,10 @@
         </div>
       </div>
     </div>
-  </Panel>
+  </Card>
 
-  <!-- Liquidity Positions Panel -->
-  <Panel variant="transparent">
+  <!-- Liquidity Positions Card -->
+  <Card isPadded={true}>
     <div class="flex items-center justify-between mb-4">
       <h3 class="text-sm uppercase font-medium text-kong-text-primary">Liquidity Positions</h3>
       
@@ -609,7 +619,7 @@
         </div>
       {/if}
     </div>
-  </Panel>
+  </Card>
 </div>
 
 {#if showTooltip && selectedPoolId}

@@ -22,10 +22,9 @@
     totalVolume, 
     totalTraders 
   } from '$lib/stores/leaderboardStore';
-  import type { Period } from '$lib/types';
   
   // State variables using runes
-  let selectedPeriod = $state<Period>('day');
+  let selectedPeriod = $state<string>('day');
   let expandedRowIndex = $state<number | null>(null);
   let tradedTokens = $state<Record<number, any>>({});
   let loadingTokens = $state<Record<number, boolean>>({});
@@ -53,7 +52,7 @@
   });
   
   // Handle period change
-  function handlePeriodChange(period: Period) {
+  function handlePeriodChange(period: string) {
     leaderboardStore.setPeriod(period);
   }
   
