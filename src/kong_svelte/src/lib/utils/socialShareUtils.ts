@@ -4,7 +4,7 @@ import { toastStore } from "$lib/stores/toastStore";
 export function shareToTwitter(marketUrl: string, marketQuestion?: string) {
   if (browser) {
     const tweetText = encodeURIComponent(
-      `"${marketQuestion || "Prediction Market"}" \n\nWhat's your prediction? Bet now on KongSwap!\n\n${marketUrl} \n#KongSwap #PredictionMarket`,
+      `${marketQuestion || "Prediction Market"} \n\nMake your prediction on KongSwap!\n\n${marketUrl} \n$KONG $ICP $BTC $ETH`,
     );
     const twitterUrl = `https://twitter.com/intent/tweet?text=${tweetText}`;
     window.open(twitterUrl, "_blank");

@@ -10,6 +10,8 @@
   import { ArrowUp, ArrowDown, Coins } from "lucide-svelte";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
   import { tooltip } from "$lib/actions/tooltip";
+  import { goto } from "$app/navigation";
+  import { page } from "$app/state";
 
   let {
     tokens = [],
@@ -144,6 +146,10 @@
           <div
             animate:flip={{ duration: 300 }}
             class="sm:grid sm:grid-cols-[2fr,1.5fr,1fr,1fr,1fr] sm:gap-4 sm:items-center p-4 hover:bg-kong-bg-primary/30 transition-colors cursor-pointer"
+            onclick={() =>
+              goto(
+                `/wallets/${page.params.principalId}/tokens/${token.address}`,
+              )}
           >
             <!-- Mobile View - Card-like layout -->
             <div class="flex flex-col gap-3 sm:hidden">
@@ -157,10 +163,10 @@
                         >{token.symbol}</span
                       >
                       {#if token.isWhale}
-                        <Badge 
-                          variant="blue" 
-                          icon="🐋" 
-                          size="xs" 
+                        <Badge
+                          variant="blue"
+                          icon="🐋"
+                          size="xs"
                           tooltip={whaleTooltipText}
                         >
                           {formatSupplyPercentage(token.percentOfSupply)}
@@ -185,8 +191,11 @@
                   <span class="text-kong-text-secondary">Balance: </span>
                   <span class="font-medium">
                     {Number(token.balanceAmount) < 0.00001
-                    ? "&lt;0.001"
-                    : formatBalance(token.balanceAmount.toString(), token.decimals)}
+                      ? "&lt;0.001"
+                      : formatBalance(
+                          token.balanceAmount.toString(),
+                          token.decimals,
+                        )}
                   </span>
                 </div>
                 <div>
@@ -216,10 +225,10 @@
                     >{token.symbol}</span
                   >
                   {#if token.isWhale}
-                    <Badge 
-                      variant="blue" 
-                      icon="🐋" 
-                      size="xs" 
+                    <Badge
+                      variant="blue"
+                      icon="🐋"
+                      size="xs"
                       tooltip={whaleTooltipText}
                     >
                       {formatSupplyPercentage(token.percentOfSupply)}
@@ -238,10 +247,17 @@
                 {#if token.balanceAmount === BigInt(0) && Number(token.formattedUsdValue) > 0}
                   &lt;0.001 {token.symbol}
                 {:else}
-                  {
-                  Number(formatBalance(token.balanceAmount.toString(), token.decimals)) < 0.00001
-                  ? "<0.00001"
-                  : formatBalance(token.balanceAmount.toString(), token.decimals)}
+                  {Number(
+                    formatBalance(
+                      token.balanceAmount.toString(),
+                      token.decimals,
+                    ),
+                  ) < 0.00001
+                    ? "<0.00001"
+                    : formatBalance(
+                        token.balanceAmount.toString(),
+                        token.decimals,
+                      )}
                   {token.symbol}
                 {/if}
               </div>

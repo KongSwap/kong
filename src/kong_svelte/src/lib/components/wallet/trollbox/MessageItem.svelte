@@ -62,8 +62,7 @@
 
   // Derived values
   let isCurrentUser = $derived(
-    $auth.isConnected &&
-      $auth.account.owner === message.principal.toText(),
+    $auth.isConnected && $auth.account.owner === message.principal.toText(),
   );
   let isBanned = $derived(bannedUsers.has(message.principal.toText()));
   let banTimeLeft = $derived(
@@ -180,8 +179,7 @@
       }
 
       // Get token logo URL or fallback
-      const logoUrl =
-        token.logo_url || DEFAULT_IMAGE;
+      const logoUrl = token.logo_url || DEFAULT_IMAGE;
 
       // Format price and determine price change direction
       const price = token.metrics?.price

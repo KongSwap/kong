@@ -16,15 +16,15 @@ export interface RecentWallet {
 
 export interface ClickedWalletInfo {
   id: string;
-  source: 'recent' | 'all';
+  source: "recent" | "all";
 }
 
 // Chain display names mapping
 export const CHAIN_DISPLAY_NAMES: Record<string, string> = {
-  "ICP": "Internet Computer",
-  "SOL": "Solana",
-  "ETH": "Ethereum",
-  "BTC": "Bitcoin"
+  ICP: "Internet Computer",
+  SOL: "Solana",
+  ETH: "Ethereum",
+  BTC: "Bitcoin",
 };
 
 // Priority chain for sorting
@@ -32,17 +32,17 @@ export const PRIORITY_CHAIN = "Internet Computer";
 
 // Wallet ID normalization for WalletConnect
 export const WALLET_ID_MAPPINGS = {
-  walletconnect: 'walletconnectSiws',
-  walletconnectSiws: 'walletconnect'
+  walletconnect: "walletconnectSiws",
+  walletconnectSiws: "walletconnect",
 } as const;
 
 // Helper functions
 export function normalizeWalletId(walletId: string): string {
-  return walletId === 'walletconnectSiws' ? 'walletconnect' : walletId;
+  return walletId === "walletconnectSiws" ? "walletconnect" : walletId;
 }
 
 export function denormalizeWalletId(walletId: string): string {
-  return walletId === 'walletconnect' ? 'walletconnectSiws' : walletId;
+  return walletId === "walletconnect" ? "walletconnectSiws" : walletId;
 }
 
 export function formatChainName(chain: string): string {
@@ -52,7 +52,7 @@ export function formatChainName(chain: string): string {
 
 export function mapRawWalletToInfo(wallet: any): WalletInfo {
   const normalizedId = normalizeWalletId(wallet.id);
-  
+
   return {
     id: normalizedId,
     walletName: wallet.walletName,
@@ -87,7 +87,9 @@ export function formatDate(timestamp: number): string {
 }
 
 // Group wallets by chain
-export function groupWalletsByChain(wallets: WalletInfo[]): Record<string, WalletInfo[]> {
+export function groupWalletsByChain(
+  wallets: WalletInfo[],
+): Record<string, WalletInfo[]> {
   const grouped: Record<string, WalletInfo[]> = {};
 
   wallets.forEach((wallet) => {

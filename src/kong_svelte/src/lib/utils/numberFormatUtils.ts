@@ -12,9 +12,10 @@ const TRAILING_ZERO_DECIMALS = /\.0+$/;
 export function formatBalance(
   amount: string | number | bigint | BigNumber,
   decimals: number,
-  displayDecimals: number = 4
+  displayDecimals: number = 4,
 ): string {
-  const formattedAmount = typeof amount === 'string' ? amount : amount.toString();
+  const formattedAmount =
+    typeof amount === "string" ? amount : amount.toString();
   const value = new BigNumber(formattedAmount).dividedBy(
     new BigNumber(10).pow(decimals),
   );
@@ -93,7 +94,7 @@ export const formatToNonZeroDecimal = (input: number | string): string => {
 
 /**
  * Calculates the USD value of a token amount based on its price.
- * 
+ *
  * @param amount The token amount as a string
  * @param token The token object containing price information
  * @returns Formatted USD value as a string
@@ -105,7 +106,7 @@ export function calculateTokenUsdValue(amount: string, token: any): string {
   }
 
   const price = token.metrics.price;
-  
+
   if (!price) {
     return "0";
   }
@@ -125,13 +126,13 @@ export function calculateTokenUsdValue(amount: string, token: any): string {
  */
 export function parseTokenAmount(
   formattedAmount: string | number | bigint | BigNumber,
-  decimals: number
+  decimals: number,
 ): bigint {
   // 1) Handle empty or invalid inputs quickly
   if (!formattedAmount && formattedAmount !== 0) {
     return BigInt(0);
   }
-  if (formattedAmount === '') {
+  if (formattedAmount === "") {
     return BigInt(0);
   }
 
@@ -139,12 +140,12 @@ export function parseTokenAmount(
   let amountBN: BigNumber;
   if (formattedAmount instanceof BigNumber) {
     amountBN = formattedAmount;
-  } else if (typeof formattedAmount === 'bigint') {
+  } else if (typeof formattedAmount === "bigint") {
     // Convert bigint to string
     amountBN = new BigNumber(formattedAmount.toString());
   } else {
     // Handle string or number; remove commas for safety
-    amountBN = new BigNumber(String(formattedAmount).replace(/,/g, ''));
+    amountBN = new BigNumber(String(formattedAmount).replace(/,/g, ""));
   }
 
   // 3) Check validity
@@ -163,42 +164,47 @@ export function parseTokenAmount(
   return BigInt(scaledStr);
 }
 
-export const calculatePercentage = (amount: string | undefined, total: string | undefined): number => {
-    const amountNum = new BigNumber(amount || 0);
-    const totalNum = new BigNumber(total || 0);
-    
-    if (amountNum.isNaN() || totalNum.isNaN()) return 0;
-    if (totalNum.isZero()) return amountNum.gt(0) ? 100 : 0;
-    
-    return amountNum.dividedBy(totalNum).multipliedBy(100).toNumber();
+export const calculatePercentage = (
+  amount: string | undefined,
+  total: string | undefined,
+): number => {
+  const amountNum = new BigNumber(amount || 0);
+  const totalNum = new BigNumber(total || 0);
+
+  if (amountNum.isNaN() || totalNum.isNaN()) return 0;
+  if (totalNum.isZero()) return amountNum.gt(0) ? 100 : 0;
+
+  return amountNum.dividedBy(totalNum).multipliedBy(100).toNumber();
 };
 
 export const formatCategory = (category: any): string => {
-    if (!category) return 'Other';
-    if (typeof category === 'string') return category.replace(/_/g, ' ');
-    return Object.keys(category)[0].replace(/_/g, ' ');
+  if (!category) return "Other";
+  if (typeof category === "string") return category.replace(/_/g, " ");
+  return Object.keys(category)[0].replace(/_/g, " ");
 };
 
 export const toFixed = (amount: string, decimals: number): string => {
-    return new BigNumber(amount).multipliedBy(new BigNumber(10).pow(decimals)).toString();
+  return new BigNumber(amount)
+    .multipliedBy(new BigNumber(10).pow(decimals))
+    .toString();
 };
 
 /**
  * Converts a human-readable amount to a scaled token amount string.
  * Example: 5 KONG with 8 decimals -> "500000000"
- * 
+ *
  * @param amount Human readable amount (e.g. 5)
  * @param decimals Number of decimals for the token (e.g. 8)
  * @returns Scaled amount as string suitable for contract calls
  */
 export const toScaledAmount = (amount: string, decimals: number): string => {
-    const bigAmount = new BigNumber(amount);
-    if (bigAmount.isNaN() || bigAmount.isZero()) return "0";
-    
-    return bigAmount
-        .multipliedBy(new BigNumber(10).pow(decimals))
-        .integerValue(BigNumber.ROUND_DOWN)
-        .toString();
+  const bigAmount = new BigNumber(amount);
+  if (bigAmount.isNaN() || bigAmount.isZero()) return "0";
+
+  return bigAmount
+    .multipliedBy(new BigNumber(10).pow(decimals))
+    .integerValue(BigNumber.ROUND_DOWN)
+    .toString();
 };
 
 /**
@@ -207,9 +213,9 @@ export const toScaledAmount = (amount: string, decimals: number): string => {
 export function formatVolume(volume: string): string {
   const bigVolume = new BigNumber(volume);
   if (bigVolume.isGreaterThanOrEqualTo(1_000_000)) {
-    return `$${(bigVolume.dividedBy(1_000_000)).toFixed(2)}M`;
+    return `$${bigVolume.dividedBy(1_000_000).toFixed(2)}M`;
   } else if (bigVolume.isGreaterThanOrEqualTo(1_000)) {
-    return `$${(bigVolume.dividedBy(1_000)).toFixed(2)}K`;
+    return `$${bigVolume.dividedBy(1_000).toFixed(2)}K`;
   } else {
     return `$${bigVolume.toFixed(2)}`;
   }
@@ -226,50 +232,63 @@ export function calculatePercentageAmount(
   balance: bigint,
   percentage: number,
   token: Kong.Token,
-  additionalFeeToReserve?: bigint
+  additionalFeeToReserve?: bigint,
 ): string {
   const balanceNumber = new BigNumber(balance.toString());
-  
+
   // Calculate the total fee to reserve in smallest units
   let totalFeeInSmallestUnits = new BigNumber(token.fee_fixed || "0");
   if (additionalFeeToReserve) {
     // Add approval fee if provided (already in smallest units)
     totalFeeInSmallestUnits = totalFeeInSmallestUnits.plus(
-      new BigNumber(additionalFeeToReserve.toString())
+      new BigNumber(additionalFeeToReserve.toString()),
     );
   }
-  
+
   // Calculate available balance (balance - total fees)
-  const availableBalanceInSmallestUnits = balanceNumber.minus(totalFeeInSmallestUnits);
-  
+  const availableBalanceInSmallestUnits = balanceNumber.minus(
+    totalFeeInSmallestUnits,
+  );
+
   // If balance is less than fees, return 0
   if (availableBalanceInSmallestUnits.isLessThanOrEqualTo(0)) {
     return "0";
   }
-  
+
   // Convert to human-readable format for percentage calculation
-  const availableBalance = availableBalanceInSmallestUnits.dividedBy(new BigNumber(10).pow(token.decimals));
-  const percentageAmount = availableBalance.multipliedBy(percentage).dividedBy(100);
-  
+  const availableBalance = availableBalanceInSmallestUnits.dividedBy(
+    new BigNumber(10).pow(token.decimals),
+  );
+  const percentageAmount = availableBalance
+    .multipliedBy(percentage)
+    .dividedBy(100);
+
   return percentageAmount.toFixed(token.decimals);
 }
 
-export function toShortNumber(value: number | string, token: Kong.Token): string {
+export function toShortNumber(
+  value: number | string,
+  token?: Kong.Token,
+): string {
   if (!value) return "0.00";
-  const valueNumber = typeof value === 'string' ? Number(value.replace(/,/g, '')) : value;
+  if (!token || !token.decimals) return "0.00";
+  const valueNumber =
+    typeof value === "string" ? Number(value.replace(/,/g, "")) : value;
   const tokenDecimals = token.decimals;
   const tokenDecimalsMultiplier = new BigNumber(10).pow(tokenDecimals);
-  const valueNumberWithDecimals = new BigNumber(valueNumber).div(tokenDecimalsMultiplier);
+  const valueNumberWithDecimals = new BigNumber(valueNumber).div(
+    tokenDecimalsMultiplier,
+  );
 
   // format to abbreviations (K, M, B, T)
   if (valueNumberWithDecimals.gt(1_000_000_000)) {
-    return `${(valueNumberWithDecimals.dividedBy(1_000_000_000)).toFormat(2)}B`;
+    return `${valueNumberWithDecimals.dividedBy(1_000_000_000).toFormat(2)}B`;
   }
   if (valueNumberWithDecimals.gt(1000000)) {
-    return `${(valueNumberWithDecimals.dividedBy(1_000_000)).toFormat(2)}M`;
+    return `${valueNumberWithDecimals.dividedBy(1_000_000).toFormat(2)}M`;
   }
   if (valueNumberWithDecimals.gt(1000)) {
-    return `${(valueNumberWithDecimals.dividedBy(1_000)).toFormat(2)}K`;
+    return `${valueNumberWithDecimals.dividedBy(1_000).toFormat(2)}K`;
   }
   return `${valueNumberWithDecimals.toFormat(2)}`;
 }

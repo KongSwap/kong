@@ -23,6 +23,12 @@
     "staging_fe": "edoy4-liaaa-aaaar-qakha-cai",
     "staging": "edoy4-liaaa-aaaar-qakha-cai"
   },
+  "comments": {
+    "ic": "oeluz-4iaaa-aaaao-a4lxq-cai",
+    "local": "oeluz-4iaaa-aaaao-a4lxq-cai",
+    "staging_fe": "oeluz-4iaaa-aaaao-a4lxq-cai",
+    "staging": "oeluz-4iaaa-aaaao-a4lxq-cai"
+  },
   "kong_faucet": {
     "ic": "",
     "local": "ohr23-xqaaa-aaaar-qahqq-cai",

@@ -84,6 +84,22 @@
         }
       ]
     },
+    "comments": {
+      "type": "custom",
+      "candid": "src/comments/comments.did",
+      "main": "src/comments/src/lib.rs",
+      "wasm": "target/wasm32-unknown-unknown/release/comments.wasm",
+      "package": "comments",
+      "build": "sh scripts/build_rust_canister.sh comments",
+      "declarations": {
+        "node_compatibility": true
+      },
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
+    },
     "prediction_markets_backend": {
       "type": "custom",
       "candid": "src/prediction_markets_backend/prediction_markets_backend.did",

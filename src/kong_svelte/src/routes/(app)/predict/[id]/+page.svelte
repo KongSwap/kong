@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from "$app/state";
+  import { app } from "$lib/state/app.state.svelte";
   import {
     getMarket,
     getMarketBets,
@@ -15,7 +16,6 @@
   import RecentPredictions from "../RecentPredictions.svelte";
   import { toastStore } from "$lib/stores/toastStore";
   import { auth } from "$lib/stores/auth";
-  import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import type { TokenInfo } from "$lib/types/predictionMarket";
 
@@ -31,6 +31,8 @@
   import ActivateMarketCard from "./ActivateMarketCard.svelte";
   import HowItWorksSection from "./HowItWorksSection.svelte";
   import Card from "$lib/components/common/Card.svelte";
+  import CommentsSection from "$lib/components/predictions/comments/CommentsSection.svelte";
+  import { contextId } from "$lib/api/comments";
 
   let market = $state<any>(null);
   let loading = $state(true);
@@ -57,13 +59,13 @@
   let marketTokenInfo = $state<TokenInfo | null>(null);
   let userClaims = $state<any[]>([]);
   let loadingClaims = $state(false);
-  
+
   // Consolidated function to refresh market data
   async function refreshMarketData() {
     const marketId = BigInt(page.params.id);
     const marketData = await getMarket(marketId);
     market = marketData[0];
-    
+
     // Reload bets with a small delay to allow backend to update
     setTimeout(async () => {
       await loadMarketBets();
@@ -84,14 +86,21 @@
     try {
       loadingBets = true;
       const allBets = await getMarketBets(BigInt(page.params.id));
-      
+
       // Optimize BigInt conversion - only convert fields we actually use
       marketBets = allBets.map((bet) => ({
         ...bet,
         // Convert only the BigInt fields that are displayed or used in calculations
-        amount: typeof bet.amount === "bigint" ? Number(bet.amount) : bet.amount,
-        outcome_index: typeof bet.outcome_index === "bigint" ? Number(bet.outcome_index) : bet.outcome_index,
-        timestamp: typeof bet.timestamp === "bigint" ? Number(bet.timestamp) : bet.timestamp,
+        amount:
+          typeof bet.amount === "bigint" ? Number(bet.amount) : bet.amount,
+        outcome_index:
+          typeof bet.outcome_index === "bigint"
+            ? Number(bet.outcome_index)
+            : bet.outcome_index,
+        timestamp:
+          typeof bet.timestamp === "bigint"
+            ? Number(bet.timestamp)
+            : bet.timestamp,
         // Add token_id from market if not present in bet
         token_id: bet.token_id || market?.token_id,
       }));
@@ -109,7 +118,7 @@
       isUserAdmin = false;
       return;
     }
-    
+
     try {
       loadingAdmin = true;
       isUserAdmin = await isAdmin($auth.account.owner);
@@ -120,11 +129,11 @@
       loadingAdmin = false;
     }
   }
-  
+
   // Single effect for auth-related updates
   $effect(() => {
     checkAdminStatus();
-    
+
     // Load user claims when authenticated
     if ($auth.isConnected && $auth.account?.owner) {
       loadingClaims = true;
@@ -142,7 +151,7 @@
     } else {
       userClaims = [];
     }
-  })
+  });
 
   // Main data loading effect - optimized to run only once
   $effect(() => {
@@ -152,17 +161,18 @@
         const marketId = BigInt(page.params.id);
         const [marketData, backendTokens] = await Promise.all([
           getMarket(marketId),
-          getSupportedTokens()
+          getSupportedTokens(),
         ]);
-        
+
         market = marketData[0];
-        
+
         if (market?.token_id) {
-          marketTokenInfo = backendTokens.find((t) => t.id === market.token_id) || null;
+          marketTokenInfo =
+            backendTokens.find((t) => t.id === market.token_id) || null;
         }
 
         // Load bets without blocking
-        loadMarketBets().catch(betError => {
+        loadMarketBets().catch((betError) => {
           console.error("Error loading bets:", betError);
           marketBets = [];
         });
@@ -177,7 +187,11 @@
     fetchData();
   });
 
-  async function handleBet(outcomeIndex: number, amount: number, needsAllowance?: boolean) {
+  async function handleBet(
+    outcomeIndex: number,
+    amount: number,
+    needsAllowance?: boolean,
+  ) {
     if (!market) return;
 
     try {
@@ -211,7 +225,7 @@
         message: `You predicted ${amount} ${marketToken.symbol} on ${market.outcomes[outcomeIndex]}`,
         type: "success",
       });
-      
+
       await refreshMarketData();
     } catch (e) {
       console.error("Bet error:", e);
@@ -308,36 +322,41 @@
       isClosed: market.status?.Closed !== undefined,
       isVoided: market.status?.Voided !== undefined,
       isPending: market.status?.PendingActivation !== undefined,
-      endTime: market.end_time ? Number(market.end_time) / 1_000_000 : null
+      endTime: market.end_time ? Number(market.end_time) / 1_000_000 : null,
     };
   });
-  
+
   let isMarketClosed = $derived(marketStatus?.isClosed ?? false);
   let isMarketResolved = $derived(isMarketClosed);
   let isMarketVoided = $derived(marketStatus?.isVoided ?? false);
   let marketEndTime = $derived(marketStatus?.endTime);
-  
+
   let isPendingResolution = $derived(
     !isMarketResolved &&
-    !isMarketVoided &&
-    marketEndTime &&
-    marketEndTime < Date.now()
+      !isMarketVoided &&
+      marketEndTime &&
+      marketEndTime < Date.now(),
   );
 
   let marketActivationStatus = $derived.by(() => {
     if (!market || !market.bet_counts || !$auth.account?.owner) return false;
-    const totalBets = market.bet_counts.reduce((acc: number, curr: any) => acc + Number(curr), 0);
+    const totalBets = market.bet_counts.reduce(
+      (acc: number, curr: any) => acc + Number(curr),
+      0,
+    );
     return totalBets === 0 && market.creator?.toText() === $auth.account.owner;
   });
-  
+
   let isMarketNeedsActivation = $derived(marketActivationStatus);
 
   // Calculate the formatted minimum initial bet string
   let formattedMinInitialBetString = $derived.by(() => {
-    if (!marketTokenInfo || 
-        typeof marketTokenInfo.activation_fee === "undefined" ||
-        typeof marketTokenInfo.decimals === "undefined" ||
-        !marketTokenInfo.symbol) {
+    if (
+      !marketTokenInfo ||
+      typeof marketTokenInfo.activation_fee === "undefined" ||
+      typeof marketTokenInfo.decimals === "undefined" ||
+      !marketTokenInfo.symbol
+    ) {
       return "the required minimum";
     }
     return `${formatBalance(Number(marketTokenInfo.activation_fee), marketTokenInfo.decimals)} ${marketTokenInfo.symbol}`;
@@ -345,48 +364,53 @@
 
   // Check if current user is the market creator
   let isMarketCreator = $derived(
-    market && 
-    $auth.isConnected && 
-    $auth.account?.owner === market.creator?.toText()
+    market &&
+      $auth.isConnected &&
+      $auth.account?.owner === market.creator?.toText(),
   );
-  
+
   // Check if market is pending activation
   let isMarketPendingActivation = $derived(marketStatus?.isPending ?? false);
 
   // Resolution status checks
   let resolutionStatus = $derived.by(() => {
-    const isUserCreated = isPendingResolution &&
+    const isUserCreated =
+      isPendingResolution &&
       market &&
       $auth.isConnected &&
       $auth.account?.owner === market.creator?.toText() &&
       !isUserAdmin;
-      
-    const isAdminPending = isPendingResolution &&
+
+    const isAdminPending =
+      isPendingResolution &&
       market &&
       $auth.isConnected &&
       isUserAdmin &&
       market.resolution_proposal?.length > 0 &&
       market.resolution_proposal[0]?.status?.AwaitingAdminVote !== undefined;
-      
+
     return { isUserCreated, isAdminPending };
   });
-  
+
   let isUserCreatedPendingResolution = $derived(resolutionStatus.isUserCreated);
   let isAdminPendingResolution = $derived(resolutionStatus.isAdminPending);
 
   // Check if the market has ended but user cannot resolve it
   let isMarketEndedForNonResolver = $derived(
     isPendingResolution &&
-    market &&
-    $auth.isConnected &&
-    $auth.account?.owner !== market.creator?.toText() &&
-    !isUserAdmin
+      market &&
+      $auth.isConnected &&
+      $auth.account?.owner !== market.creator?.toText() &&
+      !isUserAdmin,
   );
 
   // Check if market has ended with zero predictions
   let isMarketEndedWithNoBets = $derived.by(() => {
     if (!market || !market.bet_counts) return false;
-    const totalBets = market.bet_counts.reduce((acc: number, curr: any) => acc + Number(curr), 0);
+    const totalBets = market.bet_counts.reduce(
+      (acc: number, curr: any) => acc + Number(curr),
+      0,
+    );
     return totalBets === 0 && marketEndTime && marketEndTime < Date.now();
   });
 
@@ -442,7 +466,7 @@
     {:else if market}
       <!-- Market Info Panel -->
       <MarketHeader {market} />
-      <div class="flex flex-col lg:flex-row gap-3 sm:gap-4 lg:gap-6 mt-4">
+      <div class="flex flex-col lg:flex-row gap-3 sm:gap-4 lg:gap-6">
         <!-- Left Column -->
         <div class="flex-1 space-y-3 sm:space-y-4">
           <!-- How it works section (moved from MarketHeader) -->
@@ -450,19 +474,47 @@
             <HowItWorksSection />
           {/if}
 
+          <!-- Market Details Card - Mobile Only (shows here on mobile, in right column on desktop) -->
+          {#if app.isMobile}
+            <MarketDetailsCard
+              {market}
+              {loading}
+              {marketBets}
+              {selectedTab}
+              onTabChange={handleTabChange}
+            />
+          {/if}
+
           <!-- Activate Market Card or Ended with No Bets Card -->
           {#if isMarketEndedWithNoBets}
             <Card className="p-4 sm:p-6">
               <div class="flex items-start gap-3">
                 <div class="flex-shrink-0 mt-0.5">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-kong-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5 text-kong-text-secondary"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                 </div>
                 <div class="flex-1">
-                  <h3 class="text-base font-semibold text-kong-text-primary mb-1">Market Expired Without Activity</h3>
+                  <h3
+                    class="text-base font-semibold text-kong-text-primary mb-1"
+                  >
+                    Market Expired Without Activity
+                  </h3>
                   <p class="text-sm text-kong-text-secondary">
-                    This market has ended without receiving any predictions. Markets with no activity are automatically deleted to maintain system efficiency.
+                    This market has ended without receiving any predictions.
+                    Markets with no activity are automatically deleted to
+                    maintain system efficiency.
                   </p>
                 </div>
               </div>
@@ -483,14 +535,31 @@
             <Card className="p-4 sm:p-6">
               <div class="flex items-start gap-3">
                 <div class="flex-shrink-0 mt-0.5">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-kong-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5 text-kong-text-secondary"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                 </div>
                 <div class="flex-1">
-                  <h3 class="text-base font-semibold text-kong-text-primary mb-1">Market Has Ended</h3>
+                  <h3
+                    class="text-base font-semibold text-kong-text-primary mb-1"
+                  >
+                    Market Has Ended
+                  </h3>
                   <p class="text-sm text-kong-text-secondary">
-                    This market has reached its end time and is awaiting resolution. The market creator will determine the winning outcome soon.
+                    This market has reached its end time and is awaiting
+                    resolution. The market creator will determine the winning
+                    outcome soon.
                   </p>
                 </div>
               </div>
@@ -502,14 +571,31 @@
             <Card className="p-4 sm:p-6">
               <div class="flex items-start gap-3">
                 <div class="flex-shrink-0 mt-0.5">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-kong-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5 text-kong-text-secondary"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                 </div>
                 <div class="flex-1">
-                  <h3 class="text-base font-semibold text-kong-text-primary mb-1">Market Awaiting Activation</h3>
+                  <h3
+                    class="text-base font-semibold text-kong-text-primary mb-1"
+                  >
+                    Market Awaiting Activation
+                  </h3>
                   <p class="text-sm text-kong-text-secondary">
-                    This market is pending activation by its creator. Once the creator places the initial prediction, the market will be open for everyone to participate.
+                    This market is pending activation by its creator. Once the
+                    creator places the initial prediction, the market will be
+                    open for everyone to participate.
                   </p>
                 </div>
               </div>
@@ -524,8 +610,41 @@
               isAdmin={isUserAdmin}
             />
           {:else if !isMarketNeedsActivation && !isMarketEndedForNonResolver && !isMarketEndedWithNoBets && (!isMarketPendingActivation || isMarketCreator || isUserAdmin)}
-            <OutcomesList {market} {marketBets} onPlacePrediction={handleBet} isAdmin={isUserAdmin} />
+            <OutcomesList
+              {market}
+              {marketBets}
+              onPlacePrediction={handleBet}
+              isAdmin={isUserAdmin}
+            />
           {/if}
+
+          <!-- Comments Section - Desktop Only (shows here on desktop, after admin controls on mobile) -->
+          {#if !app.isMobile}
+            <CommentsSection contextId={contextId.market(page.params.id)} />
+          {/if}
+        </div>
+
+        <!-- Right Column -->
+        <div
+          class="w-full lg:w-[450px] lg:flex-shrink-0 space-y-3 sm:space-y-4"
+        >
+          <!-- Market Stats Panel with Tabs - Desktop Only (already shown in left column on mobile) -->
+          {#if !app.isMobile}
+            <MarketDetailsCard
+              {market}
+              {loading}
+              {marketBets}
+              {selectedTab}
+              onTabChange={handleTabChange}
+            />
+          {/if}
+
+          <UserClaimsCard
+            claims={userClaims}
+            loading={loadingClaims}
+            marketId={page.params.id}
+            {marketTokenInfo}
+          />
 
           <!-- Recent Predictions -->
           <RecentPredictions
@@ -536,27 +655,6 @@
             title="Recent Predictions"
             loading={loadingBets}
           />
-        </div>
-
-        <!-- Right Column -->
-        <div
-          class="w-full lg:w-[450px] lg:flex-shrink-0 space-y-3 sm:space-y-4"
-        >
-          <UserClaimsCard
-            claims={userClaims}
-            loading={loadingClaims}
-            marketId={page.params.id}
-            {marketTokenInfo}
-          />
-
-          <!-- Market Stats Panel with Tabs -->
-          <MarketDetailsCard
-            {market}
-            {loading}
-            {marketBets}
-            {selectedTab}
-            onTabChange={handleTabChange}
-          />
 
           <AdminControlsPanel
             {isUserAdmin}
@@ -566,6 +664,11 @@
             on:closeResolutionModal={() => (showAdminResolutionModal = false)}
             on:marketUpdated={(e) => (market = e.detail.market)}
           />
+
+          <!-- Comments Section - Mobile Only (shows here on mobile, in left column on desktop) -->
+          {#if app.isMobile}
+            <CommentsSection contextId={contextId.market(page.params.id)} />
+          {/if}
         </div>
       </div>
     {/if}

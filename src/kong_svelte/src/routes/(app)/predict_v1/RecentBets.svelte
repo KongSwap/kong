@@ -89,66 +89,86 @@
         {@const betData = getBetData(bet)}
         {@const betId = getBetId(bet)}
         <div
-          class="flex p-4 flex-col py-3 border-b border-kong-border/50 last:border-0 hover:bg-kong-bg-dark/30 transition-colors group rounded-md"
+          class="p-4 py-3 border-b border-kong-border/50 last:border-0 hover:bg-kong-bg-dark/30 transition-colors group rounded-md"
         >
-          <div class="flex items-center justify-between">
-            {#if showOutcomes && outcomes}
-              <div class="text-kong-text-primary font-medium">
-                {outcomes[Number(betData.outcome_index)]}
-              </div>
-            {:else if betData.market}
-              <div class="flex flex-col flex-1 min-w-0">
-                <button
-                  class="text-kong-text-primary font-medium line-clamp-2 text-left group-hover:text-kong-accent-blue transition-colors w-full relative p-0 m-0 appearance-none border-0 focus:outline-none bg-transparent"
-                  on:click={() => goto(`/predict_v1/${betData.market.id}`)}
-                >
-                  <span class="block pr-6">{betData.market.question}</span>
-                </button>
-                <div class="flex items-center gap-1">
-                  <span class="text-kong-text-accent-green">
-                    {betData.market.outcomes[Number(betData.outcome_index)]}
+          <div class="flex items-start gap-3">
+            <!-- User Avatar -->
+            <img
+              src={`https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${betData.user?.toString() || ""}&size=32`}
+              alt="User avatar"
+              class="w-8 h-8 rounded-full bg-kong-bg-secondary flex-shrink-0
+                     border border-kong-border/20 shadow-sm"
+            />
+
+            <!-- Content -->
+            <div class="flex-1">
+              <div class="flex items-center justify-between">
+                {#if showOutcomes && outcomes}
+                  <div class="text-kong-text-primary font-medium">
+                    {outcomes[Number(betData.outcome_index)]}
+                  </div>
+                {:else if betData.market}
+                  <div class="flex flex-col flex-1 min-w-0">
+                    <button
+                      class="text-kong-text-primary font-medium line-clamp-2 text-left group-hover:text-kong-accent-blue transition-colors w-full relative p-0 m-0 appearance-none border-0 focus:outline-none bg-transparent"
+                      on:click={() => goto(`/predict_v1/${betData.market.id}`)}
+                    >
+                      <span class="block pr-6">{betData.market.question}</span>
+                    </button>
+                    <div class="flex items-center gap-1">
+                      <span class="text-kong-text-accent-green">
+                        {betData.market.outcomes[Number(betData.outcome_index)]}
+                      </span>
+                    </div>
+                  </div>
+                {/if}
+                <div class="flex items-center gap-1 ml-4 flex-shrink-0">
+                  <span class="font-medium text-kong-text-accent-green">
+                    {formatBalance(Number(betData.amount || 0), 8)}
                   </span>
+                  <span class="text-xs text-kong-pm-text-secondary">KONG</span>
                 </div>
               </div>
-            {/if}
-            <div class="flex items-center gap-1 ml-4 flex-shrink-0">
-              <span class="font-medium text-kong-text-accent-green">
-                {formatBalance(Number(betData.amount || 0), 8)}
-              </span>
-              <span class="text-xs text-kong-pm-text-secondary">KONG</span>
+              <div class="flex justify-between w-full items-center mt-2">
+                <span class="text-xs text-kong-pm-text-secondary">
+                  {new Date(
+                    Number(betData.timestamp) / 1_000_000,
+                  ).toLocaleString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+                <span class="text-xs text-kong-pm-text-secondary/80">
+                  by <span class="font-medium text-kong-text-accent-green"
+                    >{betData.user
+                      ? betData.user.toString().slice(0, 10)
+                      : "Unknown"}...</span
+                  >
+                </span>
+              </div>
             </div>
-          </div>
-          <div class="flex justify-between w-full items-center mt-2">
-            <span class="text-xs text-kong-pm-text-secondary">
-              {new Date(Number(betData.timestamp) / 1_000_000).toLocaleString(
-                undefined,
-                {
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                },
-              )}
-            </span>
-            <span class="text-xs text-kong-pm-text-secondary/80">
-              by <span class="font-medium text-kong-text-accent-green"
-                >{betData.user
-                  ? betData.user.toString().slice(0, 10)
-                  : "Unknown"}...</span
-              >
-            </span>
           </div>
         </div>
       {/each}
     {:else if loading}
       <div transition:fade class="space-y-3 px-4">
         {#each Array(3) as _}
-          <div class="animate-pulse">
-            <div class="h-5 bg-kong-bg-light/30 rounded w-3/4 mb-2"></div>
-            <div class="h-4 bg-kong-bg-light/30 rounded w-1/2"></div>
-            <div class="flex justify-between items-center mt-2">
-              <div class="h-3 bg-kong-bg-light/30 rounded w-24"></div>
-              <div class="h-3 bg-kong-bg-light/30 rounded w-20"></div>
+          <div class="animate-pulse flex items-start gap-3 py-3">
+            <!-- Avatar skeleton -->
+            <div
+              class="w-8 h-8 rounded-full bg-kong-bg-light/30 flex-shrink-0"
+            ></div>
+
+            <!-- Content skeleton -->
+            <div class="flex-1">
+              <div class="h-5 bg-kong-bg-light/30 rounded w-3/4 mb-2"></div>
+              <div class="h-4 bg-kong-bg-light/30 rounded w-1/2"></div>
+              <div class="flex justify-between items-center mt-2">
+                <div class="h-3 bg-kong-bg-light/30 rounded w-24"></div>
+                <div class="h-3 bg-kong-bg-light/30 rounded w-20"></div>
+              </div>
             </div>
           </div>
         {/each}

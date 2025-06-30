@@ -1,0 +1,122 @@
+type BatchCommentCountRequest = record { context_ids : vec text };
+type Comment = record {
+  id : nat64;
+  context_id : text;
+  content : text;
+  created_at : nat64;
+  edited_at : opt nat64;
+  author : principal;
+  likes : nat32;
+  parent_id : opt nat64;
+  is_edited : bool;
+};
+type CommentResponse = record {
+  id : nat64;
+  context_id : text;
+  content : text;
+  created_at : nat64;
+  edited_at : opt nat64;
+  author : principal;
+  likes : nat32;
+  has_liked : bool;
+  parent_id : opt nat64;
+  is_edited : bool;
+};
+type CommentsPage = record {
+  next_cursor : opt nat64;
+  comments : vec CommentResponse;
+};
+type ConsentInfo = record {
+  metadata : ConsentMessageMetadata;
+  consent_message : ConsentMessage;
+};
+type ConsentMessage = variant {
+  LineDisplayMessage : record { pages : vec LineDisplayPage };
+  GenericDisplayMessage : text;
+};
+type ConsentMessageMetadata = record {
+  utc_offset_minutes : opt int16;
+  language : text;
+};
+type ConsentMessageRequest = record {
+  arg : blob;
+  method : text;
+  user_preferences : ConsentMessageSpec;
+};
+type ConsentMessageSpec = record {
+  metadata : ConsentMessageMetadata;
+  device_spec : opt DisplayMessageType;
+};
+type ContextCommentCount = record { context_id : text; count : nat32 };
+type CreateCommentRequest = record {
+  context_id : text;
+  content : text;
+  parent_id : opt nat64;
+};
+type Delegation = record {
+  created : nat64;
+  targets_list_hash : blob;
+  target : principal;
+  expiration : opt nat64;
+};
+type DelegationError = variant {
+  NotFound;
+  Unauthorized;
+  InvalidRequest : text;
+  StorageError : text;
+  Expired;
+};
+type DelegationRequest = record {
+  targets : vec principal;
+  expiration : opt nat64;
+};
+type DelegationResponse = record { delegations : vec Delegation };
+type DisplayMessageType = variant {
+  GenericDisplay;
+  LineDisplay : record { characters_per_line : nat16; lines_per_page : nat16 };
+};
+type EditCommentRequest = record { content : text; comment_id : nat64 };
+type ErrorInfo = record { description : text };
+type GetCommentsRequest = record {
+  context_id : text;
+  pagination : opt PaginationParams;
+  check_likes_for : opt principal;
+};
+type Icrc28TrustedOriginsResponse = record { trusted_origins : vec text };
+type LineDisplayPage = record { lines : vec text };
+type PaginationParams = record { cursor : opt nat64; limit : opt nat64 };
+type Result = variant { Ok; Err : text };
+type Result_1 = variant { Ok : CommentResponse; Err : text };
+type Result_2 = variant { Ok : nat32; Err : text };
+type Result_3 = variant { Ok : ConsentInfo; Err : ErrorInfo };
+type Result_4 = variant { Ok : DelegationResponse; Err : DelegationError };
+type Result_5 = variant { Ok; Err : DelegationError };
+type RevokeDelegationRequest = record { targets : vec principal };
+service : () -> {
+  add_admin : (text) -> (Result);
+  ban_user : (principal, nat64) -> (Result);
+  check_ban_status : (principal) -> (opt nat64) query;
+  create_comment : (CreateCommentRequest) -> (Result_1);
+  delete_comment : (nat64) -> (Result);
+  delete_context_comments : (text) -> (Result_2);
+  edit_comment : (EditCommentRequest) -> (Result_1);
+  get_batch_context_comment_counts : (BatchCommentCountRequest) -> (
+      vec ContextCommentCount,
+    ) query;
+  get_comment : (nat64) -> (opt Comment) query;
+  get_comments_by_context : (GetCommentsRequest) -> (CommentsPage) query;
+  get_context_comment_count : (text) -> (nat32) query;
+  get_user_comments : (principal, opt nat32) -> (vec Comment) query;
+  get_user_liked_comments : () -> (vec nat64) query;
+  icrc21_canister_call_consent_message : (ConsentMessageRequest) -> (
+      Result_3,
+    ) query;
+  icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse) query;
+  icrc_34_delegate : (DelegationRequest) -> (Result_4);
+  icrc_34_get_delegation : (DelegationRequest) -> (Result_4) query;
+  icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_5);
+  is_admin : (text) -> (bool) query;
+  like_comment : (nat64) -> (Result_2);
+  unban_user : (principal) -> (Result);
+  unlike_comment : (nat64) -> (Result_2);
+}
