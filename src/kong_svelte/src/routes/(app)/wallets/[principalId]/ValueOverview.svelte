@@ -24,7 +24,8 @@
   let poolsData = $state({
     processedPools: [],
     loading: false,
-    walletId: null
+    walletId: null,
+    error: null as string | null
   });
   
   // Subscribe to the pool list store
