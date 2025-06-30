@@ -8,6 +8,7 @@
     Star,
     Dice1,
     Gift,
+    MessageSquare,
   } from "lucide-svelte";
   import Card from "$lib/components/common/Card.svelte";
   import CountdownTimer from "$lib/components/common/CountdownTimer.svelte";
@@ -31,6 +32,7 @@
     isDropdownOpen = false,
     onDropdownToggle,
     isUserAdmin = false,
+    commentCount = 0,
   } = $props<{
     market: any;
     showEndTime?: boolean;
@@ -40,6 +42,7 @@
     isDropdownOpen?: boolean;
     onDropdownToggle?: () => void;
     isUserAdmin?: boolean;
+    commentCount?: number;
   }>();
 
   // Convert local state to use $state
@@ -368,6 +371,12 @@
             $userTokens.tokens.find((t) => t.address === market.token_id) || undefined
           )}
         </span>
+        <span
+          class="text-kong-text-secondary text-xs whitespace-nowrap flex items-center gap-1"
+        >
+          <MessageSquare class="w-3 h-3" />
+          {commentCount}
+        </span>
       </div>
       <div class="flex items-center gap-2">
         {#if showEndTime}
@@ -380,7 +389,7 @@
             {:else if marketStatus.isVoided(market)}
               <span>Voided</span>
             {:else}
-              <CountdownTimer endTime={market.end_time} />
+              <CountdownTimer endTime={market.end_time} showSeconds={false} />
             {/if}
           </span>
         {/if}

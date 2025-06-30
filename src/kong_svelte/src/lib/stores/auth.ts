@@ -224,6 +224,10 @@ export const trollboxActor = ({ anon = false, requiresSigning = true}: { anon?: 
   return pnp.getActor<CanisterType["TROLLBOX"]>({canisterId: canisters.trollbox.canisterId, idl: canisters.trollbox.idl, anon, requiresSigning});
 }
 
+export const commentsActor = ({ anon = false, requiresSigning = true}: { anon?: boolean, requiresSigning?: boolean}) => {
+  return pnp.getActor<CanisterType["COMMENTS"]>({canisterId: canisters.comments.canisterId, idl: canisters.comments.idl, anon, requiresSigning});
+}
+
 export const faucetActor = ({ anon = false, requiresSigning = true}: { anon?: boolean, requiresSigning?: boolean}) => {
   return pnp.getActor<CanisterType["KONG_FAUCET"]>({canisterId: canisters.kongFaucet.canisterId, idl: canisters.kongFaucet.idl, anon, requiresSigning});
 } 

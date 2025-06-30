@@ -26,12 +26,18 @@ export class ClaimsService {
         return { claims: [], error: "Please connect your wallet to view claims" };
       }
 
-      const actor = swapActor({anon: false, requiresSigning: false});
       const principalId = authState.account?.owner;
       
       if (!principalId) {
         return { claims: [], error: "Principal ID not found" };
       }
+
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout: Unable to fetch claims')), 10000);
+      });
+
+      const actor = swapActor({anon: true});
 
       const result = await actor.claims(principalId);
       

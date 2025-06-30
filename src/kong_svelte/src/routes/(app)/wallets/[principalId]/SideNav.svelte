@@ -1,11 +1,12 @@
 <script lang="ts">
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import {
     BarChart2,
     Coins,
     Droplets,
     ArrowRightLeft,
-    Shield,
+    MessageSquare,
+    TrendingUp,
   } from "lucide-svelte";
   import { page } from "$app/state";
     import { goto } from "$app/navigation";
@@ -22,7 +23,9 @@
     { id: "overview", label: "Wallet Overview", icon: BarChart2, path: "" },
     { id: "tokens", label: "Tokens", icon: Coins, path: "/tokens" },
     { id: "pools", label: "LP Positions", icon: Droplets, path: "/liquidity" },
-    { id: "swaps", label: "Recent Swaps", icon: ArrowRightLeft, path: "/" },
+    { id: "swaps", label: "Recent Swaps", icon: ArrowRightLeft, path: "/swaps" },
+    { id: "markets", label: "Markets", icon: TrendingUp, path: "/markets" },
+    { id: "comments", label: "Comments", icon: MessageSquare, path: "/comments" },
   ];
 
   const currentPath = page.url.pathname.split("/").pop() || "";
@@ -37,7 +40,7 @@
   }
 </script>
 
-<Panel variant="transparent">
+<Card isPadded={true}>
   <div class="flex flex-col space-y-2">
     {#each tabs as tab}
       <button
@@ -54,4 +57,4 @@
       </button>
     {/each}
   </div>
-</Panel>
+</Card>

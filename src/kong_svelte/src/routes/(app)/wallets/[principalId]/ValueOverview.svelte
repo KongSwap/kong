@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import LoadingEllipsis from "$lib/components/common/LoadingEllipsis.svelte";
   import type { PortfolioHistory } from "$lib/utils/portfolio/portfolioHistory";
   import { WalletDataService, walletDataStore } from "$lib/services/wallet";
@@ -7,9 +7,7 @@
   import { calculatePerformanceMetrics } from "$lib/utils/portfolio/performanceMetrics";
   import { walletPoolListStore } from "$lib/stores/walletPoolListStore";
 
-  let { isLoading, error, principal } = $props<{
-    isLoading: boolean;
-    error: string | null;
+  let { principal } = $props<{
     principal: string;
   }>();
   
@@ -26,7 +24,8 @@
   let poolsData = $state({
     processedPools: [],
     loading: false,
-    walletId: null
+    walletId: null,
+    error: null as string | null
   });
   
   // Subscribe to the pool list store
@@ -34,8 +33,9 @@
     poolsData = value;
   });
 
-  // Augment isLoading to include both stores' loading states
-  let isDataLoading = $derived(isLoading || walletData.isLoading || poolsData.loading);
+  // Get loading and error states from the stores
+  let isDataLoading = $derived(walletData.isLoading || poolsData.loading);
+  let error = $derived(walletData.error || poolsData.error);
 
   // Calculate token balances value
   let tokenValue = $derived(Object.values(walletData.balances)
@@ -101,7 +101,7 @@
   }
 </script>
 
-<Panel variant="transparent">
+<Card isPadded={true}>
   <div class="space-y-2">
     <div>
       <h2 class="text-sm uppercase font-medium text-kong-text-primary mb-2">
@@ -124,17 +124,7 @@
             currency: "USD",
           })}
         </p>
-        <div
-          class:text-kong-success={performanceMetrics.dailyChange > 0}
-          class:text-kong-error={performanceMetrics.dailyChange < 0}
-          class="text-base font-bold flex"
-        >
-          {dailyPnL.toLocaleString(undefined, {
-            style: "currency",
-            currency: "USD",
-          })} &nbsp; ({performanceMetrics.dailyChange.toFixed(2)}%)
-        </div>
       {/if}
     </div>
   </div>
-</Panel>
+</Card>

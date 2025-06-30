@@ -6,7 +6,7 @@ export const prerender = true;
 // Default values
 const defaultTitle = 'KongSwap | Leading Multi-Chain DEX on Internet Computer';
 const defaultDescription = 'Trade crypto with zero slippage on Internet Computer\'s premier DEX. Swap 50+ tokens, provide liquidity, earn rewards. 100% on-chain, DAO-governed DeFi platform.';
-const defaultImage = 'https://kongswap.io/images/banner.webp';
+const defaultImage = 'https://kongswap.io/images/banner.jpg';
 
 // Define metadata for specific routes
 interface RouteMetadata {

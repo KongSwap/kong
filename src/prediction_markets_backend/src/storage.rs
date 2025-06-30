@@ -25,17 +25,18 @@ thread_local! {
     pub static MARKET_RESOLUTION_DETAILS: RefCell<HashMap<MarketId, MarketResolutionDetails>> = RefCell::new(HashMap::new());
 }
 
-/// Retrieves all bets for a given market ID
+/// Retrieves all bets for a given market ID, sorted by most recent first
 /// 
 /// This helper function collects all bets associated with a specific market ID from the
 /// stable memory storage. It handles the conversion from (MarketId, u64) keyed storage
-/// to a simple Vec<Bet> for easier processing.
+/// to a simple Vec<Bet> for easier processing. The results are sorted by timestamp
+/// in descending order (most recent bets first).
 /// 
 /// # Parameters
 /// * `market_id` - The ID of the market to retrieve bets for
 /// 
 /// # Returns
-/// * `Vec<Bet>` - Collection of all bets placed on the specified market
+/// * `Vec<Bet>` - Collection of all bets placed on the specified market, sorted by most recent first
 pub fn get_bets_for_market(market_id: &MarketId) -> Vec<Bet> {
     BETS.with(|bets| {
         let bets = bets.borrow();
@@ -48,6 +49,9 @@ pub fn get_bets_for_market(market_id: &MarketId) -> Vec<Bet> {
                 market_bets.push(bet.clone());
             }
         }
+        
+        // Sort by timestamp in descending order (most recent first)
+        market_bets.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
         
         market_bets
     })

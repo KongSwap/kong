@@ -14,11 +14,11 @@
   import { voidMarketViaAdmin } from "$lib/api/predictionMarket";
 
   // Convert props to use $props
-  let { 
+  let {
     markets,
     showEndTime = true,
     openBetModal,
-    onMarketResolved 
+    onMarketResolved,
   } = $props<{
     markets: any[];
     showEndTime?: boolean;
@@ -34,7 +34,7 @@
   // Check if user is admin using $effect (replacing onMount)
   $effect(() => {
     if ($auth.isConnected && $auth.account) {
-      isAdmin($auth.account.owner).then(result => {
+      isAdmin($auth.account.owner).then((result) => {
         isUserAdmin = result;
       });
     }
@@ -129,16 +129,20 @@
   }
 
   async function handleVoidMarket(market: any) {
-    if (!confirm(`Are you sure you want to void the market "${market.question}"?`)) {
+    if (
+      !confirm(`Are you sure you want to void the market "${market.question}"?`)
+    ) {
       return;
     }
-    
+
     try {
       await voidMarketViaAdmin(BigInt(market.id));
       await onMarketResolved();
     } catch (error) {
       console.error("Failed to void market:", error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(
+        `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 
@@ -160,15 +164,23 @@
 
   // Check if it's a Yes/No market
   function isYesNoMarket(market: any): boolean {
-    return market.outcomes.length === 2 && 
-           (market.outcomes[0].toLowerCase() === "yes" || market.outcomes[0].toLowerCase() === "no") && 
-           (market.outcomes[1].toLowerCase() === "yes" || market.outcomes[1].toLowerCase() === "no");
+    return (
+      market.outcomes.length === 2 &&
+      (market.outcomes[0].toLowerCase() === "yes" ||
+        market.outcomes[0].toLowerCase() === "no") &&
+      (market.outcomes[1].toLowerCase() === "yes" ||
+        market.outcomes[1].toLowerCase() === "no")
+    );
   }
 
   // Get the index of Yes and No outcomes
-  function getYesNoIndices(market: any): {yesIndex: number, noIndex: number} {
-    const yesIndex = market.outcomes.findIndex((outcome: string) => outcome.toLowerCase() === "yes");
-    const noIndex = market.outcomes.findIndex((outcome: string) => outcome.toLowerCase() === "no");
+  function getYesNoIndices(market: any): { yesIndex: number; noIndex: number } {
+    const yesIndex = market.outcomes.findIndex(
+      (outcome: string) => outcome.toLowerCase() === "yes",
+    );
+    const noIndex = market.outcomes.findIndex(
+      (outcome: string) => outcome.toLowerCase() === "no",
+    );
     return { yesIndex, noIndex };
   }
 </script>
@@ -236,9 +248,7 @@
                   }}
                 >
                   <div class="flex flex-col w-full">
-                    <span class="title-text block pb-1"
-                      >{market.question}</span
-                    >
+                    <span class="title-text block pb-1">{market.question}</span>
                   </div>
                 </button>
               </div>
@@ -452,7 +462,15 @@
                         class="flex-1 flex items-center justify-center px-3 py-2 bg-kong-accent-red/10 border border-kong-accent-red/30 text-kong-text-accent-red rounded-md font-medium transition-all duration-200 text-sm hover:bg-kong-accent-red/20 hover:border-kong-accent-red/60 hover:shadow-[0_0_8px_rgba(255,59,59,0.2)] active:translate-y-0.5"
                         onclick={() => handleVoidMarket(market)}
                       >
-                        <svg class="w-3.5 h-3.5 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg
+                          class="w-3.5 h-3.5 mr-1.5"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
                           <path d="M18 6 6 18"></path>
                           <path d="m6 6 12 12"></path>
                         </svg>

@@ -10,12 +10,7 @@
   } from "$lib/api/predictionMarketLegacy";
   import { formatBalance, toScaledAmount } from "$lib/utils/numberFormatUtils";
   import Panel from "$lib/components/common/Panel.svelte";
-  import {
-    ArrowLeft,
-    X,
-    Facebook,
-    Copy,
-  } from "lucide-svelte";
+  import { ArrowLeft, X, Facebook, Copy } from "lucide-svelte";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import RecentBets from "../RecentBets.svelte";
@@ -51,18 +46,20 @@
 
   // Store pending outcome for after authentication
   let pendingOutcome: number | null = null;
-  
+
   // Check if user is admin
   let isUserAdmin = false;
-  
+
   // React to auth changes
   $: if ($auth.isConnected && $auth.account?.owner) {
-    isAdmin($auth.account.owner).then(result => {
-      isUserAdmin = result;
-    }).catch(e => {
-      console.error("Failed to check admin status:", e);
-      isUserAdmin = false;
-    });
+    isAdmin($auth.account.owner)
+      .then((result) => {
+        isUserAdmin = result;
+      })
+      .catch((e) => {
+        console.error("Failed to check admin status:", e);
+        isUserAdmin = false;
+      });
   } else {
     isUserAdmin = false;
   }
@@ -196,8 +193,16 @@
       }
 
       // Convert bet amount to scaled token units
-      const scaledAmount = toScaledAmount(amount.toString(), marketToken.decimals);
-      await placeBet(marketToken, BigInt(market.id), BigInt(outcomeIndex), scaledAmount);
+      const scaledAmount = toScaledAmount(
+        amount.toString(),
+        marketToken.decimals,
+      );
+      await placeBet(
+        marketToken,
+        BigInt(market.id),
+        BigInt(outcomeIndex),
+        scaledAmount,
+      );
 
       // Reset betting state
       betAmount = 0;
@@ -290,16 +295,16 @@
   function shareToTikTok() {
     if (browser) {
       const marketUrl = `${window.location.origin}/predict_v1/${$page.params.id}`;
-      
+
       // Copy the link to clipboard
       navigator.clipboard
         .writeText(marketUrl)
         .then(() => {
           toastStore.info(
             "Link copied! Paste it in your TikTok caption to share this prediction market.",
-            { title: "Share to TikTok" }
+            { title: "Share to TikTok" },
           );
-          
+
           // Also open TikTok
           const hashtag = encodeURIComponent("KongSwap");
           const tiktokUrl = `https://www.tiktok.com/tag/${hashtag}`;
@@ -307,8 +312,10 @@
         })
         .catch((err) => {
           console.error("Could not copy text: ", err);
-          toastStore.error("Failed to copy link for TikTok", { title: "Error" });
-          
+          toastStore.error("Failed to copy link for TikTok", {
+            title: "Error",
+          });
+
           // Still try to open TikTok even if clipboard fails
           const hashtag = encodeURIComponent("KongSwap");
           const tiktokUrl = `https://www.tiktok.com/tag/${hashtag}`;
@@ -369,35 +376,47 @@
     !isMarketVoided &&
     marketEndTime &&
     marketEndTime < Date.now();
-  
+
   // Check if market is pending activation
-  $: isMarketPendingActivation = market?.status?.PendingActivation !== undefined;
-  
+  $: isMarketPendingActivation =
+    market?.status?.PendingActivation !== undefined;
+
   // Check if market is already active
   $: isMarketActive = market?.status?.Active !== undefined;
-  
+
   // Check if market needs activation (no bets placed yet and not already active)
   $: totalBets = betCounts.reduce((acc, curr) => acc + curr, 0);
-  $: isMarketNeedsActivation = totalBets === 0 && !isMarketClosed && !isMarketVoided && !isMarketActive;
-  
+  $: isMarketNeedsActivation =
+    totalBets === 0 && !isMarketClosed && !isMarketVoided && !isMarketActive;
+
   // Check if current user is market creator
-  $: isMarketCreator = market && $auth.isConnected && $auth.account?.owner === market.creator?.toText();
-  
+  $: isMarketCreator =
+    market &&
+    $auth.isConnected &&
+    $auth.account?.owner === market.creator?.toText();
+
   // Check if market was created by admin
   $: marketCreatorIsAdmin = false;
   $: if (market && market.creator) {
-    isAdmin(market.creator.toText()).then(result => {
-      marketCreatorIsAdmin = result;
-    }).catch(e => {
-      console.error("Failed to check if market creator is admin:", e);
-      marketCreatorIsAdmin = false;
-    });
+    isAdmin(market.creator.toText())
+      .then((result) => {
+        marketCreatorIsAdmin = result;
+      })
+      .catch((e) => {
+        console.error("Failed to check if market creator is admin:", e);
+        marketCreatorIsAdmin = false;
+      });
   }
-  
+
   // Determine if we should show activation UI
   // Admin-created markets should NOT show activation UI - they should be active immediately
   // Also don't show if market is already active or pending activation
-  $: shouldShowActivationUI = isMarketNeedsActivation && isMarketCreator && !marketCreatorIsAdmin && !isMarketPendingActivation && !isMarketActive;
+  $: shouldShowActivationUI =
+    isMarketNeedsActivation &&
+    isMarketCreator &&
+    !marketCreatorIsAdmin &&
+    !isMarketPendingActivation &&
+    !isMarketActive;
 </script>
 
 <div class="min-h-screen text-kong-text-primary px-2 sm:px-4">
@@ -466,7 +485,7 @@
           <!-- Outcomes Panel or Activation Message -->
           {#if shouldShowActivationUI}
             <!-- Show activation UI for market creator -->
-            <Panel 
+            <Panel
               variant="transparent"
               className="backdrop-blur-sm !rounded shadow-lg border border-kong-border/10 animate-fadeIn"
             >
@@ -475,10 +494,12 @@
                   Activate Your Market
                 </h3>
                 <p class="text-sm text-kong-text-secondary mb-6">
-                  To activate this market and make it visible to other users, you need to place the first bet.
+                  To activate this market and make it visible to other users,
+                  you need to place the first bet.
                 </p>
                 <p class="text-xs text-kong-text-secondary mb-4">
-                  This helps prevent spam and ensures market creators have skin in the game.
+                  This helps prevent spam and ensures market creators have skin
+                  in the game.
                 </p>
                 <OutcomesList
                   {market}
@@ -496,7 +517,7 @@
             </Panel>
           {:else if isMarketNeedsActivation && !isMarketCreator}
             <!-- Show pending message for non-creators -->
-            <Panel 
+            <Panel
               variant="transparent"
               className="backdrop-blur-sm !rounded shadow-lg border border-kong-border/10 animate-fadeIn"
             >
@@ -505,7 +526,8 @@
                   Market Awaiting Activation
                 </h3>
                 <p class="text-sm text-kong-text-secondary">
-                  This market is waiting for the creator to activate it by placing the first bet.
+                  This market is waiting for the creator to activate it by
+                  placing the first bet.
                 </p>
               </div>
             </Panel>
@@ -712,23 +734,23 @@
 </div>
 
 {#if showBetModal}
-<BetModal
-  {showBetModal}
-  selectedMarket={market}
-  {isBetting}
-  {isApprovingAllowance}
-  {betError}
-  {selectedOutcome}
-  bind:betAmount
-  onClose={() => {
-    // Reset state and close modal
-    selectedOutcome = null;
-    betAmount = 0;
-    betError = null;
-    showBetModal = false;
-  }}
-  onBet={(amount) => handleBet(selectedOutcome!, amount)}
-/>
+  <BetModal
+    {showBetModal}
+    selectedMarket={market}
+    {isBetting}
+    {isApprovingAllowance}
+    {betError}
+    {selectedOutcome}
+    bind:betAmount
+    onClose={() => {
+      // Reset state and close modal
+      selectedOutcome = null;
+      betAmount = 0;
+      betError = null;
+      showBetModal = false;
+    }}
+    onBet={(amount) => handleBet(selectedOutcome!, amount)}
+  />
 {/if}
 
 <style lang="postcss" scoped>

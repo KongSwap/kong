@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   export let endTime: number;
+  export let showSeconds: boolean = true;
   let timer = '';
   let intervalId: ReturnType<typeof setInterval>;
 
@@ -19,9 +20,26 @@
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
     if (days > 0) {
-      timer = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+      if (showSeconds) {
+        timer = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+      } else {
+        timer = `${days}d ${hours}h ${minutes}m`;
+      }
+    } else if (hours > 0) {
+      if (showSeconds) {
+        timer = `${hours}h ${minutes}m ${seconds}s`;
+      } else {
+        timer = `${hours}h ${minutes}m`;
+      }
+    } else if (minutes > 0) {
+      if (showSeconds) {
+        timer = `${minutes}m ${seconds}s`;
+      } else {
+        timer = `${minutes}m`;
+      }
     } else {
-      timer = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      // Less than a minute, always show seconds
+      timer = `${seconds}s`;
     }
   }
 

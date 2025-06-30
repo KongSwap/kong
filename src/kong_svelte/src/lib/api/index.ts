@@ -15,7 +15,19 @@ export * from './predictionMarket';
 export * from './leaderboard';
 export * from './balances';
 export * from './transactions';
-export * from './trollbox';
+export { 
+  type Message,
+  type MessagesPage,
+  type MessagePayload,
+  getMessages,
+  getMessage,
+  createMessage,
+  deleteMessage,
+  banUser,
+  unbanUser,
+  checkBanStatus
+  // Excluding PaginationParams and isAdmin to avoid conflicts
+} from './trollbox';
 export * from './upload';
 
 function getIndexerUrl() {

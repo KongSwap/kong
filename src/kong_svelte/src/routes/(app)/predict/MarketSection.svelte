@@ -4,6 +4,7 @@
   import { isAdmin } from "$lib/api/predictionMarket";
   import MarketCard from "./MarketCard.svelte";
   import { marketStore } from "$lib/stores/marketStore";
+  import { commentsApi, contextId } from "$lib/api/comments";
 
   // Convert props to use $props
   let {
@@ -29,6 +30,9 @@
 
   // Add state for dropdown - track which market ID has open dropdown
   let openDropdownMarketId = $state<string | null>(null);
+  
+  // Add state for comment counts
+  let commentCounts = $state<Record<string, number>>({});
 
   // Helper function to get grid class
   function getGridClass(cols: number, prefix: string = ''): string {
@@ -52,6 +56,25 @@
     if ($auth.isConnected && $auth.account) {
       isAdmin($auth.account.owner).then((result) => {
         isUserAdmin = result;
+      });
+    }
+  });
+
+  // Fetch comment counts when markets change
+  $effect(() => {
+    if (markets.length > 0) {
+      const marketContextIds = markets.map(m => contextId.market(m.id.toString()));
+      
+      commentsApi.getBatchContextCommentCounts(marketContextIds).then(counts => {
+        const countsMap: Record<string, number> = {};
+        counts.forEach(c => {
+          // Extract market ID from context ID (format: "market:123")
+          const marketId = c.context_id.replace('market:', '');
+          countsMap[marketId] = c.count;
+        });
+        commentCounts = countsMap;
+      }).catch(error => {
+        console.error('Failed to fetch comment counts:', error);
       });
     }
   });
@@ -121,6 +144,7 @@
                   openDropdownMarketId = openDropdownMarketId === market.id ? null : market.id;
                 }}
                 {isUserAdmin}
+                commentCount={commentCounts[market.id.toString()] || 0}
               />
             </div>
           {/each}
@@ -144,6 +168,7 @@
                 openDropdownMarketId = openDropdownMarketId === market.id ? null : market.id;
               }}
               {isUserAdmin}
+              commentCount={commentCounts[market.id.toString()] || 0}
             />
           {/each}
         </div>
