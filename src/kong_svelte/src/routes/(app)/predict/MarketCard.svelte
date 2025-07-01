@@ -428,9 +428,9 @@
 />
 
 <Card
-  className="relative !p-0 group transition-all duration-200 h-[230px] overflow-hidden {marketStatus.isResolved(
+  className="relative !p-0 group transition-all duration-200 h-[230px] overflow-hidden {(marketStatus.isResolved(
     market,
-  ) && !hasClaim
+  ) || marketStatus.isVoided(market)) && !hasClaim
     ? 'grayscale opacity-40 hover:opacity-60'
     : marketStatus.isPending(market) && !isCurrentUserCreator
     ? 'opacity-60 hover:opacity-80'
@@ -475,6 +475,15 @@
         class="absolute inset-0 flex items-center justify-center z-10 bg-black/30 {hasClaim ? 'backdrop-blur-sm' : 'backdrop-blur-[1px] group-hover:backdrop-blur-none'} rounded-kong-roundness transition-all duration-200 group-hover:opacity-0"
       >
         <span class="text-white/50 font-semibold text-lg">RESOLVED</span>
+      </div>
+    {/if}
+    
+    <!-- Voided overlay - show text only when not hovered -->
+    {#if marketStatus.isVoided(market)}
+      <div
+        class="absolute inset-0 flex items-center justify-center z-10 bg-black/30 backdrop-blur-[1px] group-hover:backdrop-blur-none rounded-kong-roundness transition-all duration-200 group-hover:opacity-0"
+      >
+        <span class="text-white/50 font-semibold text-lg">VOIDED</span>
       </div>
     {/if}
     
