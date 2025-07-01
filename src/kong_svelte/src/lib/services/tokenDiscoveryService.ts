@@ -13,7 +13,8 @@ export const ESSENTIAL_TOKEN_IDS = [
   DEFAULT_TOKENS.ckusdc, // CKUSDC
   DEFAULT_TOKENS.ckusdt, // CKUSDT
   DEFAULT_TOKENS.exe, // EXE
-  DEFAULT_TOKENS.dkp // DKP
+  DEFAULT_TOKENS.dkp, // DKP
+  DEFAULT_TOKENS.gldt
 ].filter(Boolean);
 
 

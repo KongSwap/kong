@@ -257,7 +257,7 @@
         />
       {:else}
         <p
-          class="text-sm text-kong-text-primary whitespace-pre-wrap break-words mb-2 comment-content"
+          class="text-sm text-kong-text-primary whitespace-pre-wrap break-all mb-2 comment-content"
           onclick={handleContentClick}
         >
           {@html parseBasicMarkdown(comment.content)}

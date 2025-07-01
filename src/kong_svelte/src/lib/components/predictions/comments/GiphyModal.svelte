@@ -17,7 +17,12 @@
   let selectedGif = $state<string | null>(null);
   let offset = $state(0);
   let hasMore = $state(true);
+  let error = $state<string | null>(null);
   const LIMIT = 25;
+
+  // Request tracking to prevent race conditions
+  let currentRequestId = 0;
+  let activeRequest: AbortController | null = null;
 
   // Initialize Giphy SDK
   const GIPHY_API_KEY = "G9w8qoH0iPJG98CGYAfhQumR6Vp566yg";
@@ -28,9 +33,28 @@
     if (isOpen && gifs.length === 0) {
       loadTrendingGifs();
     }
+
+    // Cleanup on unmount
+    return () => {
+      if (activeRequest) {
+        activeRequest.abort();
+      }
+    };
   });
 
   async function loadTrendingGifs(append = false) {
+    // Prevent multiple simultaneous requests
+    if (loading) return;
+    
+    // Cancel any pending request
+    if (activeRequest) {
+      activeRequest.abort();
+    }
+
+    const requestId = ++currentRequestId;
+    activeRequest = new AbortController();
+    error = null;
+
     try {
       loading = true;
       const { data, pagination } = await giphyFetch.trending({
@@ -39,6 +63,9 @@
         rating: "pg-13",
         type: "gifs",
       });
+
+      // Check if this is still the latest request
+      if (requestId !== currentRequestId) return;
 
       if (append) {
         gifs = [...gifs, ...data];
@@ -49,11 +76,26 @@
 
       offset = pagination.offset + pagination.count;
       hasMore = pagination.total_count > offset;
-    } catch (error) {
-      console.error("Failed to load trending GIFs:", error);
-      if (!append) gifs = [];
+    } catch (err) {
+      // Ignore aborted requests
+      if (err.name === 'AbortError') return;
+      
+      // Check if this is still the latest request
+      if (requestId !== currentRequestId) return;
+
+      console.error("Failed to load trending GIFs:", err);
+      error = "Failed to load GIFs. Please try again.";
+      if (!append) {
+        gifs = [];
+        offset = 0;
+        hasMore = false;
+      }
     } finally {
-      loading = false;
+      // Only update loading state if this is the latest request
+      if (requestId === currentRequestId) {
+        loading = false;
+        activeRequest = null;
+      }
     }
   }
 
@@ -62,6 +104,18 @@
       loadTrendingGifs(append);
       return;
     }
+
+    // Prevent multiple simultaneous requests
+    if (loading) return;
+
+    // Cancel any pending request
+    if (activeRequest) {
+      activeRequest.abort();
+    }
+
+    const requestId = ++currentRequestId;
+    activeRequest = new AbortController();
+    error = null;
 
     try {
       loading = true;
@@ -73,6 +127,9 @@
         lang: "en",
       });
 
+      // Check if this is still the latest request
+      if (requestId !== currentRequestId) return;
+
       if (append) {
         gifs = [...gifs, ...data];
       } else {
@@ -82,16 +139,31 @@
 
       offset = pagination.offset + pagination.count;
       hasMore = pagination.total_count > offset;
-    } catch (error) {
-      console.error("Failed to search GIFs:", error);
-      if (!append) gifs = [];
+    } catch (err) {
+      // Ignore aborted requests
+      if (err.name === 'AbortError') return;
+      
+      // Check if this is still the latest request
+      if (requestId !== currentRequestId) return;
+
+      console.error("Failed to search GIFs:", err);
+      error = "Failed to search GIFs. Please try again.";
+      if (!append) {
+        gifs = [];
+        offset = 0;
+        hasMore = false;
+      }
     } finally {
-      loading = false;
+      // Only update loading state if this is the latest request
+      if (requestId === currentRequestId) {
+        loading = false;
+        activeRequest = null;
+      }
     }
   }
 
   function loadMore() {
-    if (!loading && hasMore) {
+    if (!loading && hasMore && !error) {
       if (searchQuery.trim()) {
         searchGifs(true);
       } else {
@@ -101,7 +173,7 @@
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (event.key === "Enter") {
+    if (event.key === "Enter" && !loading) {
       searchGifs();
     }
   }
@@ -115,10 +187,16 @@
     setTimeout(() => {
       selectedGif = null;
       searchQuery = "";
+      error = null;
     }, 300);
   }
 
   function handleClose() {
+    // Cancel any pending requests
+    if (activeRequest) {
+      activeRequest.abort();
+    }
+
     onClose();
     // Reset state
     setTimeout(() => {
@@ -127,7 +205,19 @@
       gifs = [];
       offset = 0;
       hasMore = true;
+      error = null;
+      currentRequestId = 0;
+      activeRequest = null;
     }, 300);
+  }
+
+  function retryLoad() {
+    error = null;
+    if (searchQuery.trim()) {
+      searchGifs(false);
+    } else {
+      loadTrendingGifs(false);
+    }
   }
 </script>
 
@@ -140,11 +230,13 @@
           bind:value={searchQuery}
           onkeydown={handleKeydown}
           placeholder="Search for GIFs..."
+          disabled={loading}
           class="w-full px-4 py-2 pl-10 bg-kong-bg-tertiary border border-kong-border/50
                  rounded-md text-sm text-kong-text-primary
                  placeholder:text-kong-text-secondary/50
                  focus:outline-none focus:ring-2 focus:ring-kong-primary/20
-                 focus:border-kong-primary/50 transition-colors"
+                 focus:border-kong-primary/50 transition-colors
+                 disabled:opacity-50 disabled:cursor-not-allowed"
         />
         <Search
           size={18}
@@ -157,18 +249,26 @@
         size="sm"
         fullWidth={true}
         className="mt-2"
+        disabled={loading}
       >
-        Search
+        {loading ? "Searching..." : "Search"}
       </ButtonV2>
     </div>
 
     <!-- GIFs grid -->
     <div class="flex-1 overflow-y-auto">
-      {#if loading}
+      {#if loading && gifs.length === 0}
         <div class="flex items-center justify-center h-full">
           <Loader2 class="w-8 h-8 animate-spin text-kong-text-secondary" />
         </div>
-      {:else if gifs.length === 0}
+      {:else if error && gifs.length === 0}
+        <div class="flex flex-col items-center justify-center h-full gap-4">
+          <p class="text-kong-text-secondary text-center">{error}</p>
+          <ButtonV2 onclick={retryLoad} theme="secondary" size="sm">
+            Retry
+          </ButtonV2>
+        </div>
+      {:else if gifs.length === 0 && !loading}
         <div
           class="flex items-center justify-center h-full text-kong-text-secondary"
         >
@@ -201,12 +301,29 @@
           {/each}
         </div>
 
+        <!-- Error message for failed load more -->
+        {#if error && gifs.length > 0}
+          <div class="text-center mt-4">
+            <p class="text-red-500 text-sm mb-2">{error}</p>
+            <ButtonV2 onclick={retryLoad} theme="secondary" size="sm">
+              Retry
+            </ButtonV2>
+          </div>
+        {/if}
+
         <!-- Load more button -->
-        {#if !loading && hasMore && gifs.length > 0}
+        {#if !loading && !error && hasMore && gifs.length > 0}
           <div class="flex justify-center mt-4">
             <ButtonV2 onclick={loadMore} theme="secondary" size="sm">
               Load More
             </ButtonV2>
+          </div>
+        {/if}
+
+        <!-- Loading indicator for load more -->
+        {#if loading && gifs.length > 0}
+          <div class="flex justify-center mt-4">
+            <Loader2 class="w-6 h-6 animate-spin text-kong-text-secondary" />
           </div>
         {/if}
       {/if}

@@ -178,6 +178,120 @@ export const fetchPoolTotals = async (): Promise<{total_volume_24h: number, tota
 }
 
 /**
+ * Fetch pools by their LP token IDs
+ * @param lpTokenIds Array of LP token IDs to fetch
+ * @returns Array of pools matching the provided LP token IDs
+ */
+export const fetchPoolsByLpTokenIds = async (lpTokenIds: string[]): Promise<BE.Pool[]> => {
+  try {
+    if (!lpTokenIds || lpTokenIds.length === 0) {
+      return [];
+    }
+
+    console.log("Fetching pools by IDs:", lpTokenIds);
+
+    const response = await fetch(`${API_URL}/api/pools/by_ids`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ lp_token_ids: lpTokenIds })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`API error response: ${errorText}`);
+      throw new Error(`Failed to fetch pools by IDs: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Handle different possible response formats
+    let poolsArray;
+    if (Array.isArray(data)) {
+      // If the response is directly an array
+      poolsArray = data;
+    } else if (data && data.items && Array.isArray(data.items)) {
+      // If the response has an items property
+      poolsArray = data.items;
+    } else if (data && data.pools && Array.isArray(data.pools)) {
+      // If the response has a pools property
+      poolsArray = data.pools;
+    } else if (data && Object.keys(data).length === 0) {
+      // Empty object response - no pools found
+      return [];
+    } else {
+      console.error("Unexpected API response structure for pools by IDs:", data);
+      throw new Error("Invalid API response for pools by IDs - expected array or object with items/pools property");
+    }
+
+    // Helper function: Remove underscores and convert to a numeric value.
+    const parseNumericString = (value: string | number): number => {
+      if (typeof value === 'number') {
+        return value;
+      }
+      return parseFloat(value.replace(/_/g, ''));
+    };
+
+    // Check if we have pools to parse
+    if (!poolsArray || poolsArray.length === 0) {
+      return [];
+    }
+
+    // Parse each pool using the same logic as fetchPools
+    const parsedPools = poolsArray.map((item: any) => {
+      const pool = item.pool;
+
+      // If a StablePool raw_json exists, then parse its numeric fields.
+      if (pool.raw_json && pool.raw_json.StablePool) {
+        const stablePool = pool.raw_json.StablePool;
+        const numericFields = [
+          'balance_0',
+          'balance_1',
+          'lp_fee_0',
+          'lp_fee_1',
+          'lp_token_id',
+          'rolling_24h_volume',
+          'rolling_24h_lp_fee',
+          'rolling_24h_num_swaps',
+          'tvl',
+          'kong_fee_0',
+          'kong_fee_1'
+        ];
+        numericFields.forEach(field => {
+          if (stablePool[field] !== undefined && typeof stablePool[field] === 'string') {
+            stablePool[field] = parseNumericString(stablePool[field]);
+          }
+        });
+        pool.raw_json.StablePool = stablePool;
+      }
+
+      // Serialize nested token objects
+      const serializedToken0 = item.token0 ? IcrcToken.serializeTokenMetadata(item.token0) : null;
+      const serializedToken1 = item.token1 ? IcrcToken.serializeTokenMetadata(item.token1) : null;
+
+      // Return a flat structure combining pool data with token details.
+      return {
+        ...pool,
+        lp_token_id: item.pool.lp_token_id,
+        symbol_0: serializedToken0?.symbol,
+        address_0: serializedToken0?.address,
+        symbol_1: serializedToken1?.symbol,
+        address_1: serializedToken1?.address,
+        token0: serializedToken0,
+        token1: serializedToken1
+      } as BE.Pool;
+    });
+
+    return parsedPools;
+  } catch (error) {
+    console.error('Error fetching pools by LP token IDs:', error);
+    throw error;
+  }
+};
+
+/**
  * Calculate required amounts for adding liquidity
  */
 export async function calculateLiquidityAmounts(

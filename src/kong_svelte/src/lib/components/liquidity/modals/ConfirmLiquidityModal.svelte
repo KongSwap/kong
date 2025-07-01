@@ -162,6 +162,7 @@
   onClose={handleCancel}
   isOpen={show}
   width="460px"
+  isPadded={true}
   height="auto"
   {modalKey}
   {target}
