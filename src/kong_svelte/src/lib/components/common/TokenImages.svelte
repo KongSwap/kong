@@ -77,7 +77,7 @@
   use:tooltipAction={{...tooltip, text: tooltipContent}}
   class="flex items-center {containerClass} p-0 m-0 group"
 >
-  {#each displayedTokens as token, index (token.address || token.symbol)}
+  {#each displayedTokens as token, index (`${token.address || token.symbol}-${index}`)}
     <div
       style="height: {size}px; width: {size}px; z-index: {displayedTokens.length - index}; transform: translateX(0); transition: transform 0.15s ease-in-out;{overlap && index < displayedTokens.length - 1 ? `margin-right: -${Math.floor(size * 0.25)}px;` : ''}"
       class="flex justify-center items-center rounded-full {imageWrapperClass} relative group-hover:hover:translate-y-[-2px]"

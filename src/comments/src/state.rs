@@ -169,12 +169,7 @@ pub fn validate_comment(content: &str) -> Result<String, String> {
         }
     }).to_string();
 
-    // Apply content filtering for profanity
-    let (censored, _) = Censor::from_str(&sanitized_with_links)
-        .with_censor_replacement('*')
-        .censor_and_analyze();
-    
-    Ok(censored)
+    Ok(sanitized_with_links)
 }
 
 // Helper function to check if a user is banned

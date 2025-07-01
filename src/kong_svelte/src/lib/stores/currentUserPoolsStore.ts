@@ -70,6 +70,7 @@ function createCurrentUserPoolsStore() {
         try {
           const actor = swapActor({ anon: true, requiresSigning: false });
           const response = await actor.user_balances(currentPrincipal);
+          console.log("User balances response:", response);
                   
           if ('Ok' in response) {
             const rawPools = response.Ok.map((pool: any) => pool.LP);

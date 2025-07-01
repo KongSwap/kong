@@ -19,7 +19,7 @@
   import { auth } from "$lib/stores/auth";
   import { browser } from "$app/environment";
   import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
-  import { fetchPools, fetchPoolTotals } from "$lib/api/pools";
+  import { fetchPools, fetchPoolTotals, fetchPoolsByLpTokenIds } from "$lib/api/pools";
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { page } from "$app/stores";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
@@ -46,7 +46,8 @@
   let isMobile = $state(app.isMobile);
   
   // Data State
-  const livePools = writable<BE.Pool[]>([]);
+  const allPools = writable<BE.Pool[]>([]);
+  const userPoolsData = writable<BE.Pool[]>([]);
   const allTokens = writable([]);
   const poolTotals = writable({
     total_volume_24h: 0,
@@ -54,7 +55,7 @@
     total_fees_24h: 0,
   });
 
-  // Pagination State
+  // Pagination State (for all pools)
   const totalPages = writable(0);
   const currentPage = writable(1);
   const itemsPerPage = 48;
@@ -66,13 +67,13 @@
   let searchDebounceTimer: NodeJS.Timeout;
 
   // User Pools State
-  let hasCompletedInitialLoad = $state(false);
-  let isLoadingUserPools = false;
+  let isLoadingUserPools = $state(false);
   
-  // URL Sync State
-  let lastSearch = "";
-  let lastPage = 0;
-  let isFirstLoad = true;
+  // Store initialization state globally to prevent re-initialization
+  let hasInitializedUserPools = false;
+  
+  // Track if we've loaded data for the current URL
+  let lastLoadedUrl = "";
 
   // ===== Derived Stores =====
   const tokenMap = derived(
@@ -80,8 +81,9 @@
     ($tokens) => new Map($tokens?.map((token) => [token.address, token]) || []),
   );
 
-  const sortedPools = derived(
-    [livePools, sortColumn, sortDirection],
+  // Sorted pools for "all pools" view
+  const sortedAllPools = derived(
+    [allPools, sortColumn, sortDirection],
     ([$pools, $column, $direction]) => {
       const sorted = [...$pools].sort((a, b) => {
         // KONG pools always first
@@ -118,42 +120,69 @@
     },
   );
 
+  // Enhanced user pools with details from currentUserPoolsStore and live pool data
   const userPoolsWithDetails = derived(
-    [currentUserPoolsStore, livePools],
-    ([$store, $pools]) =>
-      $store.filteredPools.map((pool) => {
-        const livePool = $pools.find(
+    [currentUserPoolsStore, userPoolsData, sortColumn, sortDirection],
+    ([$store, $poolsData, $column, $direction]) => {
+      const pools = $store.filteredPools.map((userPool) => {
+        const livePool = $poolsData.find(
           (p) =>
-            p.address_0 === pool.address_0 && p.address_1 === pool.address_1,
+            p.address_0 === userPool.address_0 && p.address_1 === userPool.address_1,
         );
 
-        // Calculate share percentage only if livePool exists and has liquidity
+        // Calculate share percentage
         let sharePercentage = "0";
         if (livePool && (livePool.balance_0 > 0n || livePool.balance_1 > 0n)) {
           sharePercentage = calculateUserPoolPercentage(
             livePool.balance_0,
             livePool.balance_1,
-            pool.amount_0,
-            pool.amount_1,
+            userPool.amount_0,
+            userPool.amount_1,
             livePool.lp_fee_0,
             livePool.lp_fee_1,
           );
         } else if (!livePool || (livePool.balance_0 === 0n && livePool.balance_1 === 0n)) {
-          // If pool doesn't exist in live data or has no liquidity, 
-          // and user has a position, they likely own 100% of the pool
-          sharePercentage = pool.amount_0 > 0 || pool.amount_1 > 0 ? "100" : "0";
+          sharePercentage = userPool.amount_0 > 0 || userPool.amount_1 > 0 ? "100" : "0";
         }
 
         return {
-          ...pool,
-          key: `${pool.address_0}-${pool.address_1}`,
+          ...userPool,
+          livePool,
+          key: `${userPool.address_0}-${userPool.address_1}`,
           sharePercentage,
           apy: formatToNonZeroDecimal(livePool?.rolling_24h_apy || 0),
-          usdValue: formatToNonZeroDecimal(pool.usd_balance),
-          formattedAmount0: formatToNonZeroDecimal(pool.amount_0),
-          formattedAmount1: formatToNonZeroDecimal(pool.amount_1),
+          usdValue: formatToNonZeroDecimal(userPool.usd_balance),
+          formattedAmount0: formatToNonZeroDecimal(userPool.amount_0),
+          formattedAmount1: formatToNonZeroDecimal(userPool.amount_1),
         };
-      }),
+      });
+
+      // Sort user pools
+      const sortedPools = pools.sort((a, b) => {
+        const getValue = (pool) => {
+          const livePool = pool.livePool;
+          if (!livePool) return 0;
+          
+          switch ($column) {
+            case "price":
+              return Number(getPoolPriceUsd(livePool));
+            case "tvl":
+              return Number(pool.usd_balance);
+            case "rolling_24h_volume":
+              return Number(livePool.rolling_24h_volume);
+            case "rolling_24h_apy":
+              return Number(livePool.rolling_24h_apy);
+            default:
+              return Number(pool.usd_balance);
+          }
+        };
+
+        const diff = getValue(a) - getValue(b);
+        return $direction === "asc" ? diff : -diff;
+      });
+      
+      return sortedPools;
+    },
   );
 
   // ===== Lifecycle =====
@@ -167,13 +196,11 @@
   });
 
   // ===== Effects =====
-  // User pools loading effect
+  // Initialize user pools when connected (only on initial load)
   $effect(() => {
-    if ($auth.isConnected && browser && !isLoadingUserPools) {
-      isLoadingUserPools = true;
-      fetchUserPools().finally(() => {
-        isLoadingUserPools = false;
-      });
+    if ($auth.isConnected && browser && !hasInitializedUserPools) {
+      hasInitializedUserPools = true;
+      initializeUserPools();
     }
   });
 
@@ -182,113 +209,56 @@
     isMobile = app.isMobile;
   });
 
-  // URL-driven data loading
-  
+
+
+  // URL-driven data loading for "all pools" view
   $effect(() => {
     if (!browser) return;
+    
+    const currentUrl = $page.url.toString();
+    
+    // Skip if we've already loaded data for this exact URL
+    if (currentUrl === lastLoadedUrl) {
+      return;
+    }
     
     const urlParams = new URLSearchParams($page.url.search);
     const urlSearch = urlParams.get("search") || "";
     const urlPage = parseInt(urlParams.get("page") || "1");
     
-    // Check if search or page actually changed
-    const hasSearchChanged = urlSearch !== lastSearch;
-    const hasPageChanged = urlPage !== lastPage;
-    
-    if (!hasSearchChanged && !hasPageChanged && !isFirstLoad) {
-      return;
-    }
-    
-    // Update tracking variables
-    lastSearch = urlSearch;
-    lastPage = urlPage;
-
-    // Only update reactive state if values actually changed
-    if (hasSearchChanged) {
-      searchInput = urlSearch;
-    }
-    
-    if (hasPageChanged) {
-      currentPage.set(urlPage);
-    }
+    // Update reactive state from URL
+    searchInput = urlSearch;
+    currentPage.set(urlPage);
     
     // Cancel any pending operations to avoid conflicts
     clearTimeout(searchDebounceTimer);
     
-    // Load data - allow concurrent requests, loadPools will handle state properly
-    const loadPromise = isFirstLoad 
-      ? (isFirstLoad = false, loadInitialData())
-      : loadPools(urlPage, urlSearch);
-      
-    loadPromise.catch((error) => {
-      console.error("Error loading pools:", error);
+    // Mark this URL as being loaded
+    lastLoadedUrl = currentUrl;
+    
+    // Load data
+    loadInitialData(urlPage, urlSearch).catch((error) => {
+      console.error("Error loading initial data:", error);
+      // Reset on error so it can be retried
+      lastLoadedUrl = "";
     });
   });
 
   // ===== Data Loading Functions =====
-  async function loadInitialData() {
+  async function loadInitialData(page: number = 1, search: string = "") {
     isLoading.set(true);
     try {
-      const urlParams = new URLSearchParams($page.url.search);
-      const urlPage = parseInt(urlParams.get("page") || "1");
-      
       const [poolsResult, totalsResult, tokensResult] = await Promise.all([
         fetchPools({
-          page: urlPage,
+          page,
           limit: itemsPerPage,
-          search: searchInput,
+          search,
         }),
         fetchPoolTotals(),
         fetchTokens(),
       ]);
 
-      let allLoadedPools = poolsResult.pools || [];
-      
-      // If user is connected and has pools, ensure their pools are in the data
-      if ($auth.isConnected && $currentUserPoolsStore.filteredPools.length > 0) {
-        // Get unique pool addresses from user's positions
-        const userPoolAddresses = new Set(
-          $currentUserPoolsStore.filteredPools.map(p => `${p.address_0}_${p.address_1}`)
-        );
-        
-        // Check which user pools are missing from the current page
-        const loadedPoolAddresses = new Set(
-          allLoadedPools.map(p => `${p.address_0}_${p.address_1}`)
-        );
-        
-        const missingPools = Array.from(userPoolAddresses).filter(
-          addr => !loadedPoolAddresses.has(addr)
-        );
-        
-        // If there are missing pools, fetch additional data
-        if (missingPools.length > 0) {
-          try {
-            // Fetch more pools to try to find user's pools
-            // We'll fetch up to 500 pools to ensure we get user's positions
-            const additionalPoolsResult = await fetchPools({
-              page: 1,
-              limit: 500,
-              search: '',
-            });
-            
-            // Merge pools, avoiding duplicates
-            const additionalPools = additionalPoolsResult.pools || [];
-            const existingKeys = new Set(allLoadedPools.map(p => `${p.address_0}_${p.address_1}`));
-            
-            for (const pool of additionalPools) {
-              const poolKey = `${pool.address_0}_${pool.address_1}`;
-              if (!existingKeys.has(poolKey)) {
-                allLoadedPools.push(pool);
-                existingKeys.add(poolKey);
-              }
-            }
-          } catch (error) {
-            console.error("Error fetching additional pools for user positions:", error);
-          }
-        }
-      }
-
-      livePools.set(allLoadedPools);
+      allPools.set(poolsResult.pools || []);
       totalPages.set(poolsResult.total_pages);
       currentPage.set(poolsResult.page);
       poolTotals.set(totalsResult);
@@ -301,88 +271,61 @@
     }
   }
 
-  async function loadPools(page: number, search: string) {
-    isLoading.set(true);
+  async function initializeUserPools(loadData = true) {
+    if (isLoadingUserPools) return;
+    
+    isLoadingUserPools = true;
     try {
-      const result = await fetchPools({ page, limit: itemsPerPage, search });
-      let allLoadedPools = result.pools || [];
-      
-      // If user is connected, on user pools view, and has pools, ensure their pools are in the data
-      if ($auth.isConnected && $activePoolView === "user" && $currentUserPoolsStore.filteredPools.length > 0) {
-        // Get unique pool addresses from user's positions
-        const userPoolAddresses = new Set(
-          $currentUserPoolsStore.filteredPools.map(p => `${p.address_0}_${p.address_1}`)
-        );
-        
-        // Check which user pools are missing from the current results
-        const loadedPoolAddresses = new Set(
-          allLoadedPools.map(p => `${p.address_0}_${p.address_1}`)
-        );
-        
-        const missingPools = Array.from(userPoolAddresses).filter(
-          addr => !loadedPoolAddresses.has(addr)
-        );
-        
-        // If there are missing pools, fetch additional data
-        if (missingPools.length > 0) {
-          try {
-            // Fetch more pools to find user's pools
-            const additionalPoolsResult = await fetchPools({
-              page: 1,
-              limit: 500,
-              search: '',
-            });
-            
-            // Find and add only the missing user pools
-            const additionalPools = additionalPoolsResult.pools || [];
-            for (const pool of additionalPools) {
-              const poolKey = `${pool.address_0}_${pool.address_1}`;
-              if (userPoolAddresses.has(poolKey) && !loadedPoolAddresses.has(poolKey)) {
-                allLoadedPools.push(pool);
-              }
-            }
-          } catch (error) {
-            console.error("Error fetching additional pools for user positions:", error);
-          }
-        }
+      await currentUserPoolsStore.initialize();
+      // Always load pool data on initialization for accurate count
+      // Only skip if explicitly told not to load data
+      if (loadData) {
+        await loadUserPoolsData();
       }
-      
-      livePools.set(allLoadedPools);
-      totalPages.set(result.total_pages);
-      // Don't update currentPage here as it can cause reactive loops
-      // currentPage.set(result.page);
-      mobilePage = 1;
     } catch (error) {
-      console.error("Error fetching pools:", error);
+      console.error("Error initializing user pools:", error);
     } finally {
-      isLoading.set(false);
+      isLoadingUserPools = false;
     }
   }
 
-  async function fetchUserPools() {
-    if (!hasCompletedInitialLoad || !$currentUserPoolsStore.loading) {
-      isLoading.set(true);
-      try {
-        await currentUserPoolsStore.initialize();
-        hasCompletedInitialLoad = true;
-      } catch (error) {
-        console.error("Error fetching user pools:", error);
-        hasCompletedInitialLoad = false;
-      } finally {
-        isLoading.set(false);
+  async function loadUserPoolsData() {
+    if ($currentUserPoolsStore.filteredPools.length === 0) {
+      userPoolsData.set([]);
+      return;
+    }
+
+    isLoadingUserPools = true;
+    try {
+      // Get LP token IDs from user's positions
+      const userLpTokenIds = $currentUserPoolsStore.filteredPools
+        .map(p => String(p.lp_token_id))
+        .filter(id => id && id !== 'undefined');
+
+      if (userLpTokenIds.length > 0) {
+        const pools = await fetchPoolsByLpTokenIds(userLpTokenIds);
+        userPoolsData.set(pools);
+      } else {
+        userPoolsData.set([]);
       }
+    } catch (error) {
+      console.error("Error fetching user pools data:", error);
+      userPoolsData.set([]);
+    } finally {
+      isLoadingUserPools = false;
     }
   }
 
   async function refreshUserPools() {
-    if (hasCompletedInitialLoad && !$currentUserPoolsStore.loading) {
-      try {
-        currentUserPoolsStore.reset();
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        await currentUserPoolsStore.initialize();
-      } catch (error) {
-        console.error("Error refreshing user pools:", error);
-      }
+    if (!$auth.isConnected) return;
+    
+    try {
+      currentUserPoolsStore.reset();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      hasInitializedUserPools = false;
+      await initializeUserPools();
+    } catch (error) {
+      console.error("Error refreshing user pools:", error);
     }
   }
 
@@ -392,11 +335,19 @@
     searchDebounceTimer = setTimeout(() => {
       try {
         const search = searchInput.trim().toLowerCase();
-        goto(`/pools?search=${encodeURIComponent(search)}&page=1`, {
-          keepFocus: true,
-          noScroll: true,
-          replaceState: true,
-        });
+        
+        if ($activePoolView === "all") {
+          // For all pools, update URL which triggers data loading
+          goto(`/pools?search=${encodeURIComponent(search)}&page=1`, {
+            keepFocus: true,
+            noScroll: true,
+            replaceState: true,
+          });
+        } else {
+          // For user pools, just update the store filter
+          currentUserPoolsStore.setSearchQuery(search);
+          currentUserPoolsStore.updateFilteredPools();
+        }
       } catch (error) {
         console.error("Error navigating during search:", error);
       }
@@ -407,7 +358,7 @@
     goto(`/pools?search=${encodeURIComponent(searchInput)}&page=${page}`, {
       keepFocus: true,
       noScroll: true,
-      replaceState: true,
+      replaceState: false,
     });
   }
 
@@ -430,7 +381,7 @@
           limit: itemsPerPage,
           search: searchInput,
         });
-        $livePools = [...$livePools, ...(result.pools || [])];
+        allPools.update(pools => [...pools, ...(result.pools || [])]);
         mobilePage++;
       } finally {
         isMobileFetching = false;
@@ -440,13 +391,14 @@
 
   // ===== UI Helper Functions =====
   const getHighestAPY = () =>
-    Math.max(...($livePools || []).map((p) => Number(p.rolling_24h_apy)), 0);
+    Math.max(...($allPools || []).map((p) => Number(p.rolling_24h_apy)), 0);
     
   const isKongPool = (pool) =>
     pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID;
 
   const getUserPoolData = (pool) => {
-    return $userPoolsWithDetails.find(
+    if (!$auth.isConnected) return null;
+    return $currentUserPoolsStore.filteredPools.find(
       (p) => p.address_0 === pool.address_0 && p.address_1 === pool.address_1
     );
   };
@@ -456,24 +408,34 @@
     sortDirection.update((d) => (d === "asc" ? "desc" : "asc"));
   };
 
-  const handleViewChange = (view: string) => {
+  const handleViewChange = async (view: string) => {
     activePoolView.set(view);
     
     if (view === "user") {
-      currentUserPoolsStore.setSearchQuery(searchInput);
-      currentUserPoolsStore.updateFilteredPools();
+      // Always ensure user pools are initialized when switching to user view
+      if ($auth.isConnected) {
+        // Initialize only if truly not initialized yet
+        if (!hasInitializedUserPools) {
+          hasInitializedUserPools = true;
+          await initializeUserPools();
+        }
+        
+        // Wait for any ongoing loading to complete
+        let attempts = 0;
+        while ($currentUserPoolsStore.loading && attempts < 20) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attempts++;
+        }
+      }
+      
+      // The search state should already be managed by the search input handler
+      // No need to update it when switching views
     }
   };
 
   const handleSearchInputChange = (value: string) => {
     searchInput = value;
-    
-    if ($activePoolView === "user") {
-      currentUserPoolsStore.setSearchQuery(value);
-      currentUserPoolsStore.updateFilteredPools();
-    } else {
-      handleSearch();
-    }
+    handleSearch();
   };
 
   const handleSortColumnChange = (column: string) => {
@@ -502,7 +464,7 @@
         userPoolsCount={$userPoolsWithDetails.length}
         isConnected={$auth.isConnected}
         isMobile={isMobile}
-        onUserPoolsClick={fetchUserPools}
+        onUserPoolsClick={refreshUserPools}
       />
 
     <!-- Content -->
@@ -527,7 +489,7 @@
                 {searchInput ? `Searching for "${searchInput}"...` : "Loading pools..."}
               </p>
             </div>
-          {:else if $sortedPools.length === 0}
+          {:else if $sortedAllPools.length === 0}
             <PoolsEmptyState 
               isUserPool={false} 
               searchInput={searchInput} 
@@ -540,7 +502,7 @@
                 : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"}
               in:fade={{ duration: 300 }}
             >
-              {#each $sortedPools as pool (pool.address_0 + pool.address_1)}
+              {#each $sortedAllPools as pool (`${pool.address_0}-${pool.address_1}`)}
                 {@const userPoolData = getUserPoolData(pool)}
                 <PoolCard
                   pool={pool}
@@ -576,7 +538,7 @@
         <!-- User Pools -->
           {#if $auth.isConnected}
             <div class="h-full overflow-auto py-4 sm:p-4">
-              {#if $currentUserPoolsStore.loading && !hasCompletedInitialLoad}
+              {#if isLoadingUserPools || ($currentUserPoolsStore.loading && !hasInitializedUserPools) || ($userPoolsData.length === 0 && $currentUserPoolsStore.filteredPools.length > 0)}
                 <div
                   class="flex flex-col items-center justify-center h-64 gap-4"
                   in:fade={{ duration: 300 }}
@@ -609,6 +571,7 @@
                   </button>
                 </div>
               {:else if $userPoolsWithDetails.length === 0}
+                {console.log("Showing empty state - userPoolsWithDetails:", $userPoolsWithDetails, "userPoolsData:", $userPoolsData)}
                 <PoolsEmptyState 
                   isUserPool={true} 
                   searchInput={searchInput} 
@@ -618,16 +581,20 @@
                 <div
                   class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
                 >
+                  {#key $userPoolsData}
                   {#each $userPoolsWithDetails as pool (pool.key)}
-                    {@const livePool = $livePools.find(p => p.address_0 === pool.address_0 && p.address_1 === pool.address_1)}
-                    {@const poolForCard = livePool ? {
-                      ...livePool,
-                      // Keep user pool data for display
-                    } : {
-                      ...pool,
-                      // Convert ts from bigint to number
-                      ts: Number(pool.ts || 0),
-                      // Add missing properties for pools not in live data
+                    {@const poolForCard = pool.livePool || {
+                      // Complete fallback pool structure for pools without live data
+                      id: pool.id,
+                      lp_token_symbol: pool.lp_token_symbol || pool.symbol,
+                      symbol: pool.symbol,
+                      name: pool.name || `${pool.symbol_0}/${pool.symbol_1} Pool`,
+                      address_0: pool.address_0,
+                      address_1: pool.address_1,
+                      symbol_0: pool.symbol_0,
+                      symbol_1: pool.symbol_1,
+                      chain_0: pool.chain_0 || "IC",
+                      chain_1: pool.chain_1 || "IC",
                       balance_0: BigInt(0),
                       balance_1: BigInt(0),
                       lp_fee_0: BigInt(0),
@@ -638,15 +605,16 @@
                       rolling_24h_lp_fee: BigInt(0),
                       rolling_24h_num_swaps: BigInt(0),
                       pool_id: 0,
+                      lp_token_id: pool.lp_token_id,
                       lp_token_supply: BigInt(0),
                       total_volume: BigInt(0),
                       total_lp_fee: BigInt(0),
                       lp_fee_bps: 30, // Default 0.3% fee
                       is_removed: false,
                       price: 0,
-                      name: pool.name || `${pool.symbol_0}/${pool.symbol_1} Pool`,
-                      token0: pool.token0,
-                      token1: pool.token1
+                      ts: Number(pool.ts || 0),
+                      token0: pool.token0 || $tokenMap.get(pool.address_0) || undefined,
+                      token1: pool.token1 || $tokenMap.get(pool.address_1) || undefined
                     }}
                     <PoolCard
                       pool={poolForCard}
@@ -656,15 +624,15 @@
                       isMobile={false}
                       isConnected={$auth.isConnected}
                       onClick={() => {
-                        // Always go to position page for user pools since they have a position
                         goto(`/pools/${pool.address_0}_${pool.address_1}`);
                       }}
                     />
                   {/each}
+                  {/key}
                 </div>
               {/if}
 
-              {#if $currentUserPoolsStore.loading && hasCompletedInitialLoad}
+              {#if $currentUserPoolsStore.loading && hasInitializedUserPools}
                 <div
                 class="fixed bottom-4 right-4 bg-white/10 backdrop-blur-md rounded-full p-2 shadow-lg z-30"
               >
