@@ -127,15 +127,27 @@
             p.address_0 === pool.address_0 && p.address_1 === pool.address_1,
         );
 
+        // Calculate share percentage only if livePool exists and has liquidity
+        let sharePercentage = "0";
+        if (livePool && (livePool.balance_0 > 0n || livePool.balance_1 > 0n)) {
+          sharePercentage = calculateUserPoolPercentage(
+            livePool.balance_0,
+            livePool.balance_1,
+            pool.amount_0,
+            pool.amount_1,
+            livePool.lp_fee_0,
+            livePool.lp_fee_1,
+          );
+        } else if (!livePool || (livePool.balance_0 === 0n && livePool.balance_1 === 0n)) {
+          // If pool doesn't exist in live data or has no liquidity, 
+          // and user has a position, they likely own 100% of the pool
+          sharePercentage = pool.amount_0 > 0 || pool.amount_1 > 0 ? "100" : "0";
+        }
+
         return {
           ...pool,
           key: `${pool.address_0}-${pool.address_1}`,
-          sharePercentage: calculateUserPoolPercentage(
-            livePool?.balance_0 + livePool?.lp_fee_0,
-            livePool?.balance_1 + livePool?.lp_fee_1,
-            pool.amount_0,
-            pool.amount_1,
-          ),
+          sharePercentage,
           apy: formatToNonZeroDecimal(livePool?.rolling_24h_apy || 0),
           usdValue: formatToNonZeroDecimal(pool.usd_balance),
           formattedAmount0: formatToNonZeroDecimal(pool.amount_0),
@@ -230,7 +242,53 @@
         fetchTokens(),
       ]);
 
-      livePools.set(poolsResult.pools || []);
+      let allLoadedPools = poolsResult.pools || [];
+      
+      // If user is connected and has pools, ensure their pools are in the data
+      if ($auth.isConnected && $currentUserPoolsStore.filteredPools.length > 0) {
+        // Get unique pool addresses from user's positions
+        const userPoolAddresses = new Set(
+          $currentUserPoolsStore.filteredPools.map(p => `${p.address_0}_${p.address_1}`)
+        );
+        
+        // Check which user pools are missing from the current page
+        const loadedPoolAddresses = new Set(
+          allLoadedPools.map(p => `${p.address_0}_${p.address_1}`)
+        );
+        
+        const missingPools = Array.from(userPoolAddresses).filter(
+          addr => !loadedPoolAddresses.has(addr)
+        );
+        
+        // If there are missing pools, fetch additional data
+        if (missingPools.length > 0) {
+          try {
+            // Fetch more pools to try to find user's pools
+            // We'll fetch up to 500 pools to ensure we get user's positions
+            const additionalPoolsResult = await fetchPools({
+              page: 1,
+              limit: 500,
+              search: '',
+            });
+            
+            // Merge pools, avoiding duplicates
+            const additionalPools = additionalPoolsResult.pools || [];
+            const existingKeys = new Set(allLoadedPools.map(p => `${p.address_0}_${p.address_1}`));
+            
+            for (const pool of additionalPools) {
+              const poolKey = `${pool.address_0}_${pool.address_1}`;
+              if (!existingKeys.has(poolKey)) {
+                allLoadedPools.push(pool);
+                existingKeys.add(poolKey);
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching additional pools for user positions:", error);
+          }
+        }
+      }
+
+      livePools.set(allLoadedPools);
       totalPages.set(poolsResult.total_pages);
       currentPage.set(poolsResult.page);
       poolTotals.set(totalsResult);
@@ -247,7 +305,49 @@
     isLoading.set(true);
     try {
       const result = await fetchPools({ page, limit: itemsPerPage, search });
-      livePools.set(result.pools || []);
+      let allLoadedPools = result.pools || [];
+      
+      // If user is connected, on user pools view, and has pools, ensure their pools are in the data
+      if ($auth.isConnected && $activePoolView === "user" && $currentUserPoolsStore.filteredPools.length > 0) {
+        // Get unique pool addresses from user's positions
+        const userPoolAddresses = new Set(
+          $currentUserPoolsStore.filteredPools.map(p => `${p.address_0}_${p.address_1}`)
+        );
+        
+        // Check which user pools are missing from the current results
+        const loadedPoolAddresses = new Set(
+          allLoadedPools.map(p => `${p.address_0}_${p.address_1}`)
+        );
+        
+        const missingPools = Array.from(userPoolAddresses).filter(
+          addr => !loadedPoolAddresses.has(addr)
+        );
+        
+        // If there are missing pools, fetch additional data
+        if (missingPools.length > 0) {
+          try {
+            // Fetch more pools to find user's pools
+            const additionalPoolsResult = await fetchPools({
+              page: 1,
+              limit: 500,
+              search: '',
+            });
+            
+            // Find and add only the missing user pools
+            const additionalPools = additionalPoolsResult.pools || [];
+            for (const pool of additionalPools) {
+              const poolKey = `${pool.address_0}_${pool.address_1}`;
+              if (userPoolAddresses.has(poolKey) && !loadedPoolAddresses.has(poolKey)) {
+                allLoadedPools.push(pool);
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching additional pools for user positions:", error);
+          }
+        }
+      }
+      
+      livePools.set(allLoadedPools);
       totalPages.set(result.total_pages);
       // Don't update currentPage here as it can cause reactive loops
       // currentPage.set(result.page);
