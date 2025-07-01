@@ -105,13 +105,16 @@ pub fn get_all_markets(args: GetAllMarketsArgs) -> GetAllMarketsResult {
             }
         });
         
-        // After featured sorting, always put resolved markets (Closed status) last
+        // After featured sorting, always put resolved markets (Closed status) and voided markets last
         all_markets.sort_by(|(_, a), (_, b)| {
-            match (&a.status, &b.status) {
-                (MarketStatus::Closed(_), MarketStatus::Closed(_)) => std::cmp::Ordering::Equal, // Both resolved, maintain order
-                (MarketStatus::Closed(_), _) => std::cmp::Ordering::Greater, // a is resolved, b is not - a goes last
-                (_, MarketStatus::Closed(_)) => std::cmp::Ordering::Less,    // b is resolved, a is not - b goes last
-                _ => std::cmp::Ordering::Equal, // Neither resolved, maintain order
+            let a_is_final = matches!(&a.status, MarketStatus::Closed(_) | MarketStatus::Voided);
+            let b_is_final = matches!(&b.status, MarketStatus::Closed(_) | MarketStatus::Voided);
+            
+            match (a_is_final, b_is_final) {
+                (true, true) => std::cmp::Ordering::Equal,   // Both are closed/voided, maintain order
+                (true, false) => std::cmp::Ordering::Greater, // a is closed/voided, b is not - a goes last
+                (false, true) => std::cmp::Ordering::Less,    // b is closed/voided, a is not - b goes last
+                (false, false) => std::cmp::Ordering::Equal,  // Neither closed/voided, maintain order
             }
         });
         
