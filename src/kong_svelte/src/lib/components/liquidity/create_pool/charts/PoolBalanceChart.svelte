@@ -357,7 +357,6 @@
     chartOptions.scales.y = {
       ...chartOptions.scales.y,
       display: false, // Hide entire y-axis
-      beginAtZero: true, // Start from zero to fill space
       grid: {
         display: false, // Hide grid lines
       },
