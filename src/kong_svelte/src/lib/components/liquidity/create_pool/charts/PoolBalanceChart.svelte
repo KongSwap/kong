@@ -357,7 +357,6 @@
     chartOptions.scales.y = {
       ...chartOptions.scales.y,
       display: false, // Hide entire y-axis
-      beginAtZero: true, // Start from zero to fill space
       grid: {
         display: false, // Hide grid lines
       },
@@ -553,7 +552,7 @@
           {:else if props.currentPool}
             <span class="text-sm">No chart data available</span>
           {:else}
-            <span class="text-sm">Charts Coming Soon</span>
+          <span class="text-sm">No chart data available</span>
           {/if}
         </div>
       {/if}

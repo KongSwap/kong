@@ -30,6 +30,6 @@
   }
 
   .warning-description {
-    @apply text-white/70 text-sm leading-relaxed m-0;
+    @apply text-kong-text-primary text-sm leading-relaxed m-0;
   }
 </style> 
