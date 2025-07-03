@@ -553,7 +553,7 @@
           {:else if props.currentPool}
             <span class="text-sm">No chart data available</span>
           {:else}
-            <span class="text-sm">Charts Coming Soon</span>
+          <span class="text-sm">No chart data available</span>
           {/if}
         </div>
       {/if}

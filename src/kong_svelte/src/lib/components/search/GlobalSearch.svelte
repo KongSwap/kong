@@ -271,22 +271,23 @@
   onClose={closeSearch}
   closeOnEscape={true}
   closeOnClickOutside={true}
-  variant="solid"
   width="700px"
   className="global-search-modal"
   isPadded
 >
-  <div slot="title" class="w-full">
-    <SearchInput 
-      bind:searchQuery
-      {isSearching}
-      {searchShortcut}
-      {isMobile}
-      on:input={handleInput}
-      on:keydown={handleKeydown}
-      on:clear={handleClearSearch}
-    />
-  </div>
+  {#snippet titleSlot()}
+    <div class="w-full pr-3">
+      <SearchInput 
+        bind:searchQuery
+        {isSearching}
+        {searchShortcut}
+        {isMobile}
+        on:input={handleInput}
+        on:keydown={handleKeydown}
+        on:clear={handleClearSearch}
+      />
+    </div>
+  {/snippet}
 
   <div class="mobile-touch-container">
     <div class="search-results" style="-webkit-overflow-scrolling: touch; overscroll-behavior: contain;">

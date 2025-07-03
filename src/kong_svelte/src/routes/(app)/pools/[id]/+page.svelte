@@ -765,12 +765,14 @@
               </div>
 
               <div class="space-y-3">
-                <PoolWarning {token0} {token1} />
-                <InitialPriceInput
-                  {token0}
-                  {token1}
-                  onPriceChange={handlePriceChange}
-                />
+                {#if token0 && token1}
+                  <PoolWarning {token0} {token1} />
+                  <InitialPriceInput
+                    {token0}
+                    {token1}
+                    onPriceChange={handlePriceChange}
+                  />
+                {/if}
               </div>
               <div>
                 <AddLiquidity

@@ -12,12 +12,12 @@ interface SitemapPage {
 // Define static pages with more detailed configuration
 const staticPages: SitemapPage[] = [
   { url: '/', changefreq: 'daily', priority: '1.0' },
-  { url: '/swap', changefreq: 'hourly', priority: '0.9' },
+  { url: '/swap', changefreq: 'hourly', priority: '0.1' },
   { url: '/pools', changefreq: 'hourly', priority: '0.9' },
-  { url: '/stats', changefreq: 'hourly', priority: '0.8' },
+  { url: '/stats', changefreq: 'hourly', priority: '0.9' },
   { url: '/predict', changefreq: 'hourly', priority: '0.8' },
-  { url: '/settings', changefreq: 'weekly', priority: '0.5' },
-  { url: '/airdrop-claims', changefreq: 'daily', priority: '0.7' },
+  { url: '/settings', changefreq: 'weekly', priority: '0.1' },
+  { url: '/airdrop-claims', changefreq: 'weekly', priority: '0.1' },
   { url: '/wallets', changefreq: 'weekly', priority: '0.6' },
   { url: '/pro', changefreq: 'weekly', priority: '0.7' },
   // Add other static routes here as needed
