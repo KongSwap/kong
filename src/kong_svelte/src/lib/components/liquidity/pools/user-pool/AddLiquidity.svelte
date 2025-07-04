@@ -290,14 +290,14 @@
       <div class="summary-row">
         <span>Rate</span>
         <span class="summary-value">
-          1 {token0?.symbol} = {Number(state.amounts[1]) / Number(state.amounts[0])} {token1?.symbol}
+          1 {token0?.symbol} = {(Number(state.amounts[1]) / Number(state.amounts[0])).toFixed(8)} {token1?.symbol}
         </span>
       </div>
       <div class="summary-row">
         <span>Value</span>
         <span class="summary-value">
-          ${Number(calculateTokenUsdValue(state.amounts[0], token0)) + 
-            Number(calculateTokenUsdValue(state.amounts[1], token1))}
+          ${(Number(calculateTokenUsdValue(state.amounts[0], token0)) + 
+            Number(calculateTokenUsdValue(state.amounts[1], token1))).toFixed(2)}
         </span>
       </div>
     </div>

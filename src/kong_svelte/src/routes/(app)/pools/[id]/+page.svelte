@@ -160,6 +160,7 @@
   }
 
   function calculateTotalEarnings() {
+    if (!userPool) return "0.00";
     let total = 0;
     if (userPool?.userFeeShare0 && userPool?.userFeeShare0 > 0 && token0) {
       // userFeeShare0 is already in decimal format
@@ -626,111 +627,102 @@
     <!-- Main Content Row -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
       <div class="flex flex-col gap-y-4">
-        {#if userPool}
-          <Panel variant="solid" className="p-5">
-            <!-- Header with Pool Share -->
-            <div class="flex items-start justify-between mb-4">
-              <h3 class="text-lg font-semibold text-kong-text-primary">
-                Your Position
-              </h3>
-              <div class="text-right">
-                <p
-                  class="text-xs text-kong-text-secondary uppercase tracking-wider font-medium mb-1"
-                >
-                  Pool Share
-                </p>
-                <p class="text-sm font-bold text-kong-text-primary">
-                  {formatToNonZeroDecimal(
-                    (userPool?.poolSharePercentage || 0).toString(),
-                  )}%
-                </p>
-              </div>
+        <Panel variant="solid" className="p-5">
+          <!-- Header with Pool Share -->
+          <div class="flex items-start justify-between mb-4">
+            <h3 class="text-lg font-semibold text-kong-text-primary">
+              Your Position
+            </h3>
+            <div class="text-right">
+              <p
+                class="text-xs text-kong-text-secondary uppercase tracking-wider font-medium mb-1"
+              >
+                Pool Share
+              </p>
+              <p class="text-sm font-bold text-kong-text-primary">
+                {formatToNonZeroDecimal(
+                  (userPool?.poolSharePercentage || 0).toString(),
+                )}%
+              </p>
             </div>
+          </div>
 
-            <!-- Main Metrics Row -->
-            <div class="grid grid-cols-2 gap-6">
-              <!-- Total Value Section -->
-              <div>
-                <p
-                  class="text-xs text-kong-text-secondary mb-3 uppercase tracking-wider font-medium"
-                >
-                  Total Value
-                </p>
-                <p class="text-3xl font-bold text-kong-primary mb-3">
-                  {(userPool?.usd_balance || 0) > 100
-                    ? (userPool?.usd_balance || 0).toLocaleString(undefined, {
-                        style: "currency",
-                        currency: "USD",
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0,
-                      })
-                    : (userPool?.usd_balance || 0).toLocaleString(undefined, {
-                        style: "currency",
-                        currency: "USD",
-                        minimumFractionDigits: 2,
-                        maximumeFractionDigits: 2,
-                      })}
-                </p>
-                <div class="space-y-1 text-xs">
-                  <div class="flex justify-between items-center">
-                    <span class="text-kong-text-secondary"
-                      >{token0?.symbol}:</span
-                    >
-                    <span class="text-kong-text-primary font-medium"
-                      >{formatToNonZeroDecimal(
-                        userPool?.amount_0.toString(),
-                      )}</span
-                    >
-                  </div>
-                  <div class="flex justify-between items-center">
-                    <span class="text-kong-text-secondary"
-                      >{token1?.symbol}:</span
-                    >
-                    <span class="text-kong-text-primary font-medium"
-                      >{formatToNonZeroDecimal(
-                        userPool?.amount_1.toString(),
-                      )}</span
-                    >
-                  </div>
+          <!-- Main Metrics Row -->
+          <div class="grid grid-cols-2 gap-6">
+            <!-- Total Value Section -->
+            <div>
+              <p
+                class="text-xs text-kong-text-secondary mb-3 uppercase tracking-wider font-medium"
+              >
+                Total Value
+              </p>
+              <p class="text-3xl font-bold text-kong-primary mb-3">
+                {(userPool?.usd_balance || 0.00).toLocaleString(undefined, {
+                      style: "currency",
+                      currency: "USD",
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                })}
+              </p>
+              <div class="space-y-1 text-xs">
+                <div class="flex justify-between items-center">
+                  <span class="text-kong-text-secondary"
+                    >{token0?.symbol}:</span
+                  >
+                  <span class="text-kong-text-primary font-medium"
+                    >{formatToNonZeroDecimal(
+                      (userPool?.amount_0 || 0n).toString(),
+                    )}</span
+                  >
                 </div>
-              </div>
-
-              <!-- Earnings Section -->
-              <div>
-                <p
-                  class="text-xs text-kong-text-secondary mb-3 uppercase tracking-wider font-medium"
-                >
-                  Earnings
-                </p>
-                <p class="text-3xl font-bold text-kong-accent-green mb-3">
-                  ${calculateTotalEarnings()}
-                </p>
-                <div class="space-y-1 text-xs">
-                  <div class="flex justify-between items-center">
-                    <span class="text-kong-text-secondary"
-                      >{userPool?.symbol_0} fees:</span
-                    >
-                    <span class="text-kong-accent-green font-medium"
-                      >{formatToNonZeroDecimal(
-                        userPool?.userFeeShare0.toString(),
-                      )}</span
-                    >
-                  </div>
-                  <div class="flex justify-between items-center">
-                    <span class="text-kong-text-secondary"
-                      >{userPool?.symbol_1} fees:</span
-                    >
-                    <span class="text-kong-accent-green font-medium"
-                      >{formatToNonZeroDecimal(
-                        userPool?.userFeeShare1.toString(),
-                      )}</span
-                    >
-                  </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-kong-text-secondary"
+                    >{token1?.symbol}:</span
+                  >
+                  <span class="text-kong-text-primary font-medium"
+                    >{formatToNonZeroDecimal(
+                      (userPool?.amount_1 || 0n).toString(),
+                    )}</span
+                  >
                 </div>
               </div>
             </div>
-          </Panel>
-        {/if}
+
+            <!-- Earnings Section -->
+            <div>
+              <p
+                class="text-xs text-kong-text-secondary mb-3 uppercase tracking-wider font-medium"
+              >
+                Earnings
+              </p>
+              <p class="text-3xl font-bold text-kong-accent-green mb-3">
+                ${calculateTotalEarnings()}
+              </p>
+              <div class="space-y-1 text-xs">
+                <div class="flex justify-between items-center">
+                  <span class="text-kong-text-secondary"
+                    >{token0?.symbol} fees:</span
+                  >
+                  <span class="text-kong-accent-green font-medium"
+                    >{formatToNonZeroDecimal(
+                      (userPool?.userFeeShare0 || 0n).toString(),
+                    )}</span
+                  >
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-kong-text-secondary"
+                    >{token1?.symbol} fees:</span
+                  >
+                  <span class="text-kong-accent-green font-medium"
+                    >{formatToNonZeroDecimal(
+                      (userPool?.userFeeShare1 || 0n).toString(),
+                    )}</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </Panel>
         <!-- TVL Chart -->
         <TVLHistoryChart
           {balanceHistory}
