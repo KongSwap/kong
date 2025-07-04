@@ -10,6 +10,15 @@ export function handleFormattedNumberInput(
     // Remove existing commas
     let rawValue = value.replace(/,/g, '');
     
+    // Enforce a strict maximum of 8 decimal places
+    if (rawValue.includes('.')) {
+        const parts = rawValue.split('.');
+        if (parts[1] && parts[1].length > 8) {
+            parts[1] = parts[1].slice(0, 8);
+            rawValue = parts.join('.');
+        }
+    }
+    
     if (rawValue === '' || !isValidNumber(rawValue)) {
         return {
             rawValue: '0',
