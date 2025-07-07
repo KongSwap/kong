@@ -4,7 +4,12 @@ network="--network $1"
 identity="--identity kong_token_minter"
 kong_faucet="kong_faucet"
 
-to_principal_id=$(dfx canister id $network $kong_faucet)
+to_principal_id=$(dfx canister id $network $kong_faucet 2>/dev/null)
+
+if [ -z "$to_principal_id" ]; then
+    echo "Error: Cannot find canister id for kong_faucet. Please deploy kong_faucet first."
+    exit 1
+fi
 
 # 100,000,000 ckUSDT
 amount=100_000_000_000_000

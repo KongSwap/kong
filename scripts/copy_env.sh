@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+
 # Get network parameter, default to local if not provided
 NETWORK=${1:-local}
 
@@ -17,9 +21,9 @@ echo "Available .env files:"
 ls -la .env* 2>/dev/null || echo "No .env files found!"
 echo "========================================="
 
-# Define source and destination files
-SOURCE_FILE="../.env_${NETWORK}"
-DEST_FILE="../.env"
+# Define source and destination files using absolute paths
+SOURCE_FILE="${PROJECT_ROOT}/.env_${NETWORK}"
+DEST_FILE="${PROJECT_ROOT}/.env"
 
 echo "Attempting to copy from: $SOURCE_FILE"
 echo "Copying to: $DEST_FILE"

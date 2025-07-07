@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-original_dir=$(pwd)
-root_dir="${CANISTER_IDS_ROOT:-${original_dir}/..}"
-canister_ids_file="${root_dir}/canister_ids.all.json"
+# Get the script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 TOKEN_SYMBOL="ckBTC"
 TOKEN_LEDGER=$(echo ${TOKEN_SYMBOL}_ledger | tr '[:upper:]' '[:lower:]')
@@ -15,10 +15,17 @@ if [ "$1" == "staging" ]; then
 	bash create_canister_id.sh staging
 	SPECIFIED_ID=""
 elif [ "$1" == "local" ]; then
-	if CANISTER_ID=$(jq -r ".[\"${TOKEN_LEDGER}\"][\"local\"]" "${canister_ids_file}"); then
-		[ "${CANISTER_ID}" != "null" ] && {
-			SPECIFIED_ID="--specified-id ${CANISTER_ID}"
-		}
+	# Source .env file to get canister IDs
+	if [ -f "${PROJECT_ROOT}/.env" ]; then
+		. "${PROJECT_ROOT}/.env"
+		if [ ! -z "${CANISTER_ID_CKBTC_LEDGER}" ]; then
+			SPECIFIED_ID="--specified-id ${CANISTER_ID_CKBTC_LEDGER}"
+		else
+			echo "Warning: CANISTER_ID_CKBTC_LEDGER not found in .env"
+		fi
+	else
+		echo "Error: .env file not found"
+		exit 1
 	fi
 else
 	exit 1

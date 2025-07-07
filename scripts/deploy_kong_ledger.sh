@@ -15,11 +15,7 @@ if [ "$1" == "staging" ]; then
 	bash create_canister_id.sh staging
 	SPECIFIED_ID=""
 elif [ "$1" == "local" ]; then
-	if CANISTER_ID=$(jq -r ".[\"${TOKEN_LEDGER}\"][\"local\"]" "${canister_ids_file}"); then
-		[ "${CANISTER_ID}" != "null" ] && {
-			SPECIFIED_ID="--specified-id ${CANISTER_ID}"
-		}
-	fi
+	SPECIFIED_ID="--specified-id o7oak-iyaaa-aaaaq-aadzq-cai"
 else
 	exit 1
 fi
