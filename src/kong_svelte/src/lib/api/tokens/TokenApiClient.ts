@@ -135,7 +135,7 @@ export const fetchAllTokens = async (params?: Omit<TokensParams, 'page' | 'limit
 
 // Cache for token fetches to prevent duplicate requests
 const tokenFetchCache = new Map<string, { promise: Promise<Kong.Token[]>, timestamp: number }>();
-const CACHE_TTL = 30000; // 30 seconds cache
+const CACHE_TTL = 10000; // 10 seconds cache
 
 /**
  * Fetches tokens by canister IDs

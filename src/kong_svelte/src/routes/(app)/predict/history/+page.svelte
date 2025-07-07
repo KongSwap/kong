@@ -5,14 +5,18 @@
   import { goto } from "$app/navigation";
   import { ArrowLeft, TrendingUp, Wallet, Award, Activity, ArrowUpRight } from "lucide-svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import PerformanceChart from "./PerformanceChart.svelte";
   import { fade } from "svelte/transition";
   import { notificationsStore } from "$lib/stores/notificationsStore";
     import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
+  import { userTokens } from "$lib/stores/userTokens";
+    import TokenImages from "$lib/components/common/TokenImages.svelte";
+  
   let history: any = null;
   let loading = true;
   let error: string | null = null;
+  let tokenDetails: Map<string, Kong.Token> = new Map();
 
   // Pagination state
   let currentPage = 1;
@@ -22,6 +26,7 @@
     try {
       if ($auth.isConnected) {
         history = await getUserHistory($auth.account.owner);
+        await loadTokenDetails();
       }
     } catch (e) {
       console.error("Failed to load data:", e);
@@ -39,12 +44,54 @@
     try {
       loading = true;
       history = await getUserHistory($auth.account.owner);
+      await loadTokenDetails();
     } catch (e) {
       console.error("Failed to load history:", e);
       error = e instanceof Error ? e.message : "Failed to load prediction history";
     } finally {
       loading = false;
     }
+  }
+
+  async function loadTokenDetails() {
+    if (!history) return;
+    
+    // Get unique token IDs from all bets
+    const tokenIds = new Set<string>();
+    [...(history.active_bets || []), ...(history.resolved_bets || [])].forEach(bet => {
+      if (bet.market?.token_id) {
+        tokenIds.add(bet.market.token_id);
+      }
+    });
+    
+    // Load token details for each unique token ID
+    for (const tokenId of tokenIds) {
+      try {
+        const token = await userTokens.getTokenDetails(tokenId);
+        if (token) {
+          tokenDetails.set(tokenId, token);
+        }
+      } catch (e) {
+        console.error(`Failed to load token details for ${tokenId}:`, e);
+      }
+    }
+    
+    // Trigger reactivity
+    tokenDetails = tokenDetails;
+  }
+  
+  function getTokenSymbol(bet: any): string {
+    const tokenId = bet.market?.token_id;
+    if (!tokenId) return 'KONG'; // Default fallback
+    const token = tokenDetails.get(tokenId);
+    return token?.symbol || 'KONG';
+  }
+  
+  function getTokenDecimals(bet: any): number {
+    const tokenId = bet.market?.token_id;
+    if (!tokenId) return 8; // Default decimals
+    const token = tokenDetails.get(tokenId);
+    return token?.decimals || 8;
   }
 
 
@@ -123,20 +170,20 @@
     </div>
 
     {#if error}
-      <Panel className="!rounded">
+      <Card>
         <div class="text-center py-8 text-kong-error">
           <p class="text-lg">{error}</p>
         </div>
-      </Panel>
+      </Card>
     {:else if loading}
-      <Panel className="!rounded">
+      <Card>
         <div class="text-center py-8">
           <div class="animate-spin w-8 h-8 border-4 border-kong-success rounded-full border-t-transparent mx-auto" />
           <p class="mt-4 text-kong-text-secondary">Loading your prediction history...</p>
         </div>
-      </Panel>
+      </Card>
     {:else if !history || (!history.active_bets.length && !history.resolved_bets.length)}
-      <Panel className="!rounded">
+      <Card>
         <div class="text-center py-12">
           <div class="max-w-md mx-auto">
             <p class="text-lg mb-2">No predictions yet</p>
@@ -145,11 +192,11 @@
             </p>
           </div>
         </div>
-      </Panel>
+      </Card>
     {:else}
       <!-- Summary Stats -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <Panel className="!rounded">
+        <Card>
           <div class="p-4">
             <div class="flex items-center gap-2 mb-2">
               <Wallet class="w-5 h-5 text-kong-success" />
@@ -157,8 +204,8 @@
             </div>
             <p class="text-xl font-medium">{formatBalance(history.current_balance, 8, 2)} KONG</p>
           </div>
-        </Panel>
-        <Panel className="!rounded">
+        </Card>
+        <Card>
           <div class="p-4">
             <div class="flex items-center gap-2 mb-2">
               <TrendingUp class="w-5 h-5 text-kong-accent-blue" />
@@ -166,8 +213,8 @@
             </div>
             <p class="text-xl font-medium">{formatBalance(history.total_wagered, 8, 2)} KONG</p>
           </div>
-        </Panel>
-        <Panel className="!rounded">
+        </Card>
+        <Card>
           <div class="p-4">
             <div class="flex items-center gap-2 mb-2">
               <Award class="w-5 h-5 text-kong-primary" />
@@ -175,23 +222,23 @@
             </div>
             <p class="text-xl font-medium">{formatBalance(history.total_won, 8, 2)} KONG</p>
           </div>
-        </Panel>
-        <Panel className="!rounded">
+        </Card>
+        <Card>
           <div class="p-4">
             <div class="flex items-center gap-2 mb-2">
               <Activity class="w-5 h-5 text-yellow-400" />
               <h3 class="text-sm text-kong-text-secondary">Active Predictions</h3>
             </div>
-            <p class="text-xl font-medium">{history.active_bets.length} ({formatBalance(history.active_bets.reduce((sum, bet) => sum + Number(bet.bet_amount), 0), 8, 2)} KONG)</p>
+            <p class="text-xl font-medium">{history.active_bets.length}</p>
           </div>
-        </Panel>
+        </Card>
       </div>
 
       <!-- Performance Chart -->
       <div in:fade class="mb-8">
-        <Panel variant="solid" className="!rounded">
+        <Card>
             <PerformanceChart {history} />
-        </Panel>
+        </Card>
       </div>
 
 
@@ -200,14 +247,14 @@
       {#if (history && (history.active_bets.length > 0 || (history.resolved_bets && history.resolved_bets.length > 0)))}
         <div class="mb-8">
           <h2 class="text-xl font-bold mb-4">Prediction History</h2>
-          <Panel className="!rounded overflow-x-auto">
+          <Card>
             <table class="w-full min-w-full">
               <thead>
                 <tr class="border-b border-kong-bg-primary text-left">
                   <th class="p-4 text-kong-text-secondary font-medium">Market</th>
                   <th class="p-4 text-kong-text-secondary font-medium">Outcome</th>
                   <th class="p-4 text-kong-text-secondary font-medium">Status</th>
-                  <th class="p-4 text-kong-text-secondary font-medium text-right">Amount</th>
+                  <th class="p-4 text-kong-text-secondary font-medium text-right">Wager</th>
                   <th class="p-4 text-kong-text-secondary font-medium text-right">Result</th>
                 </tr>
               </thead>
@@ -215,53 +262,60 @@
                 {#if paginatedBets.length > 0}
                   {#each paginatedBets as bet}
                     {@const statusInfo = getOutcomeStatus(bet)}
+                    {@const token = tokenDetails.get(bet.market?.token_id)}
                     <tr class="border-b border-kong-bg-primary hover:bg-kong-bg-primary/10 transition-colors">
-                      <td class="p-4">
+                      <td class="px-4 py-2.5">
                         <button
-                          class="text-sm sm:text-base line-clamp-2 font-medium text-kong-text-primary text-left hover:text-kong-success transition-colors flex items-center gap-1 max-w-md"
+                          class="text-sm sm:text-base line-clamp-2 font-medium text-kong-text-primary text-left hover:text-kong-primary transition-colors flex items-center gap-1 max-w-md"
                           title={bet.market.question}
                           onclick={() => goto(`/predict/${bet.market.id}`)}
                         >
+                          <img src={bet?.market?.image_url} alt={token?.symbol} class="w-8 h-8 rounded-kong-roundness mr-2 object-cover" />
                           <span class="block">{bet.market.question}</span>
                           <ArrowUpRight class="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                         </button>
                       </td>
-                      <td class="p-4">
+                      <td class="px-4 py-2.5">
                         <span class="text-sm px-3 py-1 rounded-full bg-kong-bg-primary inline-block">
                           {bet.outcome_text}
                         </span>
                       </td>
-                      <td class="p-4">
+                      <td class="px-4 py-2.5">
                         <span class="text-sm font-medium {statusInfo.color}">
                           {statusInfo.text}
                         </span>
                       </td>
-                      <td class="p-4 text-right font-medium">
-                        {formatBalance(bet.bet_amount, 8, 2)} KONG
+                      <td class="text-right font-medium">
+                        <div class="flex gap-2 items-center justify-end px-4"> 
+                          <TokenImages tokens={[token]} size={18} />
+                          <span class="text-sm font-medium">
+                            {formatBalance(bet.bet_amount, token?.decimals || 8, 2)}
+                          </span>
+                        </div>
                       </td>
-                      <td class="p-4 text-right font-medium">
+                      <td class="px-4 py-2.5 text-right font-medium">
                         {#if statusInfo.text === 'Pending'}
                             <span class="text-sm text-kong-text-secondary block">Potential Win</span>
-                            <span class="text-kong-success">{formatBalance(calculatePotentialWin(bet), 8, 2)} KONG</span>
+                            <span class="text-kong-success">{formatBalance(calculatePotentialWin(bet), token?.decimals || 8, 2)} {token?.symbol || 'KONG'}</span>
                         {:else if statusInfo.text === 'Won'}
                             <span class="text-sm text-kong-text-secondary block">Winnings</span>
                             {#if bet.winnings && bet.winnings.length > 0}
                                 <span class="text-kong-success">
-                                    +{formatBalance(bet.winnings[0], 8, 2)} KONG
+                                    +{formatBalance(bet.winnings[0], token?.decimals || 8, 2)} {token?.symbol || 'KONG'}
                                 </span>
                             {:else}
                                 <span class="text-kong-text-secondary">-</span>
                             {/if}
                         {:else}
                             <span class="text-sm text-kong-text-secondary block">Result</span>
-                            <span class="text-kong-error">-{formatBalance(bet.bet_amount, 8, 2)} KONG</span>
+                            <span class="text-kong-error">-{formatBalance(bet.bet_amount, token?.decimals || 8, 2)} {token?.symbol || 'KONG'}</span>
                         {/if}
                       </td>
                     </tr>
                   {/each}
                 {:else}
                   <tr>
-                    <td colspan="5" class="p-4 text-center text-kong-text-secondary">No predictions found for this page.</td>
+                    <td colspan="6" class="p-4 text-center text-kong-text-secondary">No predictions found for this page.</td>
                   </tr>
                 {/if}
               </tbody>
@@ -288,13 +342,9 @@
               </button>
             </div>
             {/if}
-          </Panel>
+          </Card>
         </div>
       {/if}
     {/if}
   </div>
 </div>
-
-<style>
-  /* Add any custom styles here if needed */
-</style>

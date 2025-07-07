@@ -441,7 +441,7 @@
             {:else}
               <!-- No Markets Message -->
               <div class="text-center py-12">
-                <div class="max-w-md mx-auto text-kong-pm-text-secondary">
+                <div class="max-w-md mx-auto text-kong-text-secondary">
                   <div class="mb-4 text-2xl">📉</div>
                   <p class="text-lg">No markets available</p>
                   <p class="text-sm mt-2">

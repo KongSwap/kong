@@ -126,11 +126,11 @@
                   <span class="font-medium text-kong-text-accent-green">
                     {formatBalance(Number(betData.amount || 0), 8)}
                   </span>
-                  <span class="text-xs text-kong-pm-text-secondary">KONG</span>
+                  <span class="text-xs text-kong-text-secondary">KONG</span>
                 </div>
               </div>
               <div class="flex justify-between w-full items-center mt-2">
-                <span class="text-xs text-kong-pm-text-secondary">
+                <span class="text-xs text-kong-text-secondary">
                   {new Date(
                     Number(betData.timestamp) / 1_000_000,
                   ).toLocaleString(undefined, {
@@ -140,7 +140,7 @@
                     minute: "2-digit",
                   })}
                 </span>
-                <span class="text-xs text-kong-pm-text-secondary/80">
+                <span class="text-xs text-kong-text-secondary/80">
                   by <span class="font-medium text-kong-text-accent-green"
                     >{betData.user
                       ? betData.user.toString().slice(0, 10)
