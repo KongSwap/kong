@@ -5,7 +5,6 @@ import { auth } from "$lib/stores/auth";
 import { placeBet } from "$lib/api/predictionMarket";
 import { toScaledAmount } from "$lib/utils/numberFormatUtils";
 import { marketStore } from "$lib/stores/marketStore";
-import type { TokenInfo } from "$lib/types/token";
 
 interface BetModalState {
   show: boolean;
@@ -17,7 +16,7 @@ interface BetModalState {
   isApprovingAllowance: boolean;
 }
 
-export function useBetModal(kongToken: TokenInfo | null) {
+export function useBetModal(kongToken: Kong.Token | null) {
   let state = $state<BetModalState>({
     show: false,
     market: null,
