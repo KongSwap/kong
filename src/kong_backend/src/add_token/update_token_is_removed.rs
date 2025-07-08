@@ -4,26 +4,16 @@ use super::update_token_is_removed_args::UpdateTokenIsRemovedArgs;
 use super::update_token_reply::UpdateTokenReply;
 use super::update_token_reply_helpers::to_update_token_reply;
 
-use crate::ic::guards::not_in_maintenance_mode;
+use crate::ic::guards::caller_is_kingkong;
 use crate::stable_token::ic_token::ICToken;
 use crate::stable_token::lp_token::LPToken;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
 
-const APPROVED_CALLERS: [&str; 1] = [
-    "7ohni-sbpse-y327l-syhzk-jn6n4-hw277-erei5-xhkjr-lbh6b-rjqei-sqe",
-];
-
 /// Updates the is_removed field of a token
-#[update(guard = "not_in_maintenance_mode")]
+#[update(guard = "caller_is_kingkong")]
 async fn update_token_is_removed(args: UpdateTokenIsRemovedArgs) -> Result<UpdateTokenReply, String> {
-    let caller = ic_cdk::caller().to_text();
-    
-    if !APPROVED_CALLERS.contains(&caller.as_str()) {
-        return Err("Unauthorized".to_string());
-    }
-
     let stable_token = token_map::get_by_token(&args.token)?;
     
     let updated_token = match stable_token {
