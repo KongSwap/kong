@@ -1,8 +1,10 @@
 use candid::{Nat, Principal};
 use ic_cdk::{query, update};
 use icrc_ledger_types::icrc1::account::Account;
+use serde_json::Value;
 use std::collections::BTreeMap;
 
+use crate::helpers::json_helpers;
 use crate::helpers::nat_helpers::{nat_add, nat_subtract, nat_zero};
 use crate::ic::guards::caller_is_kingkong;
 use crate::remove_liquidity::remove_liquidity::remove_liquidity_from_pool;
@@ -51,6 +53,31 @@ fn update_pools(tokens: String) -> Result<String, String> {
 
     for (_, v) in pools {
         pool_map::update(&v);
+    }
+
+    Ok("Pools updated".to_string())
+}
+
+/// Update partial pool field values for stable memory
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn update_partial_pools(tokens: String) -> Result<String, String> {
+    let pools: BTreeMap<StablePoolId, Value> = match serde_json::from_str(&tokens) {
+        Ok(pools) => pools,
+        Err(e) => return Err(format!("Invalid pools: {}", e)),
+    };
+
+    for (id, updates) in pools {
+        let mut original_pool_value = match POOL_MAP.with(|m| m.borrow().get(&id)) {
+            Some(p) => serde_json::to_value(p).map_err(|e| format!("Failed to serialize existing pool: {}", e))?,
+            None => return Err(format!("Pool with id={} does not exist", id.0)),
+        };
+
+        json_helpers::merge(&mut original_pool_value, &updates);
+
+        let updated_pool: StablePool =
+            serde_json::from_value(original_pool_value).map_err(|e| format!("Failed to parse updated pool: {}", e))?;
+
+        pool_map::update(&updated_pool);
     }
 
     Ok("Pools updated".to_string())
