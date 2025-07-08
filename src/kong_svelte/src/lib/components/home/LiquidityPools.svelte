@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { Droplets, Users, Coins } from "lucide-svelte";
+  import { Droplets, ChevronDown } from "lucide-svelte";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import Card from "$lib/components/common/Card.svelte";
+    import { goto } from "$app/navigation";
 
   interface Props {
     poolStats: {
@@ -23,12 +24,16 @@
   <!-- Subtle gradient background -->
   <div class="absolute inset-0 overflow-hidden">
     <!-- Main gradient -->
-    <div class="absolute inset-0 bg-gradient-to-br from-transparent via-blue-500/[0.02] to-blue-500/[0.05]"></div>
+    <div class="absolute inset-0 bg-gradient-to-br from-transparent via-kong-primary/[0.02] to-kong-primary/[0.05]"></div>
     
     <!-- Hover effect with enhanced gradient -->
     <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
       <!-- Enhanced gradient on hover -->
-      <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-blue-400/10"></div>
+      <div class="absolute inset-0 bg-gradient-to-br from-kong-primary/10 via-transparent to-kong-secondary/10"></div>
+      <!-- Dot pattern overlay -->
+      <div class="absolute inset-0 opacity-10" 
+           style="background-image: radial-gradient(circle, rgb(var(--brand-primary)) 1px, transparent 1px); background-size: 16px 16px;">
+      </div>
     </div>
     
   </div>
@@ -79,24 +84,15 @@
       </div>
     </div>
 
-    <div class="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-kong-border/20">
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-        <div class="flex items-center gap-2 sm:gap-3">
-          <div class="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Users class="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
-          </div>
-          <div>
-            <p class="text-xs sm:text-sm font-medium text-kong-text-primary">Earn passive income</p>
-            <p class="text-xs text-kong-text-secondary">From every trade in your pool</p>
-          </div>
-        </div>
-        <a
-          href="/pools"
-          class="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg text-xs sm:text-sm text-blue-500 hover:text-blue-400 transition-colors border border-blue-500/20 w-full sm:w-auto justify-center sm:justify-start"
-        >
-          <Coins class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          <span>View Pools</span>
-        </a>
+    <div class="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-kong-border/20 text-right">
+      <div
+        onclick={() => {
+          goto("/pools");
+        }}
+        class="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-kong-text-secondary hover:text-kong-primary transition-colors cursor-pointer"
+      >
+        <span>Explore All Pools</span>
+        <ChevronDown class="w-3 h-3 sm:w-4 sm:h-4 rotate-[-90deg]" />
       </div>
     </div>
   </div>

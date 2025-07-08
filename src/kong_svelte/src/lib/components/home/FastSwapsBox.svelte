@@ -1,7 +1,19 @@
 <script lang="ts">
   import { Zap, Activity, TrendingUp } from "lucide-svelte";
   import Card from "$lib/components/common/Card.svelte";
+  import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { onMount } from "svelte";
+  
+  interface Props {
+    poolStats?: {
+      total_volume_24h: number;
+      total_tvl: number;
+      total_fees_24h: number;
+    };
+    isLoadingStats?: boolean;
+  }
+  
+  let { poolStats, isLoadingStats = false }: Props = $props();
   
   let swapTime = $state(2.5);
   let isAnimating = $state(false);
@@ -22,17 +34,19 @@
   className="group relative overflow-hidden"
   isPadded={true}
 >
-  <!-- Animated background -->
-  <div class="absolute inset-0">
-    <div
-      class="absolute bottom-0 left-0 w-32 h-32 bg-kong-warning/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"
-    ></div>
-    <div
-      class="absolute top-0 right-0 w-24 h-24 bg-kong-warning/5 rounded-full blur-xl group-hover:scale-125 transition-transform duration-700 delay-100"
-    ></div>
+  <!-- Subtle gradient background -->
+  <div class="absolute inset-0 overflow-hidden">
+    <!-- Main gradient -->
+    <div class="absolute inset-0 bg-gradient-to-br from-transparent via-kong-primary/[0.02] to-kong-primary/[0.05]"></div>
+    
+    <!-- Hover effect with enhanced gradient -->
+    <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+      <!-- Enhanced gradient on hover -->
+      <div class="absolute inset-0 bg-gradient-to-br from-kong-primary/10 via-transparent to-kong-secondary/10"></div>
+    </div>
   </div>
 
-  <div class="relative z-10 h-full flex flex-col">
+  <div class="relative z-10 h-full flex flex-col justify-between">
     <div class="flex items-start justify-between mb-2 sm:mb-4">
       <div>
         <h3 class="text-base sm:text-xl font-semibold text-kong-text-primary mb-0.5 sm:mb-1">
@@ -42,20 +56,19 @@
           Execute swaps in seconds
         </p>
       </div>
-      <div class="p-1.5 sm:p-2.5 bg-kong-warning/10 rounded-lg sm:rounded-xl group-hover:bg-kong-warning/20 transition-colors">
-        <Zap class="w-4 h-4 sm:w-6 sm:h-6 text-kong-warning" />
+      <div class="p-1.5 sm:p-2.5 bg-kong-primary/10 rounded-lg sm:rounded-xl group-hover:bg-kong-primary/20 transition-colors">
+        <Zap class="w-4 h-4 sm:w-6 sm:h-6 text-kong-primary" />
       </div>
     </div>
 
-    <div class="flex-1 flex flex-col gap-2 sm:gap-3">
       <!-- Main metric display -->
       <div class="bg-kong-bg-tertiary rounded-lg px-3 py-2 sm:p-4 min-h-[60px] sm:min-h-[80px] flex items-center justify-center">
         <div class="flex items-center gap-4">
           <div class="text-center">
-            <span class="text-3xl sm:text-5xl font-bold text-kong-text-primary transition-all duration-300 {isAnimating ? 'scale-105' : ''}">
+            <span class="text-3xl sm:text-4xl font-bold text-kong-text-primary transition-all duration-300 {isAnimating ? 'scale-105' : ''}">
               {swapTime.toFixed(1)}s
             </span>
-            <span class="text-xs sm:text-base text-kong-text-secondary block mt-0.5 sm:mt-1">Average swap time</span>
+            <span class="text-xs sm:text-sm text-kong-text-secondary block mt-0.5 sm:mt-1">Average swap time</span>
           </div>
         </div>
       </div>
@@ -70,10 +83,13 @@
           <span class="text-[10px] sm:text-xs text-kong-text-secondary block">Success rate</span>
         </div>
         <div class="text-center p-1.5 sm:p-2 bg-kong-bg-tertiary/10 rounded-md sm:rounded-lg">
-          <span class="text-base sm:text-xl font-bold text-kong-warning">1.2M+</span>
-          <span class="text-[10px] sm:text-xs text-kong-text-secondary block">Total swaps</span>
+          {#if isLoadingStats}
+            <div class="h-5 sm:h-6 w-16 sm:w-20 bg-kong-bg-tertiary rounded animate-pulse mx-auto mb-0.5"></div>
+          {:else}
+            <span class="text-base sm:text-xl font-bold text-kong-warning">{formatUsdValue(poolStats?.total_tvl || 0)}</span>
+          {/if}
+          <span class="text-[10px] sm:text-xs text-kong-text-secondary block">Liquidity</span>
         </div>
-      </div>
     </div>
   </div>
 </Card>

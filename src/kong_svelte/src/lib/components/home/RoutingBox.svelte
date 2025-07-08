@@ -111,14 +111,16 @@
   className="group relative overflow-hidden"
   isPadded={true}
 >
-  <!-- Animated background -->
-  <div class="absolute inset-0">
-    <div
-      class="absolute top-0 right-0 w-32 h-32 bg-kong-primary/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"
-    ></div>
-    <div
-      class="absolute bottom-0 left-0 w-24 h-24 bg-kong-primary/5 rounded-full blur-xl group-hover:scale-125 transition-transform duration-700 delay-100"
-    ></div>
+  <!-- Subtle gradient background -->
+  <div class="absolute inset-0 overflow-hidden">
+    <!-- Main gradient -->
+    <div class="absolute inset-0 bg-gradient-to-br from-transparent via-kong-primary/[0.02] to-kong-primary/[0.05]"></div>
+    
+    <!-- Hover effect with enhanced gradient -->
+    <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+      <!-- Enhanced gradient on hover -->
+      <div class="absolute inset-0 bg-gradient-to-br from-kong-primary/10 via-transparent to-kong-secondary/10"></div>
+    </div>
   </div>
 
   <div class="relative z-10 h-full flex flex-col">
@@ -136,7 +138,7 @@
       </div>
     </div>
 
-    <div class="flex-1 flex flex-col gap-3">
+    <div class="flex-1 flex flex-col justify-between">
       <!-- Animated route display -->
       <div class="bg-kong-bg-tertiary rounded-lg px-4 py-3 sm:p-4 min-h-[80px] flex flex-col items-center justify-center gap-2">
         {#if tokenPairs.length > 0}

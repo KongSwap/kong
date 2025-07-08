@@ -6,7 +6,7 @@
   class="md:col-span-2 lg:col-span-2 bg-transparent flex flex-row items-center justify-center md:justify-start gap-3 sm:gap-6 md:gap-8 min-h-[280px] sm:min-h-[300px] md:min-h-0 md:h-[200px] lg:h-[220px] overflow-hidden md:py-0 px-2 sm:px-4 md:px-0"
 >
   <div class="flex-shrink-0">
-    <img src="/images/kongface-white.svg" alt="Kong Logo" class="w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 lg:w-40 lg:h-40" />
+    <div class="w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 lg:w-40 lg:h-40 kong-logo-mask"></div>
   </div>
   <div class="text-left min-w-0">
     <div class="font-bold leading-tight">
@@ -39,5 +39,18 @@
 
   .animate-gradient-flow {
     animation: gradient-flow 4s linear infinite;
+  }
+
+  /* Use mask to apply kong-text-primary color to the SVG */
+  .kong-logo-mask {
+    background-color: rgb(var(--text-primary));
+    -webkit-mask-image: url('/images/kongface-white.svg');
+    mask-image: url('/images/kongface-white.svg');
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
   }
 </style>

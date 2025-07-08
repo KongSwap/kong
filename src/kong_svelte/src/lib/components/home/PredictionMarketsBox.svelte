@@ -6,6 +6,7 @@
     import { formatBalance } from "$lib/utils/numberFormatUtils";
     import { userTokens } from "$lib/stores/userTokens";
     import TokenImages from "../common/TokenImages.svelte";
+    import { goto } from "$app/navigation";
 
   let predictionStats = $state<{
     total_markets: bigint;
@@ -56,14 +57,13 @@
   <!-- Subtle gradient background -->
   <div class="absolute inset-0 overflow-hidden">
     <!-- Main gradient -->
-    <div class="absolute inset-0 bg-gradient-to-br from-transparent via-kong-secondary/[0.00] to-kong-secondary/[0.02]"></div>
+    <div class="absolute inset-0 bg-gradient-to-br from-transparent via-kong-primary/[0.02] to-kong-primary/[0.05]"></div>
     
     <!-- Hover effect with enhanced gradient -->
     <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
       <!-- Enhanced gradient on hover -->
-      <div class="absolute inset-0 bg-gradient-to-br from-kong-secondary/5 via-transparent to-kong-transparent"></div>
+      <div class="absolute inset-0 bg-gradient-to-br from-kong-primary/10 via-transparent to-kong-secondary/10"></div>
     </div>
-    
   </div>
 
   <div class="relative z-10 h-full flex flex-col">
@@ -77,9 +77,9 @@
         </p>
       </div>
       <div
-        class="p-2 sm:p-3 bg-kong-secondary/10 rounded-xl group-hover:bg-kong-secondary/20 transition-colors"
+        class="p-2 sm:p-3 bg-kong-primary/10 rounded-xl group-hover:bg-kong-primary/20 transition-colors"
       >
-        <Brain class="w-5 h-5 sm:w-6 sm:h-6 text-kong-secondary" />
+        <Brain class="w-5 h-5 sm:w-6 sm:h-6 text-kong-primary" />
       </div>
     </div>
 
@@ -171,14 +171,16 @@
       </div>
     </div>
 
-    <div class="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-kong-border/20">
-      <a
-        href="/predict"
-        class="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-kong-secondary hover:text-purple-300 transition-colors"
+    <div class="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-kong-border/20 text-right">
+      <div
+        onclick={() => {
+          goto("/predict");
+        }}
+        class="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-kong-text-secondary hover:text-kong-primary transition-colors cursor-pointer"
       >
         <span>Explore All Markets</span>
         <ChevronDown class="w-3 h-3 sm:w-4 sm:h-4 rotate-[-90deg]" />
-      </a>
+      </div>
     </div>
   </div>
 </Card> 

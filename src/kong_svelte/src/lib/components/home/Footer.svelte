@@ -39,7 +39,7 @@
     <!-- Mobile Brand Section -->
     <div class="block md:hidden mb-8">
       <div class="flex items-center gap-3 mb-4">
-        <img src="/images/kongface-white.svg" alt="Kong Logo" class="w-10 h-10" />
+        <div class="w-10 h-10 kong-logo-mask"></div>
         <span class="text-2xl font-bold text-kong-text-primary">KongSwap</span>
       </div>
       <p class="text-kong-text-secondary text-sm mb-4">
@@ -81,7 +81,7 @@
       <!-- Brand Section (Desktop) -->
       <div class="lg:col-span-2">
         <div class="flex items-center gap-3 mb-4">
-          <img src="/images/kongface-white.svg" alt="Kong Logo" class="w-10 h-10" />
+          <div class="w-10 h-10 kong-logo-mask"></div>
           <span class="text-2xl font-bold text-kong-text-primary">KongSwap</span>
         </div>
         <p class="text-kong-text-secondary mb-6 max-w-sm">
@@ -274,3 +274,18 @@
     </div>
   </div>
 </footer>
+
+<style>
+  /* Apply kong-text-primary color to Kong logo using CSS mask */
+  .kong-logo-mask {
+    background-color: rgb(var(--text-primary));
+    -webkit-mask-image: url('/images/kongface-white.svg');
+    mask-image: url('/images/kongface-white.svg');
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+  }
+</style>

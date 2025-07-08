@@ -36,14 +36,13 @@
   <!-- Subtle gradient background -->
   <div class="absolute inset-0 overflow-hidden">
     <!-- Main gradient -->
-    <div class="absolute inset-0 bg-gradient-to-br from-transparent via-kong-accent-green/[0.02] to-kong-accent-green/[0.05]"></div>
+    <div class="absolute inset-0 bg-gradient-to-br from-transparent via-kong-primary/[0.02] to-kong-primary/[0.05]"></div>
     
     <!-- Hover effect with enhanced gradient -->
     <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
       <!-- Enhanced gradient on hover -->
-      <div class="absolute inset-0 bg-gradient-to-br from-kong-accent-green/10 via-transparent to-kong-primary/10"></div>
+      <div class="absolute inset-0 bg-gradient-to-br from-kong-primary/10 via-transparent to-kong-secondary/10"></div>
     </div>
-    
   </div>
 
   <div class="relative z-10 h-full flex flex-col">
@@ -150,8 +149,8 @@
         <!-- Option 4: Benefit-Driven with Icons -->
         <div class="grid grid-cols-1 gap-3">
           <div class="flex items-start gap-3">
-            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-kong-accent-green/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <span class="text-kong-accent-green font-bold text-sm sm:text-base">%</span>
+            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-kong-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+              <span class="text-kong-primary font-bold text-sm sm:text-base">%</span>
             </div>
             <div class="min-w-0 flex-1">
               <p class="text-base sm:text-lg font-semibold text-kong-text-primary leading-tight">14% APY Rewards</p>
@@ -159,8 +158,8 @@
             </div>
           </div>
           <div class="flex items-start gap-3">
-            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-kong-accent-green/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Vote class="w-4 h-4 sm:w-5 sm:h-5 text-kong-accent-green" />
+            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-kong-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Vote class="w-4 h-4 sm:w-5 sm:h-5 text-kong-primary" />
             </div>
             <div class="min-w-0 flex-1">
               <p class="text-base sm:text-lg font-semibold text-kong-text-primary leading-tight">100% Community Owned</p>
@@ -168,8 +167,8 @@
             </div>
           </div>
           <div class="flex items-start gap-3">
-            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-kong-accent-green/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Flame class="w-4 h-4 sm:w-5 sm:h-5 text-kong-accent-green" />
+            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-kong-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Flame class="w-4 h-4 sm:w-5 sm:h-5 text-kong-primary" />
             </div>
             <div class="min-w-0 flex-1">
               <p class="text-base sm:text-lg font-semibold text-kong-text-primary leading-tight">Deflationary Token</p>

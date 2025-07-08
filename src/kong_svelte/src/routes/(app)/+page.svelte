@@ -96,7 +96,7 @@
       <SwapStats {poolStats} {isLoadingStats} />
 
       <!-- Fast Swaps Box -->
-      <FastSwapsBox />
+      <FastSwapsBox {poolStats} {isLoadingStats} />
 
       <!-- Routing Box -->
       <RoutingBox />
