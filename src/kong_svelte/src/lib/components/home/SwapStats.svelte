@@ -70,7 +70,7 @@
           <div class="space-y-1 sm:space-y-2">
             <p class="text-kong-text-secondary text-[10px] sm:text-xs md:text-sm uppercase tracking-wider">24h Volume</p>
             <div class="flex items-baseline">
-              <span class="text-base sm:text-2xl md:text-4xl font-bold text-kong-text-primary break-all"
+              <span class="text-xl sm:text-2xl md:text-4xl font-bold text-kong-text-primary break-all"
                 >{formatUsdValue(poolStats.total_volume_24h)}</span
               >
             </div>
@@ -80,7 +80,7 @@
           <div class="space-y-1 sm:space-y-2">
             <p class="text-kong-text-secondary text-[10px] sm:text-xs md:text-sm uppercase tracking-wider">24h Fees</p>
             <div class="flex items-baseline">
-              <span class="text-base sm:text-2xl md:text-4xl font-bold text-kong-text-primary break-all"
+              <span class="text-xl sm:text-2xl md:text-4xl font-bold text-kong-text-primary break-all"
                 >{formatUsdValue(poolStats.total_fees_24h)}</span
               >
             </div>

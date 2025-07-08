@@ -3,13 +3,13 @@
   import Card from "$lib/components/common/Card.svelte";
   import { onMount } from "svelte";
   
-  let swapTime = $state(2.1);
+  let swapTime = $state(2.5);
   let isAnimating = $state(false);
   
   // Simulate real-time swap time updates
   onMount(() => {
     const interval = setInterval(() => {
-      swapTime = 1.8 + Math.random() * 0.6; // Random between 1.8-2.4
+      swapTime = 2.5; // Random between 1.8-2.4
       isAnimating = true;
       setTimeout(() => isAnimating = false, 300);
     }, 5000);
@@ -33,44 +33,44 @@
   </div>
 
   <div class="relative z-10 h-full flex flex-col">
-    <div class="flex items-start justify-between mb-3 sm:mb-4">
+    <div class="flex items-start justify-between mb-2 sm:mb-4">
       <div>
-        <h3 class="text-lg sm:text-xl font-semibold text-kong-text-primary mb-1">
+        <h3 class="text-base sm:text-xl font-semibold text-kong-text-primary mb-0.5 sm:mb-1">
           Lightning Fast
         </h3>
         <p class="text-xs sm:text-sm text-kong-text-secondary">
           Execute swaps in seconds
         </p>
       </div>
-      <div class="p-2 sm:p-2.5 bg-kong-warning/10 rounded-xl group-hover:bg-kong-warning/20 transition-colors">
-        <Zap class="w-5 h-5 sm:w-6 sm:h-6 text-kong-warning" />
+      <div class="p-1.5 sm:p-2.5 bg-kong-warning/10 rounded-lg sm:rounded-xl group-hover:bg-kong-warning/20 transition-colors">
+        <Zap class="w-4 h-4 sm:w-6 sm:h-6 text-kong-warning" />
       </div>
     </div>
 
-    <div class="flex-1 flex flex-col gap-3">
+    <div class="flex-1 flex flex-col gap-2 sm:gap-3">
       <!-- Main metric display -->
-      <div class="bg-kong-bg-tertiary rounded-lg px-4 py-1 sm:p-4 min-h-[80px] flex items-center justify-center">
+      <div class="bg-kong-bg-tertiary rounded-lg px-3 py-2 sm:p-4 min-h-[60px] sm:min-h-[80px] flex items-center justify-center">
         <div class="flex items-center gap-4">
           <div class="text-center">
-            <span class="text-4xl sm:text-5xl font-bold text-kong-text-primary transition-all duration-300 {isAnimating ? 'scale-105' : ''}">
+            <span class="text-3xl sm:text-5xl font-bold text-kong-text-primary transition-all duration-300 {isAnimating ? 'scale-105' : ''}">
               {swapTime.toFixed(1)}s
             </span>
-            <span class="text-sm sm:text-base text-kong-text-secondary block mt-1">Average swap time</span>
+            <span class="text-xs sm:text-base text-kong-text-secondary block mt-0.5 sm:mt-1">Average swap time</span>
           </div>
         </div>
       </div>
       
       <!-- Stats -->
-      <div class="grid grid-cols-2 gap-2">
-        <div class="text-center p-2 bg-kong-bg-tertiary/10 rounded-lg">
-          <div class="flex items-center justify-center gap-1">
-            <TrendingUp class="w-3 h-3 text-kong-success" />
-            <span class="text-lg sm:text-xl font-bold text-kong-success">99.8%</span>
+      <div class="grid grid-cols-2 gap-1.5 sm:gap-2">
+        <div class="text-center p-1.5 sm:p-2 bg-kong-bg-tertiary/10 rounded-md sm:rounded-lg">
+          <div class="flex items-center justify-center gap-0.5 sm:gap-1">
+            <TrendingUp class="w-2.5 h-2.5 sm:w-3 sm:h-3 text-kong-success" />
+            <span class="text-base sm:text-xl font-bold text-kong-success">99.8%</span>
           </div>
           <span class="text-[10px] sm:text-xs text-kong-text-secondary block">Success rate</span>
         </div>
-        <div class="text-center p-2 bg-kong-bg-tertiary/10 rounded-lg">
-          <span class="text-lg sm:text-xl font-bold text-kong-warning">1.2M+</span>
+        <div class="text-center p-1.5 sm:p-2 bg-kong-bg-tertiary/10 rounded-md sm:rounded-lg">
+          <span class="text-base sm:text-xl font-bold text-kong-warning">1.2M+</span>
           <span class="text-[10px] sm:text-xs text-kong-text-secondary block">Total swaps</span>
         </div>
       </div>

@@ -42,10 +42,6 @@
     <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
       <!-- Enhanced gradient on hover -->
       <div class="absolute inset-0 bg-gradient-to-br from-kong-accent-green/10 via-transparent to-kong-primary/10"></div>
-      <!-- Dot pattern overlay -->
-      <div class="absolute inset-0 opacity-10" 
-           style="background-image: radial-gradient(circle, rgb(var(--semantic-success)) 1px, transparent 1px); background-size: 16px 16px;">
-      </div>
     </div>
     
   </div>
@@ -152,7 +148,7 @@
       <!-- Right Column - DAO Features -->
       <div class="flex-1 flex flex-col">
         <!-- Option 4: Benefit-Driven with Icons -->
-        <div class="grid grid-cols-2 sm:grid-cols-1 gap-3">
+        <div class="grid grid-cols-1 gap-3">
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 sm:w-10 sm:h-10 bg-kong-accent-green/20 rounded-lg flex items-center justify-center flex-shrink-0">
               <span class="text-kong-accent-green font-bold text-sm sm:text-base">%</span>
@@ -171,7 +167,7 @@
               <p class="text-xs sm:text-sm text-kong-text-secondary mt-0.5 leading-relaxed">Shape the future of DeFi on ICP</p>
             </div>
           </div>
-          <div class="col-span-2 sm:col-span-1 flex items-start gap-3">
+          <div class="flex items-start gap-3">
             <div class="w-8 h-8 sm:w-10 sm:h-10 bg-kong-accent-green/20 rounded-lg flex items-center justify-center flex-shrink-0">
               <Flame class="w-4 h-4 sm:w-5 sm:h-5 text-kong-accent-green" />
             </div>
@@ -198,22 +194,22 @@
     </div>
 
     <!-- Action Links -->
-    <div class="flex flex-wrap gap-3 pt-3 border-t border-kong-border/20">
+    <div class="flex flex-wrap gap-2 sm:gap-3 pt-3 border-t border-kong-border/20">
       <a
         href="https://dashboard.internetcomputer.org/sns/ormnc-tiaaa-aaaaq-aadyq-cai"
         target="_blank"
         rel="noopener noreferrer"
-        class="flex-1 min-w-0 inline-flex items-center justify-center gap-2 px-4 py-2 bg-kong-bg-tertiary/20 hover:bg-kong-bg-tertiary/30 rounded-lg text-sm text-kong-text-primary hover:text-kong-accent-green transition-colors border border-kong-border/20"
+        class="flex-1 min-w-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-kong-bg-tertiary/20 hover:bg-kong-bg-tertiary/30 rounded-lg text-xs sm:text-sm text-kong-text-primary hover:text-kong-accent-green transition-colors border border-kong-border/20"
       >
-        <Vote class="w-4 h-4" />
-        <span>SNS Dashboard</span>
+        <Vote class="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+        <span class="whitespace-nowrap">SNS Dashboard</span>
       </a>
       <a
         href="/stats/{KONG_CANISTER_ID}"
-        class="flex-1 min-w-0 inline-flex items-center justify-center gap-2 px-4 py-2 bg-kong-bg-tertiary/20 hover:bg-kong-bg-tertiary/30 rounded-lg text-sm text-kong-text-primary hover:text-kong-accent-green transition-colors border border-kong-border/20"
+        class="flex-1 min-w-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-kong-bg-tertiary/20 hover:bg-kong-bg-tertiary/30 rounded-lg text-xs sm:text-sm text-kong-text-primary hover:text-kong-accent-green transition-colors border border-kong-border/20"
       >
-        <TrendingUp class="w-4 h-4" />
-        <span>Token Stats</span>
+        <TrendingUp class="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+        <span class="whitespace-nowrap">Token Stats</span>
       </a>
     </div>
   </div>

@@ -35,10 +35,50 @@
 </script>
 
 <footer class="w-full bg-gradient-to-b from-kong-bg-secondary to-kong-bg-primary border-t border-kong-border/50">
-  <div class="max-w-7xl mx-auto px-4 pt-12 md:pt-16">
-    <!-- Main Footer Content -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
-      <!-- Brand Section -->
+  <div class="max-w-7xl mx-auto px-4 py-8 md:py-12">
+    <!-- Mobile Brand Section -->
+    <div class="block md:hidden mb-8">
+      <div class="flex items-center gap-3 mb-4">
+        <img src="/images/kongface-white.svg" alt="Kong Logo" class="w-10 h-10" />
+        <span class="text-2xl font-bold text-kong-text-primary">KongSwap</span>
+      </div>
+      <p class="text-kong-text-secondary text-sm mb-4">
+        The bridgeless future of DeFi on the Internet Computer.
+      </p>
+      <div class="flex gap-3">
+        <a
+          href="https://github.com/KongSwap"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="p-2 bg-kong-bg-tertiary/30 rounded-lg hover:bg-kong-bg-tertiary/50 transition-colors"
+          aria-label="GitHub"
+        >
+          <Icon icon="line-md:github" class="w-5 h-5 text-kong-text-secondary hover:text-kong-text-primary transition-colors" />
+        </a>
+        <a
+          href="https://twitter.com/KongSwapX"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="p-2 bg-kong-bg-tertiary/30 rounded-lg hover:bg-kong-bg-tertiary/50 transition-colors"
+          aria-label="Twitter"
+        >
+          <Icon icon="line-md:twitter-x" class="w-5 h-5 text-kong-text-secondary hover:text-kong-text-primary transition-colors" />
+        </a>
+        <a
+          href="https://t.me/kong_swap"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="p-2 bg-kong-bg-tertiary/30 rounded-lg hover:bg-kong-bg-tertiary/50 transition-colors"
+          aria-label="Telegram"
+        >
+          <Icon icon="line-md:telegram" class="w-5 h-5 text-kong-text-secondary hover:text-kong-text-primary transition-colors" />
+        </a>
+      </div>
+    </div>
+
+    <!-- Desktop Layout -->
+    <div class="hidden md:grid md:grid-cols-2 lg:grid-cols-5 gap-8 mb-8">
+      <!-- Brand Section (Desktop) -->
       <div class="lg:col-span-2">
         <div class="flex items-center gap-3 mb-4">
           <img src="/images/kongface-white.svg" alt="Kong Logo" class="w-10 h-10" />
@@ -78,7 +118,7 @@
         </div>
       </div>
 
-      <!-- Links Sections -->
+      <!-- Links Sections (Desktop) -->
       <div>
         <h3 class="font-semibold text-kong-text-primary mb-4">Product</h3>
         <ul class="space-y-3">
@@ -144,8 +184,75 @@
       </div>
     </div>
 
+    <!-- Mobile Links -->
+    <div class="grid grid-cols-3 gap-6 md:hidden mb-8">
+      <div>
+        <h3 class="font-semibold text-kong-text-primary text-sm mb-3">Product</h3>
+        <ul class="space-y-2">
+          {#each footerLinks.product as link}
+            <li>
+              <a
+                href={link.href}
+                class="text-kong-text-secondary hover:text-kong-text-primary transition-colors text-xs"
+                class:opacity-50={link.disabled}
+                class:pointer-events-none={link.disabled}
+              >
+                {link.name}
+              </a>
+            </li>
+          {/each}
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="font-semibold text-kong-text-primary text-sm mb-3">Developers</h3>
+        <ul class="space-y-2">
+          {#each footerLinks.developers as link}
+            <li>
+              <a
+                href={link.href}
+                target={link.external ? "_blank" : undefined}
+                rel={link.external ? "noopener noreferrer" : undefined}
+                class="text-kong-text-secondary hover:text-kong-text-primary transition-colors text-xs inline-flex items-center gap-0.5"
+              >
+                {link.name}
+                {#if link.external}
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                {/if}
+              </a>
+            </li>
+          {/each}
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="font-semibold text-kong-text-primary text-sm mb-3">Community</h3>
+        <ul class="space-y-2">
+          {#each footerLinks.community as link}
+            <li>
+              <a
+                href={link.href}
+                target={link.external ? "_blank" : undefined}
+                rel={link.external ? "noopener noreferrer" : undefined}
+                class="text-kong-text-secondary hover:text-kong-text-primary transition-colors text-xs inline-flex items-center gap-0.5"
+              >
+                {link.name}
+                {#if link.external}
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                {/if}
+              </a>
+            </li>
+          {/each}
+        </ul>
+      </div>
+    </div>
+
     <!-- Divider -->
-    <div class="border-t border-kong-border/30 py-6">
+    <div class="border-t border-kong-border/30 pt-6">
       <div class="flex flex-col md:flex-row justify-between items-center gap-4">
         <!-- Copyright -->
         <div class="text-sm text-kong-text-secondary">

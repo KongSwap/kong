@@ -29,10 +29,6 @@
     <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
       <!-- Enhanced gradient on hover -->
       <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-blue-400/10"></div>
-      <!-- Dot pattern overlay -->
-      <div class="absolute inset-0 opacity-10" 
-           style="background-image: radial-gradient(circle, rgb(59 130 246) 1px, transparent 1px); background-size: 16px 16px;">
-      </div>
     </div>
     
   </div>
