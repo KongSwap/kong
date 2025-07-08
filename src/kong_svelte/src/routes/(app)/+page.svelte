@@ -68,13 +68,16 @@
       <Swap />
     </div>
     <!-- Explore Button -->
-    <div class="w-full bg-gradient-to-t from-kong-bg-primary via-kong-bg-primary/80 to-transparent">
+    <div class="w-full bg-transparent">
       <button onclick={scrollToExplore} class="w-full hover:bg-kong-bg-primary/20 transition-all duration-300 group">
-        <span class="text-kong-text-secondary pb-2 text-sm flex flex-col items-center justify-center opacity-80 group-hover:opacity-100">
+        <span class="text-kong-text-secondary pb-4 text-sm flex flex-col items-center justify-center opacity-80 group-hover:opacity-100">
           <span class="hidden sm:inline">Explore KongSwap</span>
           <ChevronDown class="w-5 h-5 transition-transform group-hover:translate-y-0.5 stroke-kong-text-secondary text-kong-text-secondary" />
         </span>
       </button>
+    </div>
+    <div class="w-full bg-gradient-to-t from-kong-bg-primary via-kong-bg-primary/80 to-transparent">  
+      &nbsp;
     </div>
   </div>
 </section>
