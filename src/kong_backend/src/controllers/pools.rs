@@ -66,13 +66,13 @@ fn update_partial_pools(tokens: String) -> Result<String, String> {
         Err(e) => return Err(format!("Invalid pools: {}", e)),
     };
 
-    for (id, updates) in pools {
+    for (id, v) in pools {
         let mut original_pool_value = match POOL_MAP.with(|m| m.borrow().get(&id)) {
             Some(p) => serde_json::to_value(p).map_err(|e| format!("Failed to serialize existing pool: {}", e))?,
             None => return Err(format!("Pool with id={} does not exist", id.0)),
         };
 
-        json_helpers::merge(&mut original_pool_value, &updates);
+        json_helpers::merge(&mut original_pool_value, &v);
 
         let updated_pool: StablePool =
             serde_json::from_value(original_pool_value).map_err(|e| format!("Failed to parse updated pool: {}", e))?;
