@@ -38,7 +38,7 @@
   }
 
   .animate-gradient-flow {
-    animation: gradient-flow 4s linear infinite;
+    animation: gradient-flow 5s linear infinite;
   }
 
   /* Use mask to apply kong-text-primary color to the SVG */

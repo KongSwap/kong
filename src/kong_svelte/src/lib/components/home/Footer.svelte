@@ -35,7 +35,7 @@
 </script>
 
 <footer class="w-full bg-gradient-to-b from-kong-bg-secondary to-kong-bg-primary border-t border-kong-border/50">
-  <div class="max-w-7xl mx-auto px-4 py-8 md:py-12">
+  <div class="max-w-7xl mx-auto px-4 pt-8 md:pt-12">
     <!-- Mobile Brand Section -->
     <div class="block md:hidden mb-8">
       <div class="flex items-center gap-3 mb-4">
@@ -252,7 +252,7 @@
     </div>
 
     <!-- Divider -->
-    <div class="border-t border-kong-border/30 pt-6">
+    <div class="border-t border-kong-border/30 py-6">
       <div class="flex flex-col md:flex-row justify-between items-center gap-4">
         <!-- Copyright -->
         <div class="text-sm text-kong-text-secondary">
