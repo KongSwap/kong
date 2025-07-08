@@ -1,6 +1,6 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
-  import { Heart } from "lucide-svelte";
+  import { Heart, Infinity } from "lucide-svelte";
   
   const currentYear = new Date().getFullYear();
   
@@ -29,7 +29,7 @@
     community: [
       { name: "X", href: "https://twitter.com/KongSwapX", external: true },
       { name: "Telegram", href: "https://t.me/kong_swap", external: true },
-      { name: "OpenChat", href: "https://t.me/kong_swap", external: true },
+      { name: "OpenChat", href: "https://oc.app/community/maceh-niaaa-aaaaf-bm37q-cai/channel/1210333112/?ref=y3rqn-fyaaa-aaaaf-a7z6a-cai", external: true },
     ],
   };
 </script>
@@ -264,9 +264,10 @@
           window.open("https://www.internetcomputer.org", "_blank");
         }}>
           <div class="flex items-center gap-2 text-sm text-kong-text-secondary group-hover:text-kong-text-primary transition-colors">
-            <span>Built with</span>
-            <Heart class="w-4 h-4 text-kong-error" />
-            <span>on ICP</span>
+            <span>Built 100% on chain with</span>
+            <Infinity class="w-4 h-4 text-kong-accent-blue" />
+            <span>ICP</span>
+            
           </div>
         </div>
       </div>
