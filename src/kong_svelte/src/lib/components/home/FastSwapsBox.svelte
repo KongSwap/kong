@@ -78,7 +78,7 @@
         <div class="text-center p-1.5 sm:p-2 bg-kong-bg-tertiary/10 rounded-md sm:rounded-lg">
           <div class="flex items-center justify-center gap-0.5 sm:gap-1">
             <TrendingUp class="w-2.5 h-2.5 sm:w-3 sm:h-3 text-kong-success" />
-            <span class="text-base sm:text-xl font-bold text-kong-success">99.8%</span>
+            <span class="text-base sm:text-xl font-bold text-kong-success">99.9%</span>
           </div>
           <span class="text-[10px] sm:text-xs text-kong-text-secondary block">Success rate</span>
         </div>
