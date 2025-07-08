@@ -290,5 +290,11 @@ export function toShortNumber(
   if (valueNumberWithDecimals.gt(1000)) {
     return `${valueNumberWithDecimals.dividedBy(1_000).toFormat(2)}K`;
   }
+  
+  // For very small numbers, use formatToNonZeroDecimal
+  if (valueNumberWithDecimals.gt(0) && valueNumberWithDecimals.lt(0.01)) {
+    return formatToNonZeroDecimal(valueNumberWithDecimals.toString());
+  }
+  
   return `${valueNumberWithDecimals.toFormat(2)}`;
 }
