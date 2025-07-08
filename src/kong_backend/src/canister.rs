@@ -19,6 +19,7 @@ use crate::add_pool::add_pool_reply::AddPoolReply;
 use crate::add_token::add_token_args::AddTokenArgs;
 use crate::add_token::add_token_reply::AddTokenReply;
 use crate::add_token::update_token_args::UpdateTokenArgs;
+use crate::add_token::update_token_is_removed_args::UpdateTokenIsRemovedArgs;
 use crate::add_token::update_token_reply::UpdateTokenReply;
 use crate::claims::claims_timer::process_claims_timer;
 use crate::helpers::nat_helpers::{nat_to_decimals_f64, nat_to_f64};
