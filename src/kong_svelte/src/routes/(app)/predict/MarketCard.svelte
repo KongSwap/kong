@@ -222,6 +222,11 @@
 
   // Reactive status info
   const statusInfo = $derived(getMarketStatusInfo(market));
+  
+  // Scroll position tracking
+  let scrollPercentage = $state(0);
+  let hasScrollableContent = $state(false);
+  let thumbHeight = $state(30); // Percentage of track height
 
   // Handle image load error
   function handleImageError() {
@@ -238,6 +243,77 @@
       return false;
     }
   }
+
+  // Handle scroll indicators and custom scrollbar
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const card = document.querySelector(`[data-market-id="${market?.id}"]`);
+    if (!card) return;
+    
+    const scrollContainer = card.querySelector('[data-scrollable-content]');
+    const topFade = card.querySelector('[data-fade-top]');
+    const bottomFade = card.querySelector('[data-fade-bottom]');
+    
+    if (!scrollContainer) return;
+    
+    function updateScrollIndicators() {
+      if (!scrollContainer) return;
+      
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainer as HTMLElement;
+      const hasOverflow = scrollHeight > clientHeight;
+      hasScrollableContent = hasOverflow;
+      
+      // Calculate scroll percentage and thumb size
+      if (hasOverflow) {
+        const maxScroll = scrollHeight - clientHeight;
+        scrollPercentage = (scrollTop / maxScroll) * 100;
+        
+        // Calculate thumb height as percentage of visible area
+        thumbHeight = Math.max(20, Math.min(80, (clientHeight / scrollHeight) * 100));
+      } else {
+        scrollPercentage = 0;
+        thumbHeight = 100;
+      }
+      
+      // Show/hide fade indicators
+      if (topFade && bottomFade) {
+        // Top fade
+        if (hasOverflow && scrollTop > 5) {
+          topFade.classList.add('opacity-100');
+          topFade.classList.remove('opacity-0');
+        } else {
+          topFade.classList.remove('opacity-100');
+          topFade.classList.add('opacity-0');
+        }
+        
+        // Bottom fade
+        if (hasOverflow && scrollTop < scrollHeight - clientHeight - 5) {
+          bottomFade.classList.add('opacity-100');
+          bottomFade.classList.remove('opacity-0');
+        } else {
+          bottomFade.classList.remove('opacity-100');
+          bottomFade.classList.add('opacity-0');
+        }
+      }
+    }
+    
+    // Initial check
+    updateScrollIndicators();
+    
+    // Listen for scroll events
+    scrollContainer.addEventListener('scroll', updateScrollIndicators);
+    
+    // Check on resize
+    const resizeObserver = new ResizeObserver(updateScrollIndicators);
+    resizeObserver.observe(scrollContainer);
+    
+    return () => {
+      scrollContainer.removeEventListener('scroll', updateScrollIndicators);
+      resizeObserver.disconnect();
+    };
+  });
+
 </script>
 
 <!-- Snippet Components -->
@@ -313,17 +389,78 @@
           </div>
         </div>
       {:else}
-        <div class="flex-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-kong-border">
-          <div class="flex flex-col gap-1">
-            {#each market.outcomes as outcome, i}
-              <MarketOutcomeButton
-                {outcome}
-                index={i}
-                {market}
-                {openBetModal}
-              />
-            {/each}
+        <div class="flex-1 overflow-hidden relative flex">
+          <!-- Main content area -->
+          <div class="flex-1 relative">
+            <!-- Top fade indicator -->
+            <div class="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-kong-bg-secondary via-kong-bg-secondary/80 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" data-fade-top></div>
+            
+            <!-- Scrollable content -->
+            <div class="h-full overflow-y-scroll custom-scrollbar" data-scrollable-content>
+              <div class="flex flex-col gap-1">
+                {#each market.outcomes as outcome, i}
+                  <MarketOutcomeButton
+                    {outcome}
+                    index={i}
+                    {market}
+                    {openBetModal}
+                  />
+                {/each}
+              </div>
+            </div>
+            
+            <!-- Bottom fade indicator -->
+            <div class="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-kong-bg-secondary via-kong-bg-secondary/80 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" data-fade-bottom></div>
           </div>
+          
+          <!-- Visual scrollbar track (only show when scrollable) -->
+          {#if hasScrollableContent}
+            <div class="w-1.5 relative my-1 mx-0.5">
+              <!-- Track background -->
+              <div class="absolute inset-0 bg-white/10 rounded-full" data-scrollbar-track></div>
+              
+              <!-- Scroll thumb -->
+              <div 
+                class="absolute left-0 w-full rounded-full transition-all duration-75 ease-out bg-white/40"
+                style="
+                  top: {scrollPercentage * (100 - thumbHeight) / 100}%;
+                  height: {thumbHeight}%;
+                "
+                data-scrollbar-thumb
+              >
+                <!-- Inner thumb highlight -->
+                <div class="absolute inset-0 bg-white/20 rounded-full scale-75"></div>
+              </div>
+              
+              <!-- Click area for jumping to position -->
+              <button
+                class="absolute inset-0 w-full h-full cursor-pointer opacity-0 hover:opacity-100"
+                onclick={(e) => {
+                  e.stopPropagation();
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const clickY = e.clientY - rect.top;
+                  const percentage = clickY / rect.height;
+                  const scrollContainer = document.querySelector(`[data-market-id="${market?.id}"] [data-scrollable-content]`);
+                  if (scrollContainer) {
+                    const maxScroll = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+                    scrollContainer.scrollTop = maxScroll * percentage;
+                  }
+                }}
+                onkeydown={(e) => {
+                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    const scrollContainer = document.querySelector(`[data-market-id="${market?.id}"] [data-scrollable-content]`);
+                    if (scrollContainer) {
+                      const step = scrollContainer.clientHeight * 0.2;
+                      scrollContainer.scrollTop += e.key === 'ArrowDown' ? step : -step;
+                    }
+                  }
+                }}
+                aria-label="Scroll to position"
+                tabindex="-1"
+              ></button>
+            </div>
+          {/if}
         </div>
       {/if}
     {:else}
@@ -436,6 +573,7 @@
     ? 'opacity-60 hover:opacity-80'
     : ''}"
   onClick={() => goto(`/predict/${market.id}`)}
+  data-market-id={market.id}
 >
   <!-- Card content -->
   <div class="relative flex flex-col h-full p-3">
@@ -518,25 +656,41 @@
     @apply bg-kong-success/60;
   }
 
-  /* Custom scrollbar styling */
-  .scrollbar-thin {
-    scrollbar-width: thin;
+  /* Custom scrollbar styling - hide native scrollbar */
+  .custom-scrollbar {
+    @apply mr-1;
+    /* Always enable scrolling */
+    overflow-y: scroll !important;
+    /* Smooth scrolling */
+    scroll-behavior: smooth;
+    
+    /* Firefox - hide scrollbar */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 4px;
+  /* Webkit browsers - hide scrollbar completely */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
-
-  .scrollbar-track-transparent::-webkit-scrollbar-track {
-    background: transparent;
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    display: none;
   }
-
-  .scrollbar-thumb-kong-border::-webkit-scrollbar-thumb {
-    background-color: var(--kong-border, rgba(255, 255, 255, 0.1));
-    border-radius: 4px;
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    display: none;
   }
-
-  .scrollbar-thumb-kong-border::-webkit-scrollbar-thumb:hover {
-    background-color: var(--kong-border, rgba(255, 255, 255, 0.2));
+  
+  /* Hover effect for scrollbar track */
+  :global(.group:hover [data-scrollbar-track]) {
+    background-color: rgba(255, 255, 255, 0.15);
+  }
+  
+  /* Hover effect for scrollbar thumb */
+  :global(.group:hover [data-scrollbar-thumb]) {
+    background-color: rgba(255, 255, 255, 0.6);
   }
 </style>

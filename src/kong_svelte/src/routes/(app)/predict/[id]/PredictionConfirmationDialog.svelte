@@ -285,10 +285,43 @@
                   {selectedPercentage === percent 
                     ? 'bg-kong-accent-green/20 border-kong-accent-green text-kong-accent-green font-semibold shadow-lg' 
                     : 'border-kong-border hover:bg-kong-bg-secondary/50 hover:border-kong-primary/50'}"
-                onclick={() => {
+                onclick={async () => {
                   selectedPercentage = percent;
                   const balance = userBalance();
-                  const calculatedAmount = (balance * percent) / 100;
+                  let calculatedAmount = (balance * percent) / 100;
+                  
+                  // For 100%, we need to account for the platform fee
+                  // The fee is typically a percentage of the bet amount
+                  // We need to calculate the max bet amount such that bet + fee = balance
+                  if (percent === 100) {
+                    // First, we need to get the fee percentage from the backend
+                    try {
+                      const decimals = token?.decimals ?? defaultDecimals;
+                      // Use a small test amount to get the fee percentage
+                      const testAmount = BigInt(Math.floor(1 * Math.pow(10, decimals)));
+                      const testEstimate = await estimateBetReturn(
+                        marketId,
+                        BigInt(outcomeIndex),
+                        testAmount,
+                        BigInt(Date.now()) * 1000000n,
+                        token?.address
+                      );
+                      
+                      if (testEstimate?.platform_fee_percentage) {
+                        // platform_fee_percentage is in basis points (e.g., 250 = 2.5%)
+                        const feePercentage = Number(testEstimate.platform_fee_percentage) / 10000;
+                        // Calculate max bet amount: balance / (1 + fee_percentage)
+                        calculatedAmount = balance / (1 + feePercentage);
+                        // Round down slightly to ensure we don't exceed balance
+                        calculatedAmount = Math.floor(calculatedAmount * 10000) / 10000;
+                      }
+                    } catch (error) {
+                      console.error('Failed to estimate fee for 100% calculation:', error);
+                      // Fall back to slightly less than 100% to be safe
+                      calculatedAmount = balance * 0.97;
+                    }
+                  }
+                  
                   // Format to a reasonable number of decimal places (max 4)
                   manualAmount = calculatedAmount.toFixed(Math.min(4, token?.decimals ?? defaultDecimals));
                 }}

@@ -88,7 +88,7 @@
 
 <button
   bind:this={buttonElement}
-  class="switch-tokens-button opacity-80 transition-all hover:opacity-100 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full duration-200 ease-out border shadow-lg {ismicroswapTheme ? 'rounded-none win98-button' : 'hover:scale-110 hover:shadow-lg active:scale-95 active:shadow-md'} {disabledClasses}"
+  class="switch-tokens-button opacity-80 transition-all hover:opacity-100 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full duration-200 ease-out border shadow-lg {ismicroswapTheme ? 'rounded-none win98-button' : 'hover:scale-110 hover:shadow-lg active:scale-95 active:shadow-md'} {disabledClasses}"
   style={buttonStyle}
   onclick={handleClick}
   disabled={isDisabled}
