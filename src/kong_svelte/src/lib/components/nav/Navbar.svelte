@@ -8,7 +8,6 @@
   import { themeStore } from "$lib/stores/themeStore";
   import { navigationStore } from "$lib/stores/navigationStore";
   import { navActions } from "$lib/services/navActions";
-  import { logoPath } from "$lib/stores/derivedThemeStore";
   import { getThemeById } from "$lib/themes/themeRegistry";
   import {
     Droplet,
@@ -183,18 +182,8 @@
 
 
   // Constants
-  const MOBILE_LOGO_PATH = "/titles/logo-white-wide.png";
   const SWIPE_THRESHOLD = 75;
   const EDGE_SWIPE_ZONE = 50;
-
-  // Derived values
-  const isLightTheme = $derived(
-    browser &&
-      (getThemeById($themeStore)?.colors?.logoInvert === 1 ||
-        $themeStore.includes("light") ||
-        $themeStore === "microswap"),
-  );
-
 
   const walletButtonThemeProps = $derived({
     customBgColor: browser
@@ -395,21 +384,15 @@
           class="h-[34px] w-[34px] flex items-center justify-center"
           onclick={() => navigationStore.toggleMobileMenu()}
         >
-          <Menu size={20} color={isLightTheme ? "black" : "white"} />
+          <Menu size={20} class="text-kong-text-primary" />
         </button>
       {:else}
         <button
           class="flex items-center hover:opacity-90 transition-opacity"
           onclick={() => goto("/")}
+          aria-label="Kong Logo"
         >
-          {#key $logoPath}
-            <img
-              src={$logoPath}
-              alt="Kong Logo"
-              class="h-[36px] max-w-full inline-block"
-              class:light-logo={isLightTheme}
-            />
-          {/key}
+          <div class="h-[36px] w-[36px] kong-logo-mask"></div>
         </button>
 
         <nav class="flex items-center gap-0.5">
@@ -457,14 +440,7 @@
           class="flex items-center hover:opacity-90 transition-opacity"
           onclick={() => goto("/")}
         >
-          {#key $logoPath}
-            <img
-              src={$logoPath}
-              alt="Kong Logo"
-              class="h-8 w-auto inline-block"
-              class:light-logo={isLightTheme}
-            />
-          {/key}
+          <div class="h-8 w-8 kong-logo-mask"></div>
         </button>
       </div>
     {/if}
@@ -488,12 +464,7 @@
       <div
         class="flex items-center justify-between p-5 border-b border-kong-border max-[375px]:p-4"
       >
-        <img
-          src={MOBILE_LOGO_PATH}
-          alt="Kong Logo"
-          class="h-9"
-          class:light-logo={isLightTheme}
-        />
+        <div class="h-9 w-9 kong-logo-mask"></div>
         <button
           class="w-9 h-9 flex items-center justify-center rounded-full text-kong-text-secondary hover:text-kong-text-primary bg-kong-text-primary/10 hover:bg-kong-text-primary/15 transition-colors duration-200"
           onclick={() => navigationStore.closeMobileMenu()}
@@ -561,9 +532,17 @@
 />
 
 <style scoped lang="postcss">
-  .light-logo {
-    filter: invert(1) brightness(0.2);
-    @apply transition-all duration-200;
+  .kong-logo-mask {
+    background-color: rgb(var(--text-primary));
+    -webkit-mask-image: url('/images/kongface-white.svg');
+    mask-image: url('/images/kongface-white.svg');
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    transition: background-color 0.2s ease;
   }
 
   .nav-link.active {

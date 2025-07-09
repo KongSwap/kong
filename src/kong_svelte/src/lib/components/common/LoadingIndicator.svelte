@@ -14,8 +14,8 @@
 
 <style>
   .loader {
-    border: 4px solid rgba(255, 255, 255, 0.2);
-    border-top: 4px solid #ffffff;
+    border: 4px solid rgb(var(--text-primary) / 0.2);
+    border-top: 4px solid rgb(var(--primary));
     border-radius: 50%;
     width: 36px;
     height: 36px;
