@@ -61,8 +61,14 @@
     // Regenerate pairs every 20 seconds
     const regenerateInterval = setInterval(() => {
       generateTokenPairs();
-      currentFromIndex = 0;
-      currentToIndex = 0;
+      // Don't reset indices to maintain alternating pattern
+      // But ensure indices are within bounds
+      if (currentFromIndex >= tokenPairs.length) {
+        currentFromIndex = tokenPairs.length - 1;
+      }
+      if (currentToIndex >= tokenPairs.length) {
+        currentToIndex = tokenPairs.length - 1;
+      }
     }, 20000);
     
     return () => {
