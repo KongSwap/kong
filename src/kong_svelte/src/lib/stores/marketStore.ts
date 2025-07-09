@@ -21,7 +21,17 @@ interface MarketState {
   pageSize: number;
   totalPages: number;
   totalCount: number;
+  columnLayout: number; // Add column layout to calculate dynamic page size
 }
+
+// Helper function to calculate page size based on column layout
+const calculatePageSize = (columns: number): number => {
+  // Base rows we want to fill
+  const baseRows = 7;
+  // For 3 columns, we need 21 items to fill 7 rows
+  // For other layouts, keep multiples of columns to fill complete rows
+  return columns * baseRows;
+};
 
 const initialState: MarketState = {
   markets: [],
@@ -34,9 +44,10 @@ const initialState: MarketState = {
   currentUserPrincipal: null,
   // Pagination state
   currentPage: 0,
-  pageSize: 20,
+  pageSize: calculatePageSize(3), // Default to 3 columns
   totalPages: 0,
-  totalCount: 0
+  totalCount: 0,
+  columnLayout: 3
 };
 
 function createMarketStore() {
@@ -44,6 +55,17 @@ function createMarketStore() {
 
   return {
     subscribe,
+    
+    // Set column layout and update page size
+    setColumnLayout(columns: number) {
+      update(state => ({
+        ...state,
+        columnLayout: columns,
+        pageSize: calculatePageSize(columns)
+      }));
+      this.resetPagination();
+      this.refreshMarkets();
+    },
     
     // Initialize the store
     async init(initialOverrides?: { statusFilter?: StatusFilter, sortOption?: SortOption }) {

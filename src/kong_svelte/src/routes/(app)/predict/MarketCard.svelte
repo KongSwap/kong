@@ -389,15 +389,15 @@
           </div>
         </div>
       {:else}
-        <div class="flex-1 overflow-hidden relative flex">
+        <div class="flex-1 overflow-hidden relative flex min-w-0">
           <!-- Main content area -->
-          <div class="flex-1 relative">
+          <div class="flex-1 relative min-w-0 overflow-hidden">
             <!-- Top fade indicator -->
             <div class="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-kong-bg-secondary via-kong-bg-secondary/80 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" data-fade-top></div>
             
             <!-- Scrollable content -->
-            <div class="h-full overflow-y-scroll custom-scrollbar" data-scrollable-content>
-              <div class="flex flex-col gap-1">
+            <div class="h-full overflow-y-scroll overflow-x-hidden custom-scrollbar" data-scrollable-content>
+              <div class="flex flex-col gap-1 min-w-0">
                 {#each market.outcomes as outcome, i}
                   <MarketOutcomeButton
                     {outcome}
@@ -417,20 +417,17 @@
           {#if hasScrollableContent}
             <div class="w-1.5 relative my-1 mx-0.5">
               <!-- Track background -->
-              <div class="absolute inset-0 bg-white/10 rounded-full" data-scrollbar-track></div>
+              <div class="absolute inset-0 bg-kong-bg-primary rounded-full" data-scrollbar-track></div>
               
               <!-- Scroll thumb -->
               <div 
-                class="absolute left-0 w-full rounded-full transition-all duration-75 ease-out bg-white/40"
+                class="absolute left-0 w-full rounded-full transition-all duration-75 ease-out bg-kong-bg-tertiary"
                 style="
                   top: {scrollPercentage * (100 - thumbHeight) / 100}%;
                   height: {thumbHeight}%;
                 "
                 data-scrollbar-thumb
-              >
-                <!-- Inner thumb highlight -->
-                <div class="absolute inset-0 bg-white/20 rounded-full scale-75"></div>
-              </div>
+              ></div>
               
               <!-- Click area for jumping to position -->
               <button
@@ -653,7 +650,7 @@
 <style lang="postcss">
   /* Smooth hover transitions */
   .group\/outcome:hover :global(.bg-kong-success\/40) {
-    @apply bg-kong-success/60;
+    @apply bg-kong-bg-tertiary;
   }
 
   /* Custom scrollbar styling - hide native scrollbar */
@@ -686,11 +683,11 @@
   
   /* Hover effect for scrollbar track */
   :global(.group:hover [data-scrollbar-track]) {
-    background-color: rgba(255, 255, 255, 0.15);
+    @apply bg-kong-bg-primary;
   }
   
   /* Hover effect for scrollbar thumb */
   :global(.group:hover [data-scrollbar-thumb]) {
-    background-color: rgba(255, 255, 255, 0.6);
+    @apply bg-kong-primary;
   }
 </style>

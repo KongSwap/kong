@@ -34,6 +34,7 @@
   import PoolsToolbar from "$lib/components/liquidity/pools/PoolsToolbar.svelte";
   import PoolsEmptyState from "$lib/components/liquidity/pools/PoolsEmptyState.svelte";
   import PoolsPagination from "$lib/components/liquidity/pools/PoolsPagination.svelte";
+  import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { getPoolPriceUsd } from "$lib/utils/statsUtils";
 
@@ -478,17 +479,7 @@
                 onscroll={handleMobileScroll}
               >
           {#if $isLoading}
-            <div class="flex flex-col items-center justify-center h-64 gap-4" in:fade={{ duration: 200 }}>
-              <div class="relative">
-                <Droplets size={40} class="animate-pulse text-kong-primary" />
-                <div class="absolute inset-0 animate-spin">
-                  <div class="w-12 h-12 border-2 border-kong-primary/20 border-t-kong-primary rounded-full"></div>
-                </div>
-              </div>
-              <p class="text-base font-medium text-kong-text-primary/70">
-                {searchInput ? `Searching for "${searchInput}"...` : "Loading pools..."}
-              </p>
-            </div>
+            <LoadingIndicator message={searchInput ? `Searching for "${searchInput}"...` : "Loading pools..."} />
           {:else if $sortedAllPools.length === 0}
             <PoolsEmptyState 
               isUserPool={false} 
@@ -539,15 +530,7 @@
           {#if $auth.isConnected}
             <div class="h-full overflow-auto py-4 sm:p-4">
               {#if isLoadingUserPools || ($currentUserPoolsStore.loading && !hasInitializedUserPools) || ($userPoolsData.length === 0 && $currentUserPoolsStore.filteredPools.length > 0)}
-                <div
-                  class="flex flex-col items-center justify-center h-64 gap-4"
-                  in:fade={{ duration: 300 }}
-                >
-                <Droplets size={32} class="animate-pulse text-kong-primary" />
-                  <p class="text-base font-medium text-kong-text-primary/70">
-                    Loading your liquidity positions...
-                  </p>
-                </div>
+                <LoadingIndicator message="Loading your liquidity positions..." />
               {:else if $currentUserPoolsStore.error}
                 <div
                   class="flex flex-col items-center justify-center h-64 gap-4 text-kong-error"

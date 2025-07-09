@@ -119,6 +119,15 @@
       marketStore.setCurrentUserPrincipal($auth.account.owner);
     }
 
+    // Restore layout preference before initializing market store
+    if (browser) {
+      const savedLayout = localStorage.getItem('preferedLayout');
+      if (savedLayout) {
+        selectedLayout = parseInt(savedLayout, 10);
+        marketStore.setColumnLayout(selectedLayout);
+      }
+    }
+
     await marketStore.init(initialOverrides);
 
     // Load token information
@@ -133,12 +142,6 @@
       loadRecentBets();
       debouncedRefreshMarkets();
     }, 30000);
-
-    // Restore layout preference
-    if (browser) {
-      const savedLayout = localStorage.getItem('preferedLayout');
-      if (savedLayout) selectedLayout = parseInt(savedLayout, 10);
-    }
   });
 
 
@@ -197,9 +200,11 @@
 
   // Effects
   $effect(() => {
-    // Save layout preference
+    // Save layout preference and update market store
     if (browser && selectedLayout !== undefined) {
       localStorage.setItem('preferedLayout', selectedLayout.toString());
+      // Update the market store with the new column layout
+      marketStore.setColumnLayout(selectedLayout);
     }
   });
 
