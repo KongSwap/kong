@@ -70,7 +70,7 @@
   let isLoadingUserPools = $state(false);
   
   // Store initialization state globally to prevent re-initialization
-  let hasInitializedUserPools = false;
+  let hasInitializedUserPools = $state(false);
   
   // Track if we've loaded data for the current URL
   let lastLoadedUrl = "";
@@ -208,8 +208,6 @@
   $effect(() => {
     isMobile = app.isMobile;
   });
-
-
 
   // URL-driven data loading for "all pools" view
   $effect(() => {

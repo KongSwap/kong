@@ -15,9 +15,8 @@
   } from "lucide-svelte";
   import { auth } from "$lib/stores/auth";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
-  import { liquidityStore } from "$lib/stores/liquidityStore";
   import { loadBalances } from "$lib/stores/tokenStore";
-  import { fetchTokensByCanisterId } from "$lib/api/tokens";
+  import { fetchTokensByCanisterId, fetchTokenMetadata } from "$lib/api/tokens";
   import { livePools, loadPools } from "$lib/stores/poolStore";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import ConfirmLiquidityModal from "$lib/components/liquidity/modals/ConfirmLiquidityModal.svelte";
@@ -38,6 +37,7 @@
     updateQueryParams,
   } from "$lib/utils/poolCreationUtils";
   import { enableBodyScroll } from "$lib/utils/scrollUtils";
+
 
   // Constants
   const RETRY_DELAYS = {
@@ -82,14 +82,34 @@
   // Get data from page load function
   let { data } = $props();
 
+  let token0 = $state<Kong.Token | null>(null);
+  let token1 = $state<Kong.Token | null>(null);
+
+  interface LiquidityState {
+    amount0: string;
+    amount1: string;
+    initialPrice: string;
+    needsAllowance0: boolean;
+    needsAllowance1: boolean;
+  }
+
+  let liquidityState = $state<LiquidityState>({
+    amount0: "",
+    amount1: "",
+    initialPrice: "",
+    needsAllowance0: false,
+    needsAllowance1: false,
+  });
+
+  // Make tokens reactive to userTokens store changes
+  let _userTokens = $derived($userTokens.tokens);
+
   // Derive addresses from data to ensure reactivity
   let address0 = $derived(data.address0);
   let address1 = $derived(data.address1);
 
   // State variables
   let userPool = $state<any>(null); // check livePool for pool
-  let token0 = $state<any>(null);
-  let token1 = $state<any>(null);
   let isLoading = $state(true);
   let error = $state<string | null>(null);
   let activeTab = $state<"add" | "remove" | "send">("add");
@@ -119,6 +139,7 @@
         (p.address_0 === address1 && p.address_1 === address0),
     ),
   );
+
   let isInitializingPrice = $derived(
     poolExists === false ||
       (livePool?.balance_0 === 0n && livePool?.balance_1 === 0n),
@@ -165,34 +186,23 @@
     if (userPool?.userFeeShare0 && userPool?.userFeeShare0 > 0 && token0) {
       // userFeeShare0 is already in decimal format
       const fee0Amount = Number(userPool?.userFeeShare0);
-      const fee0UsdValue = fee0Amount * parseFloat(token0.metrics?.price || 0);
+      const fee0UsdValue =
+        fee0Amount * parseFloat(token0.metrics?.price || "0");
       total += fee0UsdValue;
     }
     if (userPool?.userFeeShare1 && userPool?.userFeeShare1 > 0 && token1) {
       // userFeeShare1 is already in decimal format
       const fee1Amount = Number(userPool?.userFeeShare1);
-      const fee1UsdValue = fee1Amount * parseFloat(token1.metrics?.price || 0);
+      const fee1UsdValue =
+        fee1Amount * parseFloat(token1.metrics?.price || "0");
       total += fee1UsdValue;
     }
     return formatToNonZeroDecimal(total.toString());
   }
 
-  // Debounced handlers
-  // const debouncedPriceChange = debounce((value: string) => {
-  //   const currentPoolExists = get(poolExistsStore);
-  //   const currentPool = get(poolStore);
-
-  //   if (currentPoolExists === false || currentPool?.balance_0 === 0n) {
-  //     liquidityStore.setAmount(1, calculateToken1FromPrice($liquidityStore.amount0, value));
-  //   }
-  // }, 150);
-
-  $inspect("livePool:", livePool);
-  $inspect("userPool:", userPool);
-
   // Handle input changes
   function handlePriceChange(value: string) {
-    liquidityStore.setInitialPrice(value);
+    liquidityState.initialPrice = value;
     // debouncedPriceChange(value);
   }
 
@@ -213,8 +223,7 @@
       loadingPoolId = newPoolId;
       // Reset state when switching to a new pool
       userPool = null;
-      token0 = null;
-      token1 = null;
+      resetLiquidityAmounts();
       error = null;
       activeTab = "add";
       showConfirmModal = false;
@@ -233,7 +242,6 @@
 
       // Ensure live pools are loaded
       if ($livePools.length === 0) {
-        console.log("[loadPoolData] No live pools loaded, fetching...");
         await loadPools();
       }
 
@@ -279,21 +287,24 @@
         userPool = newUserPool;
       }
 
-      // Fetch token data
-      const tokensData = await fetchTokensByCanisterId([address0, address1]);
-      token0 = tokensData.find((t: any) => t.address === address0) || null;
-      token1 = tokensData.find((t: any) => t.address === address1) || null;
+      token0 = _userTokens.find((t: any) => t.address === address0) || null;
+      token1 = _userTokens.find((t: any) => t.address === address1) || null;
 
+      if(token0 == null) {
+        token0 = await fetchTokensByCanisterId([address0])[0];
+      }
+
+      if(token1 == null) {
+        token1 = await fetchTokensByCanisterId([address1])[0];
+      }
+
+      // console.log("tokens", tokensData);
       // Initialize liquidity store with tokens
       if (token0 && token1) {
-        liquidityStore.setToken(0, token0);
-        liquidityStore.setToken(1, token1);
-
         // Load token balances only if connected
         if ($auth.isConnected && auth.pnp.account?.owner) {
           loadBalances([token0, token1], auth.pnp.account.owner, true);
         }
-
         // Chart data will be loaded by the effect when livePool is available
       }
     } catch (e) {
@@ -347,8 +358,8 @@
     }
 
     // Reset state
-    liquidityStore.resetAmounts();
-    liquidityStore.setInitialPrice("");
+    resetLiquidityAmounts();
+    liquidityState.initialPrice = "";
 
     // Update token state
     if (index === 0) {
@@ -380,10 +391,15 @@
     }
   }
 
+  function resetLiquidityAmounts() {
+    liquidityState.amount0 = "";
+    liquidityState.amount1 = "";
+  }
+
   function resetState() {
     activeTab = "add";
     showConfirmModal = false;
-    liquidityStore.resetAmounts();
+    resetLiquidityAmounts();
   }
 
   // Ensure scroll is always restored
@@ -772,6 +788,7 @@
                   {livePool}
                   {token0}
                   {token1}
+                  bind:liquidityState
                   onShowConfirmModal={handleShowConfirmModal}
                 />
               </div>
@@ -818,6 +835,7 @@
                   {livePool}
                   {token0}
                   {token1}
+                  bind:liquidityState
                   onShowConfirmModal={handleShowConfirmModal}
                 />
               {:else if activeTab === "remove" && userPool}
@@ -846,16 +864,16 @@
 
 {#if showConfirmModal}
   <ConfirmLiquidityModal
+    {token0}
+    {token1}
+    liquidityState={liquidityState}
     isCreatingPool={!poolExists}
     show={showConfirmModal}
     onClose={() => {
-      liquidityStore.resetAmounts();
+      handleLiquidityActionComplete();
+      resetLiquidityAmounts();
       showConfirmModal = false;
       resetState();
-    }}
-    on:liquidityAdded={() => {
-      showConfirmModal = false;
-      handleLiquidityActionComplete();
     }}
     modalKey={`confirm-liquidity-${token0?.address}-${token1?.address}`}
     target="#portal-target"

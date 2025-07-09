@@ -1,12 +1,11 @@
 <script lang="ts">
   import Modal from "$lib/components/common/Modal.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import { liquidityStore } from "$lib/stores/liquidityStore";
   import {
     formatToNonZeroDecimal,
     parseTokenAmount,
   } from "$lib/utils/numberFormatUtils";
-  import { onDestroy, createEventDispatcher } from "svelte";
+  import { onDestroy } from "svelte";
   import { createPool, addLiquidity, pollRequestStatus } from "$lib/api/pools";
   import { toastStore } from "$lib/stores/toastStore";
   import { loadBalance } from "$lib/stores/balancesStore";
@@ -15,42 +14,68 @@
   import { canisters } from "$lib/config/auth.config";
   import { auth } from "$lib/stores/auth";
 
-  const dispatch = createEventDispatcher();
 
-  export let isCreatingPool: boolean = false;
-  export let show: boolean;
-  export let onClose: () => void;
-  export let modalKey: string = `confirm-liquidity-${Date.now()}`;
-  export let target: string = "#portal-target";
+  interface Props {
+    isCreatingPool: boolean;
+    show: boolean;
+    onClose: () => void;
+    modalKey: string;
+    target: string;
+    token0: Kong.Token | null;
+    token1: Kong.Token | null;
+    liquidityState: {
+      amount0: string;
+      amount1: string;
+      initialPrice: string;
+      needsAllowance0: boolean;
+      needsAllowance1: boolean;
+    };
+  }
 
-  // Get values directly from the store
-  $: token0 = $liquidityStore.token0;
-  $: token1 = $liquidityStore.token1;
-  $: amount0 = $liquidityStore.amount0;
-  $: amount1 = $liquidityStore.amount1;
-  $: needsAllowance0 = $liquidityStore.needsAllowance0;
-  $: needsAllowance1 = $liquidityStore.needsAllowance1;
+  let {
+    isCreatingPool,
+    show,
+    onClose,
+    modalKey,
+    target,
+    token0,
+    token1,
+    liquidityState,
+  }: Props = $props();
 
-  let isLoading = false;
-  let error: string | null = null;
-  let mounted = true;
+  let isLoading = $state(false);
+  let error: string | null = $state(null);
+  let mounted = $state(true);
 
   onDestroy(() => {
     mounted = false;
   });
 
   // Calculated values
-  $: token0Value = token0?.metrics?.price
-    ? (Number(amount0) * Number(token0.metrics.price)).toFixed(2)
-    : "0";
-  $: token1Value = token1?.metrics?.price
-    ? (Number(amount1) * Number(token1.metrics.price)).toFixed(2)
-    : "0";
-  $: totalValue = (Number(token0Value) + Number(token1Value)).toFixed(2);
-  $: exchangeRate =
-    !isCreatingPool && amount0 && amount1
-      ? formatToNonZeroDecimal(Number(amount1) / Number(amount0))
-      : $liquidityStore.initialPrice;
+  let token0Value = $derived(
+    token0?.metrics?.price
+      ? (
+          Number(liquidityState.amount0) * Number(token0.metrics.price)
+        ).toFixed(2)
+      : "0",
+  );
+  let token1Value = $derived(
+    token1?.metrics?.price
+      ? (
+          Number(liquidityState.amount1) * Number(token1.metrics.price)
+        ).toFixed(2)
+      : "0",
+  );
+  let totalValue = $derived(
+    (Number(token0Value) + Number(token1Value)).toFixed(2),
+  );
+  let exchangeRate = $derived(
+    !isCreatingPool && liquidityState.amount0 && liquidityState.amount1
+      ? formatToNonZeroDecimal(
+          Number(liquidityState.amount1) / Number(liquidityState.amount0),
+        )
+      : liquidityState.initialPrice,
+  );
 
   async function handleConfirm() {
     if (isLoading || !token0 || !token1) return;
@@ -60,29 +85,29 @@
 
     try {
       const amount0Parsed = parseTokenAmount(
-        $liquidityStore.amount0,
+        liquidityState.amount0,
         token0.decimals,
       );
       const amount1Parsed = parseTokenAmount(
-        $liquidityStore.amount1,
+        liquidityState.amount1,
         token1.decimals,
       );
 
       // For ICRC-2 tokens, request allowances right before the transaction
       // This follows the same pattern as SwapService.ts
-      if (token0.standards?.includes("ICRC-2") && needsAllowance0) {
+      if (token0.standards?.includes("ICRC-2") && liquidityState.needsAllowance0) {
         await IcrcService.requestIcrc2Allowance(
           token0,
           amount0Parsed,
-          canisters.kongBackend.canisterId
+          canisters.kongBackend.canisterId,
         );
       }
 
-      if (token1.standards?.includes("ICRC-2") && needsAllowance1) {
+      if (token1.standards?.includes("ICRC-2") && liquidityState.needsAllowance1) {
         await IcrcService.requestIcrc2Allowance(
           token1,
           amount1Parsed,
-          canisters.kongBackend.canisterId
+          canisters.kongBackend.canisterId,
         );
       }
 
@@ -111,8 +136,6 @@
           ]);
           
           // Dispatch liquidityAdded event
-          dispatch("liquidityAdded");
-          
           onClose();
         }
       } else {
@@ -134,9 +157,6 @@
             loadBalance(token1.address, true),
             currentUserPoolsStore.initialize(),
           ]);
-          
-          // Dispatch liquidityAdded event
-          dispatch("liquidityAdded");
           
           onClose();
         }
@@ -188,7 +208,7 @@
             </div>
           </div>
           <div class="flex flex-col items-end">
-            <span class="text-kong-text-primary text-xl">{amount0}</span>
+            <span class="text-kong-text-primary text-xl">{liquidityState.amount0}</span>
             <span class="text-kong-text-secondary text-sm">${token0Value}</span>
           </div>
         </div>
@@ -207,7 +227,7 @@
             </div>
           </div>
           <div class="flex flex-col items-end">
-            <span class="text-kong-text-primary text-xl">{amount1}</span>
+            <span class="text-kong-text-primary text-xl">{liquidityState.amount1}</span>
             <span class="text-kong-text-secondary text-sm">${token1Value}</span>
           </div>
         </div>

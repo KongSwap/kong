@@ -1,2 +1,2 @@
 export * from './types';
-export { fetchTokens, fetchAllTokens, fetchTokensByCanisterId, addToken, fetchTopTokens } from './TokenApiClient'; 
+export { fetchTokens, fetchAllTokens, fetchTokensByCanisterId, addToken, fetchTopTokens, fetchTokenMetadata } from './TokenApiClient'; 
