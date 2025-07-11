@@ -66,11 +66,6 @@
   function handleImageLoad(token: Kong.Token) {
     imageLoadingStatus[token.address || token.symbol] = true;
   }
-
-  // Check if image exists for a token
-  function hasValidImage(token: Kong.Token): boolean {
-    return !!(token.logo_url);
-  }
 </script>
 
 <div
