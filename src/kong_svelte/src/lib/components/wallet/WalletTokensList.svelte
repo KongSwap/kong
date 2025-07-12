@@ -7,7 +7,6 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { toastStore } from "$lib/stores/toastStore";
-  import AddNewTokenModal from "$lib/components/wallet/AddNewTokenModal.svelte";
   import ManageTokensModal from "$lib/components/wallet/ManageTokensModal.svelte";
   import ReceiveTokenModal from "$lib/components/wallet/ReceiveTokenModal.svelte";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
@@ -58,7 +57,6 @@
       action: "send" | "receive" | "swap" | "info" | "add_lp",
       token: TokenWithBalance,
     ) => void;
-    onTokenAdded?: (token: Kong.Token) => void;
     onBalancesLoaded?: () => void;
     showUsdValues?: boolean; // <-- Add prop for USD visibility
     onRefresh?: () => void; // <-- Add onRefresh prop from parent
@@ -70,7 +68,6 @@
     walletId = "",
     tokenBalances = [],
     onAction = () => {},
-    onTokenAdded = () => {},
     onBalancesLoaded = () => {},
     showUsdValues = true, // <-- Destructure with default
     onRefresh = undefined, // <-- Destructure onRefresh prop
@@ -173,7 +170,6 @@
   let syncStatus = $state<{ added: number; removed: number } | null>(null);
   let showSyncStatus = $state(false);
   let showSyncResultModal = $state(false);
-  let showAddTokenModal = $state(false);
   let showManageTokensModal = $state(false);
   let showSyncConfirmModal = $state(false);
   let showReceiveTokenModal = $state(false);
@@ -457,16 +453,6 @@
     showSyncResultModal = false;
   }
 
-  // Open the add token modal
-  function openAddTokenModal() {
-    showAddTokenModal = true;
-  }
-
-  // Close the add token modal
-  function closeAddTokenModal() {
-    showAddTokenModal = false;
-  }
-
   // Open the manage tokens modal
   function openManageTokensModal() {
     showManageTokensModal = true;
@@ -479,13 +465,13 @@
     loadUserBalancesWrapper(true);
   }
 
-  // Handle when a new token is added
-  function handleNewTokenAdded(event: CustomEvent<Kong.Token>) {
-    const newToken = event.detail;
-    // Call the onTokenAdded callback from props
-    onTokenAdded(newToken);
-    // Load balances to show the new token
-    loadUserBalancesWrapper(true);
+  // Navigate to tokens page
+  function handleNavigateToTokens() {
+    if (onNavigate) {
+      onNavigate("/tokens");
+    } else {
+      goto("/tokens");
+    }
   }
 
   // For dropdown - use $state for proper reactivity in Svelte 5
@@ -868,14 +854,7 @@
     onClose={closeSyncResultModal}
   />
 
-  <!-- Add Token Modal -->
-  {#if showAddTokenModal}
-    <AddNewTokenModal
-      isOpen={showAddTokenModal}
-      onClose={closeAddTokenModal}
-      on:tokenAdded={handleNewTokenAdded}
-    />
-  {/if}
+
 
   <!-- Manage Tokens Modal -->
   <ManageTokensModal

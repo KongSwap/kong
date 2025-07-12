@@ -406,6 +406,8 @@
 </Panel>
 
 <style lang="postcss">
+@reference "../../../../../app.css";
+
   .chart-container {
     @apply relative !p-0 !m-0 overflow-visible transition-all duration-300;
     display: flex;

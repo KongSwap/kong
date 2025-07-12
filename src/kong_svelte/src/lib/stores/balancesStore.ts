@@ -176,6 +176,31 @@ export const updateBalancesInStore = (entries: Array<{
   }
 };
 
+// Helper function to ensure balances are loaded after authentication
+export const ensureBalancesLoaded = async (forceRefresh = false): Promise<void> => {
+  const authStore = get(auth);
+  const userTokensStore = get(userTokens);
+  
+  if (!authStore.isConnected || !authStore.account?.owner) {
+    return;
+  }
+  
+  const owner = authStore.account.owner;
+  const tokens = Array.from(userTokensStore.tokenData.values());
+  
+  // If we have tokens, load balances
+  if (tokens.length > 0) {
+    await loadBalances(tokens, owner, forceRefresh);
+  } else {
+    // If no tokens yet, wait a bit and try again
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const updatedTokens = Array.from(get(userTokens).tokenData.values());
+    if (updatedTokens.length > 0) {
+      await loadBalances(updatedTokens, owner, forceRefresh);
+    }
+  }
+};
+
 // Helper function to convert Principal to string
 function convertPrincipalToString(principalId: string | Principal): string {
   return typeof principalId === 'string' ? principalId : principalId.toString();

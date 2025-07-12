@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { formatBalance } from "$lib/utils/numberFormatUtils";
+  import { formatBalance, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { handleFormattedNumberInput } from "$lib/utils/formUtils";
   import { BigNumber } from "bignumber.js";
   import { calculateMaxAmount } from "$lib/utils/liquidityUtils";
@@ -23,6 +23,13 @@
 
 
   let inputElement: HTMLInputElement;
+  
+  // Format balance for display
+  let formattedBalanceDisplay = $derived(() => {
+    if (!tokenBalance || tokenBalance === '0') return '0';
+    const balanceInTokens = new BigNumber(tokenBalance).div(new BigNumber(10).pow(decimals));
+    return formatToNonZeroDecimal(balanceInTokens.toString());
+  });
 
   function handleFormattedInput(event: Event) {
     const input = event.target as HTMLInputElement;
@@ -112,7 +119,7 @@
     <div class="available-balance {isExceedingBalance ? 'text-yellow-500' : ''}">
       <span class="balance-label">Available:</span>
       <span class="balance-amount">
-        {token ? formatBalance(tokenBalance, decimals) : "0.00"}
+        {token ? formattedBalanceDisplay() : "0"}
         {token?.symbol || ""}
       </span>
     </div>
@@ -137,7 +144,7 @@
         <button 
           onclick={() => handlePercentageClick(100)}
           disabled={disabled}
-        >MAX</button>
+        >100%</button>
       {:else}
         {#if !isMobile}
         <button disabled>25%</button>
@@ -146,7 +153,7 @@
         {#if !isMobile}
         <button disabled>75%</button>
         {/if}
-        <button disabled>MAX</button>
+        <button disabled>100%</button>
       {/if}
     </div>
   </div>

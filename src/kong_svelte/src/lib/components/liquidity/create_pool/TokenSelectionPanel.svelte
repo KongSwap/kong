@@ -121,6 +121,8 @@
     {/if}
 
 <style lang="postcss">
+@reference "../../../../app.css";
+
   .token-selection-card {
     @apply space-y-2;
   }

@@ -115,6 +115,8 @@
 {/if}
 
 <style lang="postcss" scoped>
+@reference "../../../app.css";
+
 .panel {
   @apply relative text-kong-text-primary flex flex-col min-h-0 overflow-hidden;
 }

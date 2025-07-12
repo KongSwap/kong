@@ -112,6 +112,12 @@
           path: "/airdrop-claims",
           icon: Award,
         },
+        {
+          label: "Add Token",
+          description: "Add new tokens by canister ID",
+          path: "/tokens",
+          icon: Coins,
+        },
       ],
       defaultPath: "/stats",
     },
@@ -125,6 +131,7 @@
     "/pools": "pools",
     "/airdrop-claims": "more",
     "/stats": "more",
+    "/tokens": "more",
   };
 
   // State

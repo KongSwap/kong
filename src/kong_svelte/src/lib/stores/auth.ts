@@ -144,7 +144,17 @@ function createAuthStore(pnp: PnpInterface) {
         setTimeout(async () => {
           try {
             await userTokens.setPrincipal(owner);
-            await fetchBalances(get(userTokens).tokens, owner, true);
+            // Wait a bit for tokens to load after setPrincipal
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Get the updated tokens after setPrincipal
+            const userTokensState = get(userTokens);
+            const tokens = Array.from(userTokensState.tokenData.values());
+            
+            // Only fetch balances if we have tokens
+            if (tokens.length > 0) {
+              await fetchBalances(tokens, owner, true);
+            }
           } catch (error) {
             console.error("Error loading balances:", error);
           }
