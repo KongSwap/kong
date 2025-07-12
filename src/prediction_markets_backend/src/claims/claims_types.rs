@@ -63,6 +63,9 @@ pub enum ClaimType {
         /// Reason for the refund
         reason: RefundReason,
     },
+    MarketCreation {
+        creator_fee_bps: u64,
+    },
     /// Other types of claims (e.g., promotions, rewards)
     Other {
         /// Description of the claim

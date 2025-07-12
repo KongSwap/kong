@@ -5,6 +5,7 @@
 //! the actual claim operations when requested by users.
 
 use candid::Principal;
+use num_traits::ToPrimitive;
 use std::collections::HashMap;
 // Removed unused import: use ic_cdk::api::call;
 
@@ -270,6 +271,20 @@ pub fn create_winning_claim(
     };
 
     create_claim(user, market_id, claim_type, winnings_amount, token_id, timestamp)
+}
+
+/// Creates a claim for user created a market to share fees with market creator
+pub fn create_market_creation_claim(
+    user: Principal,
+    market_id: MarketId,
+    claimable_amount: TokenAmount,
+    creator_fees_bps: u64,
+    token_id: TokenIdentifier,
+    timestamp: Timestamp,
+) -> u64 {
+    let claim_type = ClaimType::MarketCreation { creator_fee_bps: creator_fees_bps };
+
+    create_claim(user, market_id, claim_type, claimable_amount, token_id, timestamp)
 }
 
 /// Creates a claim for a recovered failed transaction

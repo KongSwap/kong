@@ -333,6 +333,14 @@ fn calculate_market_bet_total(market_id: &MarketId, token_id: &TokenIdentifier) 
 
 /// Calculate platform fees for a market
 pub fn calculate_platform_fees_for_market(market: &Market, winning_outcomes: &Vec<Nat>, token_info: &TokenInfo) -> TokenAmount {
+    // New path
+    if let Some(resolution_details) = crate::storage::get_market_resolution_details(&market.id) {
+        if !resolution_details.platform_fee_amount.is_zero() {
+            return resolution_details.platform_fee_amount;
+        }
+    }
+
+    // Old path
     let to_u64 = |v: &Nat| -> u64 { v.0.to_u64_digits().first().cloned().unwrap_or(0) };
     let outcome_pools = market.outcome_pools.clone();
 
