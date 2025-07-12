@@ -19,6 +19,7 @@
     isCreatingPool: boolean;
     show: boolean;
     onClose: () => void;
+    onLiquidityActionComplete: () => void;
     modalKey: string;
     target: string;
     token0: Kong.Token | null;
@@ -36,6 +37,7 @@
     isCreatingPool,
     show,
     onClose,
+    onLiquidityActionComplete,
     modalKey,
     target,
     token0,
@@ -135,8 +137,7 @@
             currentUserPoolsStore.initialize(),
           ]);
           
-          // Dispatch liquidityAdded event
-          onClose();
+          onLiquidityActionComplete();
         }
       } else {
         // Add liquidity logic
@@ -157,8 +158,8 @@
             loadBalance(token1.address, true),
             currentUserPoolsStore.initialize(),
           ]);
-          
-          onClose();
+
+          onLiquidityActionComplete();
         }
       }
     } catch (err) {

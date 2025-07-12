@@ -15,9 +15,6 @@
     secondaryTokenIds: string[];
   }>();
 
-  $inspect("token0", token0);
-  $inspect("token1", token1);
-
   let showToken0Selector = $state(false);
   let showToken1Selector = $state(false);
 
