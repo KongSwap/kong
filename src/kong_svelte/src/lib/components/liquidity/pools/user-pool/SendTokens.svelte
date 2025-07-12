@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import { sendLpTokens } from "$lib/api/pools";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils"; 
@@ -7,16 +6,15 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { calculateRemoveLiquidityAmounts } from "$lib/api/pools";
   import { calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
-
-  const dispatch = createEventDispatcher();
   
   interface Props {
     pool: any;
     token0: any;
     token1: any;
+    onTokensSent: () => void;
   }
 
-  let { pool, token0, token1 }: Props = $props();
+  let { pool, token0, token1, onTokensSent }: Props = $props();
 
   let amount = $state("");
   let recipientAddress = $state("");
@@ -30,10 +28,8 @@
   let lpTokenBalance = $state(0);
 
   $effect(() => {
-    // Set the balance from the pool data
     lpTokenBalance = parseFloat(pool.balance) || 0;
     
-    // Construct token ID
     tokenId = "LP." + pool.symbol;
   });
 
@@ -84,7 +80,7 @@
       estimatedAmounts = { amount0: "0", amount1: "0" };
       
       // Let parent component know tokens were sent
-      dispatch('tokensSent');
+      onTokensSent();
     } catch (error) {
       console.error("Error sending tokens:", error);
       errorMessage = error.message || "Failed to send tokens";
@@ -141,7 +137,6 @@
       isCalculating = false;
     }
   }
-
 </script>
 
 <div in:fade={{ duration: 200 }}>

@@ -89,7 +89,7 @@ export const formatToNonZeroDecimal = (input: number | string): string => {
   // For numbers >= 0.1
   // If > 1, use 2 decimals; otherwise, use 3 decimals
   const decimals = bigNum.isGreaterThanOrEqualTo(1) ? 2 : 3;
-  return bigNum.toFormat(decimals);
+  return removeTrailingZeros(bigNum.toFixed(decimals));
 };
 
 /**
@@ -100,6 +100,7 @@ export const formatToNonZeroDecimal = (input: number | string): string => {
  * @returns Formatted USD value as a string
  */
 export function calculateTokenUsdValue(amount: string, token: any): string {
+  console.log("calculateTokenUsdValue", amount, token);
   // Check for valid inputs
   if (!token?.metrics?.price || !amount) {
     return "0";
@@ -113,6 +114,9 @@ export function calculateTokenUsdValue(amount: string, token: any): string {
 
   // Calculate USD value
   const usdValue = new BigNumber(amount).multipliedBy(price);
+  
+  console.log("usdValue", usdValue);
+
   return formatToNonZeroDecimal(usdValue.toString());
 }
 

@@ -3,7 +3,6 @@
   import { BigNumber } from "bignumber.js";
   import { parseTokenAmount, calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
   import { currentUserBalancesStore } from "$lib/stores/balancesStore";
-  import { liquidityStore } from "$lib/stores/liquidityStore";
   import TokenInput from "./TokenInput.svelte";
   import { calculateLiquidityAmounts } from "$lib/api/pools";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
@@ -21,20 +20,31 @@
     token0: any;
     token1: any;
     onShowConfirmModal: () => void;
+    liquidityState: {
+      amount0: string;
+      amount1: string;
+      initialPrice: string;
+      needsAllowance0: boolean;
+      needsAllowance1: boolean;
+    };
   }
 
-  let { userPool, livePool, token0, token1, onShowConfirmModal }: Props = $props();
-
+  let {
+    userPool,
+    livePool,
+    token0,
+    token1,
+    onShowConfirmModal,
+    liquidityState = $bindable(),
+  }: Props = $props();
+  
   // Unified state for atomic updates
   let state = $state({
-    amounts: ["", ""] as [string, string],
     displayValues: ["", ""] as [string, string],
     isCalculating: false,
     activeInputIndex: null as number | null, // Track which input is actively being typed in
     error: null as string | null,
     calculationId: 0,
-    needsAllowance0: false,
-    needsAllowance1: false
   });
 
   // Check if pool has existing liquidity
@@ -63,10 +73,12 @@
   // Balance validation
   let validation = $derived.by(() => {
     const exceeding = [
-      token0 && state.amounts[0] && !isNaN(parseFloat(state.amounts[0])) 
-        ? new BigNumber(state.amounts[0]).gt(parsedBalances[0]) : false,
-      token1 && state.amounts[1] && !isNaN(parseFloat(state.amounts[1])) 
-        ? new BigNumber(state.amounts[1]).gt(parsedBalances[1]) : false
+      token0 && liquidityState.amount0 && !isNaN(parseFloat(liquidityState.amount0))
+        ? new BigNumber(liquidityState.amount0).gt(parsedBalances[0])
+        : false,
+      token1 && liquidityState.amount1 && !isNaN(parseFloat(liquidityState.amount1))
+        ? new BigNumber(liquidityState.amount1).gt(parsedBalances[1])
+        : false,
     ];
 
     const errorMessage = exceeding[0] && exceeding[1] 
@@ -94,9 +106,9 @@
         amount: BigInt(10 ** 18), // Large amount to check if any allowance exists
         spender: canisters.kongBackend.canisterId,
       });
-      state.needsAllowance0 = !hasAllowance;
+      liquidityState.needsAllowance0 = !hasAllowance;
     } else {
-      state.needsAllowance0 = false;
+      liquidityState.needsAllowance0 = false;
     }
 
     // Check token1 allowance if it's ICRC-2
@@ -106,9 +118,9 @@
         amount: BigInt(10 ** 18), // Large amount to check if any allowance exists
         spender: canisters.kongBackend.canisterId,
       });
-      state.needsAllowance1 = !hasAllowance;
+      liquidityState.needsAllowance1 = !hasAllowance;
     } else {
-      state.needsAllowance1 = false;
+      liquidityState.needsAllowance1 = false;
     }
   }
 
@@ -136,10 +148,9 @@
 
     // Clear output if input is empty
     if (!value || isNaN(parseFloat(value)) || parseFloat(value) <= 0) {
-      state.amounts = ["", ""];
+      liquidityState.amount0 = "";
+      liquidityState.amount1 = "";
       state.displayValues[outputIndex] = "";
-      liquidityStore.setAmount(0, "");
-      liquidityStore.setAmount(1, "");
       return;
     }
 
@@ -149,9 +160,9 @@
 
       let outputAmount = "";
 
-      if (!poolHasLiquidity && $liquidityStore.initialPrice) {
+      if (!poolHasLiquidity && liquidityState.initialPrice) {
         // Use price-based calculation for new pools
-        const price = $liquidityStore.initialPrice;
+        const price = liquidityState.initialPrice;
         
         if (inputIndex === 0) {
           // Calculate token1 from token0 and price
@@ -192,13 +203,14 @@
 
       if (outputAmount) {
         // Atomic state update
-        state.amounts[inputIndex] = value;
-        state.amounts[outputIndex] = outputAmount;
+        if (inputIndex === 0) {
+          liquidityState.amount0 = value;
+          liquidityState.amount1 = outputAmount;
+        } else {
+          liquidityState.amount1 = value;
+          liquidityState.amount0 = outputAmount;
+        }
         state.displayValues[outputIndex] = outputAmount;
-
-        // Update store
-        liquidityStore.setAmount(0, state.amounts[0]);
-        liquidityStore.setAmount(1, state.amounts[1]);
       }
     } catch (err: any) {
       if (calculationId === state.calculationId) {
@@ -213,7 +225,7 @@
 
   // Add liquidity handler
   async function handleAddLiquidity() {
-    if (!state.amounts[0] || !state.amounts[1]) {
+    if (!liquidityState.amount0 || !liquidityState.amount1) {
       state.error = "Please enter valid amounts";
       return;
     }
@@ -224,24 +236,23 @@
     }
 
     // For new pools, ensure initial price is set
-    if (!poolHasLiquidity && (!$liquidityStore.initialPrice || parseFloat($liquidityStore.initialPrice) <= 0)) {
+    if (
+      !poolHasLiquidity &&
+      (!liquidityState.initialPrice || parseFloat(liquidityState.initialPrice) <= 0)
+    ) {
       state.error = "Please set an initial price";
       return;
     }
 
     const amounts = [
-      parseTokenAmount(state.amounts[0], token0.decimals),
-      parseTokenAmount(state.amounts[1], token1.decimals)
+      parseTokenAmount(liquidityState.amount0, token0.decimals),
+      parseTokenAmount(liquidityState.amount1, token1.decimals)
     ];
 
     if (!amounts[0] || !amounts[1]) {
       state.error = "Invalid amounts";
       return;
     }
-
-    // Store allowance needs in liquidity store for ConfirmModal
-    liquidityStore.setNeedsAllowance(0, state.needsAllowance0);
-    liquidityStore.setNeedsAllowance(1, state.needsAllowance1);
 
     state.error = null;
     onShowConfirmModal();
@@ -285,19 +296,23 @@
     />
   </div>
 
-  {#if state.amounts[0] && state.amounts[1]}
+  {#if liquidityState.amount0 && liquidityState.amount1}
     <div class="summary-container mt-3">
       <div class="summary-row">
         <span>Rate</span>
         <span class="summary-value">
-          1 {token0?.symbol} = {Number(state.amounts[1]) / Number(state.amounts[0])} {token1?.symbol}
+          1 {token0?.symbol} = {(
+            Number(liquidityState.amount1) / Number(liquidityState.amount0)
+          ).toFixed(8)} {token1?.symbol}
         </span>
       </div>
       <div class="summary-row">
         <span>Value</span>
         <span class="summary-value">
-          ${Number(calculateTokenUsdValue(state.amounts[0], token0)) + 
-            Number(calculateTokenUsdValue(state.amounts[1], token1))}
+          ${(
+            Number(calculateTokenUsdValue(liquidityState.amount0, token0)) +
+            Number(calculateTokenUsdValue(liquidityState.amount1, token1))
+          ).toFixed(2)}
         </span>
       </div>
     </div>
@@ -332,7 +347,7 @@
           theme="accent-green"
           variant="solid"
           size="lg"
-          isDisabled={!state.amounts[0] || !state.amounts[1] || state.isCalculating}
+          isDisabled={!liquidityState.amount0 || !liquidityState.amount1 || state.isCalculating}
           fullWidth={true}
           onclick={handleAddLiquidity}
         >

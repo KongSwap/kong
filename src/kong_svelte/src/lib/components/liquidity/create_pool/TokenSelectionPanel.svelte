@@ -2,14 +2,21 @@
   import Portal from "svelte-portal";
   import TokenSelectorDropdown from "$lib/components/swap/swap_ui/TokenSelectorDropdown.svelte";
   import { ChevronDown, Plus } from "lucide-svelte";
-  
-  export let token0: Kong.Token | null;
-  export let token1: Kong.Token | null;
-  export let onTokenSelect: (index: 0 | 1, token: Kong.Token) => void;
-  export let secondaryTokenIds: string[];
 
-  let showToken0Selector = false;
-  let showToken1Selector = false;
+  let {
+    token0,
+    token1,
+    onTokenSelect,
+    secondaryTokenIds,
+  } = $props<{
+    token0: Kong.Token | null;
+    token1: Kong.Token | null;
+    onTokenSelect: (index: 0 | 1, token: Kong.Token) => void;
+    secondaryTokenIds: string[];
+  }>();
+
+  let showToken0Selector = $state(false);
+  let showToken1Selector = $state(false);
 
   function openTokenSelector(index: 0 | 1) {
     if (index === 0) {

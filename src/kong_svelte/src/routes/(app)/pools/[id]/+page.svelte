@@ -15,7 +15,6 @@
   } from "lucide-svelte";
   import { auth } from "$lib/stores/auth";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
-  import { liquidityStore } from "$lib/stores/liquidityStore";
   import { loadBalances } from "$lib/stores/tokenStore";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { livePools, loadPools } from "$lib/stores/poolStore";
@@ -25,10 +24,9 @@
   import TVLHistoryChart from "$lib/components/liquidity/create_pool/charts/TVLHistoryChart.svelte";
   import TokenSelectionPanel from "$lib/components/liquidity/create_pool/TokenSelectionPanel.svelte";
   import { toastStore } from "$lib/stores/toastStore";
-  import { userTokens } from "$lib/stores/userTokens";
   import PoolWarning from "$lib/components/liquidity/create_pool/PoolWarning.svelte";
   import InitialPriceInput from "$lib/components/liquidity/create_pool/InitialPriceInput.svelte";
-  import InitLiquidity from "$lib/components/liquidity/create_pool/InitLiquidity.svelte";
+  import { userTokens } from "$lib/stores/userTokens";
   import {
     CKUSDT_CANISTER_ID,
     ICP_CANISTER_ID,
@@ -38,6 +36,7 @@
     updateQueryParams,
   } from "$lib/utils/poolCreationUtils";
   import { enableBodyScroll } from "$lib/utils/scrollUtils";
+
 
   // Constants
   const RETRY_DELAYS = {
@@ -79,8 +78,27 @@
   import RemoveLiquidity from "$lib/components/liquidity/pools/user-pool/RemoveLiquidity.svelte";
   import SendTokens from "$lib/components/liquidity/pools/user-pool/SendTokens.svelte";
 
+  interface LiquidityState {
+    amount0: string;
+    amount1: string;
+    initialPrice: string;
+    needsAllowance0: boolean;
+    needsAllowance1: boolean;
+  }
+
   // Get data from page load function
   let { data } = $props();
+
+  let liquidityState = $state<LiquidityState>({
+    amount0: "",
+    amount1: "",
+    initialPrice: "",
+    needsAllowance0: false,
+    needsAllowance1: false,
+  });
+
+  let token0 = $state<Kong.Token | null>(null);
+  let token1 = $state<Kong.Token | null>(null);
 
   // Derive addresses from data to ensure reactivity
   let address0 = $derived(data.address0);
@@ -88,8 +106,6 @@
 
   // State variables
   let userPool = $state<any>(null); // check livePool for pool
-  let token0 = $state<any>(null);
-  let token1 = $state<any>(null);
   let isLoading = $state(true);
   let error = $state<string | null>(null);
   let activeTab = $state<"add" | "remove" | "send">("add");
@@ -100,7 +116,6 @@
 
   // Chart state
   let balanceHistory = $state<any[]>([]);
-  let feeHistory = $state<any[]>([]);
   let isChartLoading = $state(false);
   let chartErrorMessage = $state("");
 
@@ -119,81 +134,55 @@
         (p.address_0 === address1 && p.address_1 === address0),
     ),
   );
+
   let isInitializingPrice = $derived(
     poolExists === false ||
       (livePool?.balance_0 === 0n && livePool?.balance_1 === 0n),
   );
 
-  // Helper functions
-  async function waitForCondition(
-    condition: () => boolean,
-    maxAttempts: number,
-    delayMs: number,
-  ): Promise<boolean> {
-    for (let i = 0; i < maxAttempts; i++) {
-      if (condition()) return true;
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
-    return false;
-  }
-
-  function createMinimalPool(addr0: string, addr1: string) {
-    return {
-      address_0: addr0,
-      address_1: addr1,
-      symbol_0: "",
-      symbol_1: "",
-      ...getUserPoolDefaults(),
-    };
-  }
-
-  function getUserPoolDefaults() {
-    return {
-      balance: 0n,
-      amount_0: 0n,
-      amount_1: 0n,
-      usd_balance: 0,
-      poolSharePercentage: 0,
-      userFeeShare0: 0n,
-      userFeeShare1: 0n,
-    };
-  }
-
-  function calculateTotalEarnings() {
+  let totalEarnings = $derived.by(() => {
     let total = 0;
     if (userPool?.userFeeShare0 && userPool?.userFeeShare0 > 0 && token0) {
       // userFeeShare0 is already in decimal format
       const fee0Amount = Number(userPool?.userFeeShare0);
-      const fee0UsdValue = fee0Amount * parseFloat(token0.metrics?.price || 0);
+      const fee0UsdValue =
+        fee0Amount * parseFloat(token0.metrics?.price || "0");
       total += fee0UsdValue;
     }
     if (userPool?.userFeeShare1 && userPool?.userFeeShare1 > 0 && token1) {
       // userFeeShare1 is already in decimal format
       const fee1Amount = Number(userPool?.userFeeShare1);
-      const fee1UsdValue = fee1Amount * parseFloat(token1.metrics?.price || 0);
+      const fee1UsdValue =
+        fee1Amount * parseFloat(token1.metrics?.price || "0");
       total += fee1UsdValue;
     }
     return formatToNonZeroDecimal(total.toString());
+  });
+
+  async function loadTokenData() {
+    if (!address0 || !address1) return;
+
+    try {
+      const tokensData = await fetchTokensByCanisterId([address0, address1]);
+      token0 = tokensData.find((t: any) => t.address === address0) || null;
+      token1 = tokensData.find((t: any) => t.address === address1) || null;
+
+      // Load token balances if connected
+      if (token0 && token1 && $auth.isConnected && auth.pnp.account?.owner) {
+        loadBalances([token0, token1], auth.pnp.account.owner, true);
+      }
+    } catch (e) {
+      console.error("Error loading token data:", e);
+      toastStore.error("Failed to load token details.");
+    }
   }
 
-  // Debounced handlers
-  // const debouncedPriceChange = debounce((value: string) => {
-  //   const currentPoolExists = get(poolExistsStore);
-  //   const currentPool = get(poolStore);
-
-  //   if (currentPoolExists === false || currentPool?.balance_0 === 0n) {
-  //     liquidityStore.setAmount(1, calculateToken1FromPrice($liquidityStore.amount0, value));
-  //   }
-  // }, 150);
-
-  $inspect("livePool:", livePool);
-  $inspect("userPool:", userPool);
-
-  // Handle input changes
-  function handlePriceChange(value: string) {
-    liquidityStore.setInitialPrice(value);
-    // debouncedPriceChange(value);
-  }
+  // Load chart data when livePool becomes available
+  $effect(() => {
+    if (livePool && !isChartLoading && balanceHistory.length === 0) {
+      loadChartData();
+    }
+  });
 
   // Load pool data when component mounts or pool ID changes
   $effect(() => {
@@ -210,10 +199,7 @@
     // Always load when addresses change (addresses are derived from route params)
     if (loadingPoolId !== newPoolId) {
       loadingPoolId = newPoolId;
-      // Reset state when switching to a new pool
       userPool = null;
-      token0 = null;
-      token1 = null;
       error = null;
       activeTab = "add";
       showConfirmModal = false;
@@ -221,7 +207,9 @@
       chartErrorMessage = "";
       isNavigating = true;
 
+      resetLiquidityAmounts();
       loadPoolData();
+      loadTokenData();
     }
   });
 
@@ -232,7 +220,6 @@
 
       // Ensure live pools are loaded
       if ($livePools.length === 0) {
-        console.log("[loadPoolData] No live pools loaded, fetching...");
         await loadPools();
       }
 
@@ -252,13 +239,6 @@
           await currentUserPoolsStore.initialize();
         }
 
-        // Wait for store to finish loading if it's still loading
-        await waitForCondition(
-          () => !$currentUserPoolsStore.loading,
-          RETRY_DELAYS.storeLoading.attempts,
-          RETRY_DELAYS.storeLoading.delay,
-        );
-
         // Find the specific pool from user's pools
         // Check processedPools instead of filteredPools to include pools with zero balance
         newUserPool = $currentUserPoolsStore.processedPools.find(
@@ -277,24 +257,6 @@
       if (newUserPool) {
         userPool = newUserPool;
       }
-
-      // Fetch token data
-      const tokensData = await fetchTokensByCanisterId([address0, address1]);
-      token0 = tokensData.find((t: any) => t.address === address0) || null;
-      token1 = tokensData.find((t: any) => t.address === address1) || null;
-
-      // Initialize liquidity store with tokens
-      if (token0 && token1) {
-        liquidityStore.setToken(0, token0);
-        liquidityStore.setToken(1, token1);
-
-        // Load token balances only if connected
-        if ($auth.isConnected && auth.pnp.account?.owner) {
-          loadBalances([token0, token1], auth.pnp.account.owner, true);
-        }
-
-        // Chart data will be loaded by the effect when livePool is available
-      }
     } catch (e) {
       console.error("Error loading pool data:", e);
       error = "Failed to load pool data";
@@ -304,18 +266,6 @@
       isLoading = false;
       isNavigating = false;
     }
-  }
-
-  // Load chart data when livePool becomes available
-  $effect(() => {
-    if (livePool && !isChartLoading && balanceHistory.length === 0) {
-      loadChartData();
-    }
-  });
-
-  // Handle liquidity actions
-  function handleShowConfirmModal() {
-    showConfirmModal = true;
   }
 
   async function handleLiquidityActionComplete() {
@@ -346,8 +296,8 @@
     }
 
     // Reset state
-    liquidityStore.resetAmounts();
-    liquidityStore.setInitialPrice("");
+    resetLiquidityAmounts();
+    liquidityState.initialPrice = "";
 
     // Update token state
     if (index === 0) {
@@ -379,10 +329,25 @@
     }
   }
 
+  // Handle input changes
+  function handlePriceChange(value: string) {
+    liquidityState.initialPrice = value;
+  }
+
+  // Handle liquidity actions
+  function handleShowConfirmModal() {
+    showConfirmModal = true;
+  }
+
+  function resetLiquidityAmounts() {
+    liquidityState.amount0 = "";
+    liquidityState.amount1 = "";
+  }
+
   function resetState() {
     activeTab = "add";
     showConfirmModal = false;
-    liquidityStore.resetAmounts();
+    resetLiquidityAmounts();
   }
 
   // Ensure scroll is always restored
@@ -402,11 +367,12 @@
     // If livePool is not available yet, wait for it
     if (!livePool) {
       // Try to wait for livePools to load
-      await waitForCondition(
-        () => !!livePool,
-        RETRY_DELAYS.chartLoading.attempts,
-        RETRY_DELAYS.chartLoading.delay,
-      );
+      for (let i = 0; i < RETRY_DELAYS.chartLoading.attempts; i++) {
+        if (livePool) break;
+        await new Promise((resolve) =>
+          setTimeout(resolve, RETRY_DELAYS.chartLoading.delay),
+        );
+      }
 
       // If still no livePool, try to load pools manually
       if (!livePool && $livePools.length === 0) {
@@ -626,111 +592,100 @@
     <!-- Main Content Row -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
       <div class="flex flex-col gap-y-4">
-        {#if userPool}
-          <Panel variant="solid" className="p-5">
-            <!-- Header with Pool Share -->
-            <div class="flex items-start justify-between mb-4">
-              <h3 class="text-lg font-semibold text-kong-text-primary">
-                Your Position
-              </h3>
-              <div class="text-right">
-                <p
-                  class="text-xs text-kong-text-secondary uppercase tracking-wider font-medium mb-1"
-                >
-                  Pool Share
-                </p>
-                <p class="text-sm font-bold text-kong-text-primary">
-                  {formatToNonZeroDecimal(
-                    (userPool?.poolSharePercentage || 0).toString(),
-                  )}%
-                </p>
-              </div>
+        <Panel variant="solid" className="p-5">
+          <!-- Header with Pool Share -->
+          <div class="flex items-start justify-between mb-4">
+            <h3 class="text-lg font-semibold text-kong-text-primary">
+              Your Position
+            </h3>
+            <div class="text-right">
+              <p
+                class="text-xs text-kong-text-secondary uppercase tracking-wider font-medium mb-1"
+              >
+                Pool Share
+              </p>
+              <p class="text-sm font-bold text-kong-text-primary">
+                {formatToNonZeroDecimal(
+                  (userPool?.poolSharePercentage || 0).toString(),
+                )}%
+              </p>
             </div>
+          </div>
 
-            <!-- Main Metrics Row -->
-            <div class="grid grid-cols-2 gap-6">
-              <!-- Total Value Section -->
-              <div>
-                <p
-                  class="text-xs text-kong-text-secondary mb-3 uppercase tracking-wider font-medium"
-                >
-                  Total Value
-                </p>
-                <p class="text-3xl font-bold text-kong-primary mb-3">
-                  {(userPool?.usd_balance || 0) > 100
-                    ? (userPool?.usd_balance || 0).toLocaleString(undefined, {
-                        style: "currency",
-                        currency: "USD",
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0,
-                      })
-                    : (userPool?.usd_balance || 0).toLocaleString(undefined, {
-                        style: "currency",
-                        currency: "USD",
-                        minimumFractionDigits: 2,
-                        maximumeFractionDigits: 2,
-                      })}
-                </p>
-                <div class="space-y-1 text-xs">
-                  <div class="flex justify-between items-center">
-                    <span class="text-kong-text-secondary"
-                      >{token0?.symbol}:</span
-                    >
-                    <span class="text-kong-text-primary font-medium"
-                      >{formatToNonZeroDecimal(
-                        userPool?.amount_0.toString(),
-                      )}</span
-                    >
-                  </div>
-                  <div class="flex justify-between items-center">
-                    <span class="text-kong-text-secondary"
-                      >{token1?.symbol}:</span
-                    >
-                    <span class="text-kong-text-primary font-medium"
-                      >{formatToNonZeroDecimal(
-                        userPool?.amount_1.toString(),
-                      )}</span
-                    >
-                  </div>
+          <!-- Main Metrics Row -->
+          <div class="grid grid-cols-2 gap-6">
+            <!-- Total Value Section -->
+            <div>
+              <p class="text-xs text-kong-text-secondary mb-3 uppercase tracking-wider font-medium">
+                Total Value
+              </p>
+              <p class="text-3xl font-bold text-kong-primary mb-3">
+                {(userPool?.usd_balance || 0.00).toLocaleString(undefined, {
+                      style: "currency",
+                      currency: "USD",
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                })}
+              </p>
+              <div class="space-y-1 text-xs">
+                <div class="flex justify-between items-center">
+                  <span class="text-kong-text-secondary"
+                    >{token0?.symbol}:</span
+                  >
+                  <span class="text-kong-text-primary font-medium"
+                    >{formatToNonZeroDecimal(
+                      (userPool?.amount_0 || 0n).toString(),
+                    )}</span
+                  >
                 </div>
-              </div>
-
-              <!-- Earnings Section -->
-              <div>
-                <p
-                  class="text-xs text-kong-text-secondary mb-3 uppercase tracking-wider font-medium"
-                >
-                  Earnings
-                </p>
-                <p class="text-3xl font-bold text-kong-accent-green mb-3">
-                  ${calculateTotalEarnings()}
-                </p>
-                <div class="space-y-1 text-xs">
-                  <div class="flex justify-between items-center">
-                    <span class="text-kong-text-secondary"
-                      >{userPool?.symbol_0} fees:</span
-                    >
-                    <span class="text-kong-accent-green font-medium"
-                      >{formatToNonZeroDecimal(
-                        userPool?.userFeeShare0.toString(),
-                      )}</span
-                    >
-                  </div>
-                  <div class="flex justify-between items-center">
-                    <span class="text-kong-text-secondary"
-                      >{userPool?.symbol_1} fees:</span
-                    >
-                    <span class="text-kong-accent-green font-medium"
-                      >{formatToNonZeroDecimal(
-                        userPool?.userFeeShare1.toString(),
-                      )}</span
-                    >
-                  </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-kong-text-secondary"
+                    >{token1?.symbol}:</span
+                  >
+                  <span class="text-kong-text-primary font-medium"
+                    >{formatToNonZeroDecimal(
+                      (userPool?.amount_1 || 0n).toString(),
+                    )}</span
+                  >
                 </div>
               </div>
             </div>
-          </Panel>
-        {/if}
+
+            <!-- Earnings Section -->
+            <div>
+              <p
+                class="text-xs text-kong-text-secondary mb-3 uppercase tracking-wider font-medium"
+              >
+                Earnings
+              </p>
+              <p class="text-3xl font-bold text-kong-accent-green mb-3">
+                ${totalEarnings}
+              </p>
+              <div class="space-y-1 text-xs">
+                <div class="flex justify-between items-center">
+                  <span class="text-kong-text-secondary"
+                    >{token0?.symbol} fees:</span
+                  >
+                  <span class="text-kong-accent-green font-medium"
+                    >{formatToNonZeroDecimal(
+                      (userPool?.userFeeShare0 || 0n).toString(),
+                    )}</span
+                  >
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-kong-text-secondary"
+                    >{token1?.symbol} fees:</span
+                  >
+                  <span class="text-kong-accent-green font-medium"
+                    >{formatToNonZeroDecimal(
+                      (userPool?.userFeeShare1 || 0n).toString(),
+                    )}</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </Panel>
         <!-- TVL Chart -->
         <TVLHistoryChart
           {balanceHistory}
@@ -763,7 +718,6 @@
                   Set Initial Price
                 </h3>
               </div>
-
               <div class="space-y-3">
                 {#if token0 && token1}
                   <PoolWarning {token0} {token1} />
@@ -780,6 +734,7 @@
                   {livePool}
                   {token0}
                   {token1}
+                  bind:liquidityState
                   onShowConfirmModal={handleShowConfirmModal}
                 />
               </div>
@@ -789,13 +744,9 @@
           <!-- Actions Panel -->
           <Panel variant="solid">
             <!-- Header and Tabs -->
-            <div
-              class="-mx-6 -mt-6 px-6 pt-5 pb-4 border-b border-kong-border/20"
-            >
+            <div class="-mx-6 -mt-6 px-6 pt-5 pb-4 border-b border-kong-border/20">
               <div class="flex items-center justify-between gap-4">
-                <h3
-                  class="text-base font-semibold text-kong-text-primary whitespace-nowrap"
-                >
+                <h3 class="text-base font-semibold text-kong-text-primary whitespace-nowrap">
                   Manage
                 </h3>
                 <!-- Tabs for actions -->
@@ -826,6 +777,7 @@
                   {livePool}
                   {token0}
                   {token1}
+                  bind:liquidityState
                   onShowConfirmModal={handleShowConfirmModal}
                 />
               {:else if activeTab === "remove" && userPool}
@@ -841,7 +793,7 @@
                   pool={userPool}
                   {token0}
                   {token1}
-                  on:tokensSent={handleLiquidityActionComplete}
+                  onTokensSent={handleLiquidityActionComplete}
                 />
               {/if}
             </div>
@@ -854,16 +806,19 @@
 
 {#if showConfirmModal}
   <ConfirmLiquidityModal
+    {token0}
+    {token1}
+    liquidityState={liquidityState}
     isCreatingPool={!poolExists}
     show={showConfirmModal}
     onClose={() => {
-      liquidityStore.resetAmounts();
       showConfirmModal = false;
-      resetState();
     }}
-    on:liquidityAdded={() => {
+    onLiquidityActionComplete={() => {
       showConfirmModal = false;
+      resetLiquidityAmounts();
       handleLiquidityActionComplete();
+      resetState();
     }}
     modalKey={`confirm-liquidity-${token0?.address}-${token1?.address}`}
     target="#portal-target"
