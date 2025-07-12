@@ -8,7 +8,7 @@
   import { Search, Check, Eye, EyeOff, Loader2, Plus } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { fade } from "svelte/transition";
-  import AddNewTokenModal from "$lib/components/wallet/AddNewTokenModal.svelte";
+  import { goto } from "$app/navigation";
 
   // Props
   const props = $props<{
@@ -22,7 +22,6 @@
   let searchQuery = $state("");
   let isLoading = $state(true);
   let activeTab = $state<"enabled" | "all">("enabled");
-  let showAddNewTokenModal = $state(false);
   
   // Track which tokens have balances (for quick reference)
   let tokensWithBalances = $state<Set<string>>(new Set());
@@ -153,13 +152,6 @@
     return tokensWithBalances.has(token.address);
   }
   
-  // Handle newly added token
-  function handleTokenAdded(event: CustomEvent<Kong.Token>) {
-    showAddNewTokenModal = false;
-    
-    // Refresh token list
-    loadTokens();
-  }
   
   // Load tokens on component mount
   onMount(() => {
@@ -228,8 +220,8 @@
           <button
             class="inline-flex items-center gap-2 px-4 py-2 bg-kong-primary text-white rounded-md hover:bg-kong-primary/90 transition-colors"
             onclick={() => {
-              showAddNewTokenModal = true;
               props.onClose();
+              goto("/tokens");
             }}
           >
             <Plus size={16} />
@@ -307,14 +299,6 @@
   </div>
 </Modal>
 
-<!-- Add New Token Modal -->
-{#if showAddNewTokenModal}
-  <AddNewTokenModal 
-    isOpen={showAddNewTokenModal}
-    onClose={() => showAddNewTokenModal = false}
-    on:tokenAdded={handleTokenAdded}
-  />
-{/if}
 
 <style>
   /* Scrollbar styling */

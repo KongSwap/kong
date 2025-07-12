@@ -29,7 +29,7 @@
     validateAddress,
     formatTokenInput,
   } from "$lib/utils/validators/tokenValidators";
-  import { formatBalance } from "$lib/utils/numberFormatUtils";
+  import { formatBalance, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { decodeIcrcAccount, type IcrcAccount } from "@dfinity/ledger-icrc";
 
   // Format USD value with commas for thousands
@@ -178,8 +178,12 @@
     amount = formatTokenInput((event.target as HTMLInputElement).value, token.decimals);
   }
 
-  function handleSendMax() {
-    amount = String(maxAmount);
+  function handlePercentageClick(percentage: number) {
+    if (!maxAmount || maxAmount === 0) return;
+    
+    const maxAmountBN = new BigNumber(maxAmount);
+    const percentageAmount = maxAmountBN.times(percentage).div(100);
+    amount = percentageAmount.toString();
   }
 
   function handleAddressInput(event: Event) {
@@ -443,13 +447,6 @@
             <label for="amount-input" class="block text-sm text-kong-text-primary font-medium">
               <span>Amount</span>
             </label>
-            <button
-              type="button"
-              class="text-xs text-kong-primary hover:text-kong-primary/80 font-medium transition-colors duration-150 py-1 px-2 bg-kong-primary/5 rounded-full"
-              onclick={handleSendMax}
-            >
-              Send Max
-            </button>
           </div>
           
           {#if amountValidation.errorMessage && amount}
@@ -489,12 +486,43 @@
           
           <div class="flex justify-between items-center text-xs mt-1.5">
             <div class="text-kong-text-secondary">
-              Max: <span class="font-medium">{maxAmount} {token.symbol}</span>
+              Max: <span class="font-medium">{formatToNonZeroDecimal(maxAmount)} {token.symbol}</span>
             </div>
-            <div class="flex items-center gap-1 text-kong-text-secondary/70 bg-kong-bg-light/30 px-2 py-1 rounded-full">
-              <Info size={12} />
-              <span>Fee: {tokenFee ? formatBalance(tokenFee, token.decimals) : "..."} {token.symbol}</span>
+            <div class="flex gap-1">
+              <button
+                type="button"
+                class="text-xs text-kong-primary hover:text-kong-primary/80 font-medium transition-colors duration-150 py-1 px-2 bg-kong-primary/5 rounded-full"
+                onclick={() => handlePercentageClick(25)}
+              >
+                25%
+              </button>
+              <button
+                type="button"
+                class="text-xs text-kong-primary hover:text-kong-primary/80 font-medium transition-colors duration-150 py-1 px-2 bg-kong-primary/5 rounded-full"
+                onclick={() => handlePercentageClick(50)}
+              >
+                50%
+              </button>
+              <button
+                type="button"
+                class="text-xs text-kong-primary hover:text-kong-primary/80 font-medium transition-colors duration-150 py-1 px-2 bg-kong-primary/5 rounded-full"
+                onclick={() => handlePercentageClick(75)}
+              >
+                75%
+              </button>
+              <button
+                type="button"
+                class="text-xs text-kong-primary hover:text-kong-primary/80 font-medium transition-colors duration-150 py-1 px-2 bg-kong-primary/5 rounded-full"
+                onclick={() => handlePercentageClick(100)}
+              >
+                100%
+              </button>
             </div>
+          </div>
+          
+          <div class="flex items-center gap-1 text-kong-text-secondary/70 bg-kong-bg-light/30 px-2 py-1 rounded-full text-xs mt-1.5">
+            <Info size={12} />
+            <span>Fee: {tokenFee ? formatBalance(tokenFee, token.decimals) : "..."} {token.symbol}</span>
           </div>
         </div>
         

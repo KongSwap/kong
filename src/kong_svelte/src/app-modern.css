@@ -1,0 +1,128 @@
+/* Modern Theme Architecture - Static CSS Approach */
+
+/* Import fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap');
+
+/* Base styles */
+:root {
+  /* Default system values */
+  --transition-fast: 150ms ease-in-out;
+  --transition-normal: 250ms ease-in-out;
+  --radius-sm: 0.125rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  
+  /* Font settings */
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-brand: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Modern Dark Theme */
+[data-theme="modern-dark"] {
+  /* Background colors */
+  --bg-primary: 12 15 23;      /* #0C0F17 */
+  --bg-secondary: 20 25 37;    /* #141925 */
+  --bg-elevated: 29 36 51;     /* #1D2433 */
+  
+  /* Semantic colors */
+  --semantic-success: 0 212 170;   /* #00D4AA */
+  --semantic-error: 220 38 38;     /* #DC2626 */
+  --semantic-warning: 217 119 6;   /* #D97706 */
+  --semantic-info: 74 124 255;     /* #4A7CFF */
+  
+  /* Brand colors */
+  --brand-primary: 74 124 255;     /* #4A7CFF */
+  --brand-secondary: 0 212 170;    /* #00D4AA */
+  
+  /* Text colors */
+  --text-primary: 249 250 251;     /* #F9FAFB */
+  --text-secondary: 156 163 175;   /* #9CA3AF */
+  --text-disabled: 107 114 128;    /* #6B7280 */
+  
+  /* Border colors */
+  --border-default: 31 41 55;      /* #1F2937 */
+  --border-subtle: 55 65 81;       /* #374151 */
+  
+  /* Color scheme */
+  color-scheme: dark;
+}
+
+/* Modern Light Theme */
+[data-theme="modern-light"] {
+  /* Background colors */
+  --bg-primary: 255 255 255;       /* #FFFFFF */
+  --bg-secondary: 248 250 252;     /* #F8FAFC */
+  --bg-elevated: 241 245 249;      /* #F1F5F9 */
+  
+  /* Semantic colors */
+  --semantic-success: 5 150 105;   /* #059669 */
+  --semantic-error: 220 38 38;     /* #DC2626 */
+  --semantic-warning: 217 119 6;   /* #D97706 */
+  --semantic-info: 37 99 235;      /* #2563EB */
+  
+  /* Brand colors */
+  --brand-primary: 37 99 235;      /* #2563EB */
+  --brand-secondary: 5 150 105;    /* #059669 */
+  
+  /* Text colors */
+  --text-primary: 17 24 39;        /* #111827 */
+  --text-secondary: 107 114 128;   /* #6B7280 */
+  --text-disabled: 156 163 175;    /* #9CA3AF */
+  
+  /* Border colors */
+  --border-default: 229 231 235;   /* #E5E7EB */
+  --border-subtle: 243 244 246;    /* #F3F4F6 */
+  
+  /* Color scheme */
+  color-scheme: light;
+}
+
+/* Base component styles using the modern tokens */
+body {
+  font-family: var(--font-primary);
+  background-color: rgb(var(--bg-primary));
+  color: rgb(var(--text-primary));
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+/* Component utilities */
+.modern-bg-primary { background-color: rgb(var(--bg-primary) / <alpha-value>); }
+.modern-bg-secondary { background-color: rgb(var(--bg-secondary) / <alpha-value>); }
+.modern-bg-elevated { background-color: rgb(var(--bg-elevated) / <alpha-value>); }
+
+.modern-text-primary { color: rgb(var(--text-primary) / <alpha-value>); }
+.modern-text-secondary { color: rgb(var(--text-secondary) / <alpha-value>); }
+.modern-text-disabled { color: rgb(var(--text-disabled) / <alpha-value>); }
+
+.modern-border-default { border-color: rgb(var(--border-default) / <alpha-value>); }
+.modern-border-subtle { border-color: rgb(var(--border-subtle) / <alpha-value>); }
+
+.modern-brand-primary { 
+  background-color: rgb(var(--brand-primary));
+  color: white;
+}
+
+.modern-semantic-success { background-color: rgb(var(--semantic-success)); }
+.modern-semantic-error { background-color: rgb(var(--semantic-error)); }
+.modern-semantic-warning { background-color: rgb(var(--semantic-warning)); }
+.modern-semantic-info { background-color: rgb(var(--semantic-info)); }
+
+/* Transition animations for theme switching */
+* {
+  transition: 
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+/* Hide content until theme is ready (FOUC prevention) */
+html:not([data-theme]) body {
+  visibility: hidden;
+}
+
+html[data-theme] body {
+  visibility: visible;
+}
