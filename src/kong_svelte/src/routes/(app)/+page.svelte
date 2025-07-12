@@ -1,5 +1,7 @@
 <script lang="ts">
   import Swap from "$lib/components/swap/Swap.svelte";
+  import SwapContainer from "$lib/features/swap/components/SwapContainer.svelte";
+  import { newSwapEnabled } from "$lib/stores/featureFlags";
   import PredictionMarketsBox from "$lib/components/home/PredictionMarketsBox.svelte";
   import KongTokenBox from "$lib/components/home/KongTokenBox.svelte";
   import SwapStats from "$lib/components/home/SwapStats.svelte";
@@ -65,7 +67,11 @@
     <div
       class="flex-1 w-full flex flex-col items-center p-2 pt-1 md:p-0 md:mt-12 transition-all duration-200"
     >
-      <Swap />
+      {#if $newSwapEnabled}
+        <SwapContainer />
+      {:else}
+        <Swap />
+      {/if}
     </div>
     <!-- Explore Button -->
     <div class="w-full bg-transparent">

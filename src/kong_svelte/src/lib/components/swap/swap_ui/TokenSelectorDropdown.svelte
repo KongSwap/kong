@@ -19,10 +19,10 @@
   import { virtualScroll } from "$lib/utils/virtualScroll";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import { app } from "$lib/state/app.state.svelte";
-  import AddNewTokenModal from "$lib/components/wallet/AddNewTokenModal.svelte";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
   import { loadUserBalances } from "$lib/services/balanceService";
   import { enableBodyScroll, disableBodyScroll } from "$lib/utils/scrollUtils";
+  import { goto } from "$app/navigation";
 
   const props = $props();
   const {
@@ -73,7 +73,6 @@
     standardFilter: "all" as FilterType,
     isSearching: false,
     enablingTokenId: null as string | null,
-    isAddNewTokenModalOpen: false,
     favoritesLoaded: false,
     favoriteTokens: new Map<string, boolean>(),
     apiSearchResults: [] as Kong.Token[]
@@ -387,14 +386,9 @@
     onClose();
   }
   
-  function handleCustomTokenAdded(event: CustomEvent<Kong.Token>) {
-    const newToken = event.detail;
-    selectorState.isAddNewTokenModalOpen = false;
-    
-    if (newToken && canSelectToken(newToken)) {
-      handleSelect(newToken);
-      onClose();
-    }
+  function handleNavigateToTokens() {
+    onClose();
+    goto("/tokens");
   }
 
   // Balance loading - simplified using existing service
@@ -702,7 +696,7 @@
                 <div class="px-2 py-3 mt-2">
                   <button 
                     class="group w-full hover:bg-kong-primary hover:text-kong-bg-secondary flex items-center justify-center gap-2 py-3 px-4 text-kong-text-primary font-medium rounded-lg border border-kong-border/30 transition-all duration-200 hover:border-kong-primary/40 "
-                    on:click|stopPropagation={() => selectorState.isAddNewTokenModalOpen = true}
+                    on:click|stopPropagation={handleNavigateToTokens}
                   >
                     <div class="flex items-center justify-center w-5 h-5 rounded-full text-kong-bg-secondary font-bold bg-kong-primary group-hover:text-kong-primary group-hover:bg-kong-bg-secondary">+</div>
                     <span>Add New Token</span>
@@ -750,9 +744,4 @@
   }
 </style>
 
-<!-- Add New Token Modal -->
-<AddNewTokenModal 
-  isOpen={selectorState.isAddNewTokenModalOpen}
-  onClose={() => selectorState.isAddNewTokenModalOpen = false}
-  on:tokenAdded={handleCustomTokenAdded}
-/>
+

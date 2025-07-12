@@ -20,6 +20,7 @@
   import { settingsStore } from "$lib/stores/settingsStore";
   import { fade, fly } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
+  import FeatureFlagToggle from "$lib/components/dev/FeatureFlagToggle.svelte";
 
   let { children } = $props<{
     children: any;
@@ -189,6 +190,7 @@
     <KeyboardShortcutsHelp />
     <GlobalWalletProvider />
     <GlobalSignatureModal />
+    <FeatureFlagToggle />
   {/if}
 </div>
 
