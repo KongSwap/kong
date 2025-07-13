@@ -348,6 +348,9 @@
   onMount(() => {
     // Small delay to ensure stores are initialized
     createTimeout(async () => {
+      // Ensure tokens are initialized first
+      await userTokens.ensureInitialized();
+      
       // Load balances if user is connected
       if ($auth.isConnected && $auth.account?.owner) {
         const userTokensState = get(userTokens);

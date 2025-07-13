@@ -7,6 +7,7 @@
   import { onMount } from "svelte";
   import Card from "$lib/components/common/Card.svelte";
     import TokenImages from "../common/TokenImages.svelte";
+    import { goto } from "$app/navigation";
 
   let kongToken = $state<Kong.Token | null>(null);
   let isLoadingStats = $state(true);
@@ -205,8 +206,10 @@
         <span class="whitespace-nowrap">SNS Dashboard</span>
       </a>
       <a
-        href="/stats/{KONG_CANISTER_ID}"
-        class="flex-1 min-w-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-kong-bg-tertiary/20 hover:bg-kong-bg-tertiary/30 rounded-lg text-xs sm:text-sm text-kong-text-primary hover:text-kong-accent-green transition-colors border border-kong-border/20"
+        onclick={() => {
+          goto(`/stats/${KONG_CANISTER_ID}`);
+        }}
+        class="cursor-pointer flex-1 min-w-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-kong-bg-tertiary/20 hover:bg-kong-bg-tertiary/30 rounded-lg text-xs sm:text-sm text-kong-text-primary hover:text-kong-accent-green transition-colors border border-kong-border/20"
       >
         <TrendingUp class="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
         <span class="whitespace-nowrap">Token Stats</span>

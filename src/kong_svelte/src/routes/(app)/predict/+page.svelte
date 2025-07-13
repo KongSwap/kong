@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { page } from "$app/stores";
-  import { goto } from "$app/navigation";
   import { browser } from "$app/environment";
   import { getLatestBets } from "$lib/api/predictionMarket";
   import { AlertTriangle } from "lucide-svelte";
@@ -27,18 +26,21 @@
   import { useBetModal } from "$lib/composables/useBetModal.svelte";
   import { useUserMarketData } from "$lib/composables/useUserMarketData.svelte";
   import UserUnresolvedMarketsCard from "./UserUnresolvedMarketsCard.svelte";
+  import type { PageData } from './$types';
 
-  // Recent bets state
-  let recentBets = $state<LatestBets[]>([]);
+  let { data } = $props<{ data: PageData }>();
+
+  // Recent bets state - initialized with SSR data
+  let recentBets = $state<LatestBets[]>(data.recentBets || []);
   let previousBets: any[] = [];
-  let isInitialLoad = true;
+  let isInitialLoad = $state(!data.recentBets?.length); // Only true if SSR failed
   let loadingBets = $state(false);
 
   // UI state
   let selectedLayout = $state(3); // Default to 3 markets
 
-  // Tokens
-  let kongToken = $state<any>(null);
+  // Tokens - initialized with SSR data
+  let kongToken = $state<any>(data.kongToken);
   
   // Initialize composables
   const betModal = useBetModal(kongToken);
@@ -107,12 +109,17 @@
   }
 
   onMount(async () => {
-    // Parse URL parameters
-    const urlParams = getURLParams($page, ["status", "sort"]);
-    const initialOverrides = {
-      ...(isValidStatusFilter(urlParams.status) && { statusFilter: urlParams.status }),
-      ...(isValidSortOption(urlParams.sort) && { sortOption: urlParams.sort })
-    };
+    // Use SSR initial filters or parse from URL
+    const initialOverrides = data.initialFilters || {};
+    
+    // Validate filters if not from SSR
+    if (!data.initialFilters) {
+      const urlParams = getURLParams($page, ["status", "sort"]);
+      Object.assign(initialOverrides, {
+        ...(isValidStatusFilter(urlParams.status) && { statusFilter: urlParams.status }),
+        ...(isValidSortOption(urlParams.sort) && { sortOption: urlParams.sort })
+      });
+    }
 
     // Initialize stores and data
     if ($auth.isConnected && $auth.account?.owner) {
@@ -130,14 +137,18 @@
 
     await marketStore.init(initialOverrides);
 
-    // Load token information
-    const tokens = await fetchTokensByCanisterId([KONG_LEDGER_CANISTER_ID]);
-    kongToken = tokens[0];
+    // Only fetch token if not provided by SSR
+    if (!kongToken) {
+      const tokens = await fetchTokensByCanisterId([KONG_LEDGER_CANISTER_ID]);
+      kongToken = tokens[0];
+    }
 
-    // Load initial data
-    await loadRecentBets();
+    // Only load initial data if SSR failed
+    if (isInitialLoad) {
+      await loadRecentBets();
+    }
 
-    // Start polling
+    // Start polling for updates
     startPolling("recentBets", () => {
       loadRecentBets();
       debouncedRefreshMarkets();

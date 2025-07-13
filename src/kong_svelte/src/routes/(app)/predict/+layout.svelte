@@ -1,7 +1,4 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
-  import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-
   let { children } = $props<{ children: any }>();
 </script>
 

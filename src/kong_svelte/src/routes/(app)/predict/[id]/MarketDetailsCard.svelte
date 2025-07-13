@@ -22,12 +22,14 @@
     marketBets = [],
     selectedTab = 'percentageChance',
     onTabChange,
+    tokenInfo,
   } = $props<{
     market: Market;
     loading?: boolean;
     marketBets?: any[];
     selectedTab?: string;
     onTabChange?: (tab: string) => void;
+    tokenInfo?: any;
   }>();
   
   // Only derive what we actually need multiple times
@@ -95,7 +97,7 @@
   });
 
   const token = $derived(
-    $userTokens.tokens.find((t) => t.address === market.token_id),
+    tokenInfo || $userTokens.tokens.find((t) => t.address === market?.token_id)
   );
 
   const marketStats = $derived(() => {
@@ -104,7 +106,16 @@
     return [
       {
         label: "Total Pool",
-        value: `${formatBalance(Number(market?.total_pool || 0), token?.decimals)} ${token?.symbol}`,
+        value: (() => {
+          const totalPool = market?.total_pool ? 
+            (typeof market.total_pool === 'string' ? market.total_pool : market.total_pool.toString()) 
+            : '0';
+          
+          if (token && token.decimals !== undefined && token.symbol) {
+            return `${formatBalance(Number(totalPool), token.decimals)} ${token.symbol}`;
+          }
+          return 'Loading...';
+        })(),
         token: token,
       },
       {

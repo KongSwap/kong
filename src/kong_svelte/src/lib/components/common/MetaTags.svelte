@@ -54,6 +54,63 @@
   <!-- Canonical URL -->
   <link rel="canonical" href={url} />
   
-  <!-- Alternate URL for mobile (if needed) -->
-  <!-- <link rel="alternate" media="only screen and (max-width: 640px)" href={url} /> -->
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={optimizedDescription} />
+  <meta property="og:image" content={image} />
+  <meta property="og:image:alt" content={title} />
+  <meta property="og:url" content={url} />
+  <meta property="og:type" content={type} />
+  <meta property="og:site_name" content="KongSwap" />
+  <meta property="og:locale" content="en_US" />
+  
+  {#if type === 'article' && publishedTime}
+    <meta property="article:published_time" content={publishedTime} />
+    {#if modifiedTime}
+      <meta property="article:modified_time" content={modifiedTime} />
+    {/if}
+    <meta property="article:author" content={author} />
+    {#if section}
+      <meta property="article:section" content={section} />
+    {/if}
+    {#if tags.length > 0}
+      {#each tags as tag}
+        <meta property="article:tag" content={tag} />
+      {/each}
+    {/if}
+  {/if}
+  
+  <!-- Twitter Card Meta Tags -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content={title} />
+  <meta name="twitter:description" content={optimizedDescription} />
+  <meta name="twitter:image" content={image} />
+  <meta name="twitter:image:alt" content={title} />
+  <meta name="twitter:site" content="@KongSwap" />
+  <meta name="twitter:creator" content="@KongSwap" />
+  
+  <!-- Additional SEO Tags -->
+  <meta property="fb:app_id" content="KongSwap" />
+  <link rel="icon" type="image/png" href={logo} />
+  
+  <!-- Structured Data for Rich Snippets -->
+  {#if type === 'website'}
+    {@html `<script type="application/ld+json">
+      ${JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "KongSwap",
+        "url": url,
+        "description": optimizedDescription,
+        "publisher": {
+          "@type": "Organization",
+          "name": "KongSwap",
+          "logo": {
+            "@type": "ImageObject",
+            "url": logo
+          }
+        }
+      })}
+    </script>`}
+  {/if}
 </svelte:head> 

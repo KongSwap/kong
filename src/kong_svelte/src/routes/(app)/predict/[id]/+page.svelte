@@ -18,6 +18,7 @@
   import { auth } from "$lib/stores/auth";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import type { TokenInfo } from "$lib/types/predictionMarket";
+  import type { PageData } from './$types';
 
   // Import our new components
   import MarketHeader from "./MarketHeader.svelte";
@@ -34,10 +35,23 @@
   import CommentsSection from "$lib/components/predictions/comments/CommentsSection.svelte";
   import { contextId } from "$lib/api/comments";
 
-  let market = $state<any>(null);
-  let loading = $state(true);
+  let { data } = $props<{ data: PageData }>();
+
+  // Convert serialized market data back to proper types
+  let market = $state<any>(data.market ? {
+    ...data.market,
+    // Convert string ID back to BigInt for consistency
+    id: data.market.id ? BigInt(data.market.id) : undefined,
+    // Convert creator string back to Principal-like object for compatibility
+    creator: data.market.creator ? {
+      toText: () => data.market.creator,
+      toString: () => data.market.creator,
+      _isPrincipal: true
+    } : undefined
+  } : null);
+  let loading = $state(!data.market); // Only loading if SSR failed
   let error = $state<string | null>(null);
-  let marketBets = $state<any[]>([]);
+  let marketBets = $state<any[]>(data.initialBets || []);
   let loadingBets = $state(false);
   let betError = $state<string | null>(null);
   let isBetting = $state(false);
@@ -56,7 +70,8 @@
   let initializing = $state(false);
   let selectedInitializeOutcome = $state<number | null>(null);
 
-  let marketTokenInfo = $state<TokenInfo | null>(null);
+  let marketTokenInfo = $state<TokenInfo | null>(data.marketTokenInfo);
+  let fullMarketToken = $state<Kong.Token | null>(null);
   let userClaims = $state<any[]>([]);
   let loadingClaims = $state(false);
 
@@ -153,8 +168,35 @@
     }
   });
 
-  // Main data loading effect - optimized to run only once
+  // Effect to fetch full token data when we have token info
   $effect(() => {
+    if (marketTokenInfo?.id && !fullMarketToken) {
+      fetchTokensByCanisterId([marketTokenInfo.id])
+        .then((tokens) => {
+          if (tokens && tokens.length > 0) {
+            fullMarketToken = tokens[0];
+          }
+        })
+        .catch((e) => {
+          console.error("Failed to fetch full token data:", e);
+        });
+    }
+  });
+
+  // Main data loading effect - only fetch if SSR failed
+  $effect(() => {
+    // Skip if we already have market data from SSR
+    if (data.market) {
+      // Load remaining bets after initial ones
+      if (data.initialBets && data.initialBets.length >= 20) {
+        loadMarketBets().catch((betError) => {
+          console.error("Error loading additional bets:", betError);
+        });
+      }
+      return;
+    }
+
+    // Fallback to client-side fetching if SSR failed
     const fetchData = async () => {
       try {
         loading = true;
@@ -430,6 +472,13 @@
   });
 </script>
 
+<!-- Structured data for SEO (metadata is handled by root layout) -->
+<svelte:head>
+  {#if data.structuredData}
+    {@html `<script type="application/ld+json">${JSON.stringify(data.structuredData)}</script>`}
+  {/if}
+</svelte:head>
+
 <div
   class="min-h-screen text-kong-text-primary px-2 sm:px-4 mx-auto !max-w-[1300px]"
 >
@@ -482,6 +531,7 @@
               {marketBets}
               {selectedTab}
               onTabChange={handleTabChange}
+              tokenInfo={fullMarketToken || marketTokenInfo}
             />
           {/if}
 
@@ -636,6 +686,7 @@
               {marketBets}
               {selectedTab}
               onTabChange={handleTabChange}
+              tokenInfo={fullMarketToken || marketTokenInfo}
             />
           {/if}
 
