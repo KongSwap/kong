@@ -10,6 +10,10 @@ const config = {
       out: 'dist',
       precompress: false,
       envPrefix: '',
+      env: {
+        host: 'HOST',
+        port: 'PORT'
+      }
     }),
     files: {
       assets: "static",
