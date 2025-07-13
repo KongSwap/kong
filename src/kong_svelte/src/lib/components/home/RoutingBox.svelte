@@ -116,6 +116,7 @@
 <Card
   className="group relative overflow-hidden"
   isPadded={true}
+  isTransparent={true}
 >
   <!-- Subtle gradient background -->
   <div class="absolute inset-0 overflow-hidden">

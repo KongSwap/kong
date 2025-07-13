@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { panelRoundness } from "$lib/stores/derivedThemeStore";
   import { tooltip } from "$lib/actions/tooltip";
   import { auth, isAuthenticating } from "$lib/stores/auth";
   import { notificationsStore } from "$lib/stores/notificationsStore";
@@ -13,19 +12,6 @@
     isMobile = false,
     onWalletClick = () => {}
   } = $props();
-
-  // Helper function to get the directional rounding class part
-  function getRoundingSuffix(roundness: string | null): string {
-    if (!roundness || roundness === 'rounded-none') return 'none';
-    if (roundness === 'rounded') return '';
-    return `-${roundness.substring(8)}`;
-  }
-  
-  // Compute directional classes reactively
-  let roundingSuffix = $derived(getRoundingSuffix($panelRoundness));
-  let leftRoundnessClass = $derived(roundingSuffix === 'none' ? '' : `rounded-l${roundingSuffix}`);
-  let rightRoundnessClass = $derived(roundingSuffix === 'none' ? '' : `rounded-r${roundingSuffix}`);
-
 
   // Filter and process buttons based on current state
   let visibleButtons = $derived.by(() => {
@@ -97,13 +83,13 @@
 <div
   class="flex items-center overflow-hidden {isMobile
     ? ''
-    : 'bg-kong-bg-primary/50 border border-kong-border/50'} {$panelRoundness}"
+    : 'bg-kong-bg-primary border border-kong-border'} rounded-kong-roundness"
 >
   {#each visibleButtons as button, i}
     <button
       class="nav-panel-button {button.id === 'wallet' ? 'wallet-button' : ''} {isMobile
         ? 'mobile'
-        : ''} {i === 0 ? leftRoundnessClass : ''} {i === visibleButtons.length - 1 ? rightRoundnessClass : ''}"
+        : ''} {i === 0 ? 'rounded-l-kong-roundness' : ''} {i === visibleButtons.length - 1 ? 'rounded-r-kong-roundness' : ''}"
       onclick={button.onClick}
       use:tooltip={button.tooltip
         ? { text: button.tooltip, direction: "bottom" }
@@ -149,16 +135,16 @@
 
 <style scoped lang="postcss">
   .nav-panel-button {
-    @apply h-[34px] px-3 flex items-center gap-1 text-xs font-medium text-kong-text-secondary bg-kong-bg-primary border-none transition-all duration-150 relative overflow-visible rounded-xl;
+    @apply h-[34px] px-3 flex items-center gap-1 text-xs font-medium text-kong-text-secondary bg-kong-bg-primary border-none transition-all duration-150 relative overflow-visible rounded-kong-roundness;
   }
 
   .nav-panel-button:not(:last-child):not(.last-button) {
-    @apply border-r border-kong-border/50;
+    @apply border-r border-kong-border/50 rounded-r-kong-roundness;
   }
 
   /* Use pseudo-element for background to ensure proper clipping */
   .nav-panel-button::before {
-    @apply absolute bg-kong-bg-primary transition-all duration-150 -z-10;
+    @apply absolute bg-kong-bg-primary transition-all duration-150 -z-10 rounded-l-kong-roundness;
     content: '';
     border-radius: inherit;
     top: 0;
@@ -172,11 +158,7 @@
   }
 
   .nav-panel-button:hover {
-    @apply bg-kong-primary text-kong-text-on-primary rounded-xl;
-  }
-
-  .nav-panel-button.selected {
-    @apply text-kong-text-on-primary;
+    @apply bg-kong-primary text-kong-text-on-primary rounded-kong-roundness;
   }
 
   .nav-panel-button.wallet-button {

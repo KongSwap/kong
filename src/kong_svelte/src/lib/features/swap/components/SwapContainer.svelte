@@ -595,23 +595,6 @@
     /* No transitions needed - all effects handled by parent wrapper */
   }
 
-  /* Glow effect using filter to avoid any background interference */
-  .swap-glow-target {
-    transition: transform 0.2s ease, filter 0.3s ease;
-  }
-
-  /* Add outer glow using drop-shadow filter - this won't affect internal backgrounds */
-  .swap-glow-target:hover {
-    transform: translateY(-1px);
-    filter: 
-      drop-shadow(0 0 20px rgba(26, 143, 227, 0.8))
-      drop-shadow(0 0 40px rgba(26, 143, 227, 0.6))
-      drop-shadow(0 0 60px rgba(26, 143, 227, 0.4))
-      drop-shadow(0 8px 25px rgba(0, 0, 0, 0.15));
-  }
-
-  /* Container background stays untouched on hover - glow handled by parent */
-  
   /* Base background layer */
   .swap-container-solid::before {
     content: '';

@@ -85,8 +85,8 @@ export const coreLightTheme: CoreTheme = {
       button: {
         background: '#2D7A2D',
         hover: '#228B22',
-        disabled: '#78A085',
-        error: '#B22222'
+        disabled: '#E8F0DC',
+        error: '#B22222',
       }
     }
   },

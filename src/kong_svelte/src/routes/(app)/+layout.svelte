@@ -191,7 +191,7 @@
 <style scoped lang="postcss">
   /* Fallback background before theme loads */
   .pre-theme-bg {
-    background-color: rgb(9, 12, 23); /* Dark fallback matching --bg-primary */
+    background-color: rgb(var(--kong-bg-primary)); /* Dark fallback matching --bg-primary */
   }
   
   .app-container.bg-transition {

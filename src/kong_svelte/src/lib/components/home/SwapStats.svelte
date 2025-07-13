@@ -18,6 +18,7 @@
 <Card 
   className="md:col-span-2 lg:col-span-2 h-auto md:h-[200px] lg:h-[220px] relative group"
   isPadded={true}
+  isTransparent={true}
 >
   <!-- Subtle gradient background -->
   <div class="absolute inset-0 overflow-hidden">

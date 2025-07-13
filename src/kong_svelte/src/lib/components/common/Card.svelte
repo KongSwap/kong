@@ -5,6 +5,7 @@
     className?: string;
     hasHeader?: boolean;
     isPadded?: boolean;
+    isTransparent?: boolean;
     [key: string]: any;
   }
   
@@ -14,13 +15,14 @@
     className = "",
     hasHeader = false,
     isPadded = false,
+    isTransparent = false,
     ...restProps
   }: Props = $props();
 </script>
 
 {#if onClick}
   <button
-    class="w-full text-left hover:shadow bg-kong-bg-secondary rounded-kong-roundness border border-kong-border/60 transition-all duration-200 overflow-hidden {isHighlighted
+    class="w-full text-left hover:shadow {isTransparent ? 'bg-transparent backdrop-blur-sm' : 'bg-kong-bg-secondary'} rounded-kong-roundness border {isTransparent ? 'border-kong-border/30' : 'border-kong-border/60'} transition-all duration-200 overflow-hidden {isHighlighted
       ? 'bg-gradient-to-br from-[rgba(0,149,235,0.05)] to-[rgba(0,149,235,0.02)] shadow-[inset_0_1px_1px_rgba(0,149,235,0.1)]'
       : ''} {isPadded ? 'p-4' : ''} {className}"
     onclick={onClick}
@@ -35,7 +37,7 @@
   </button>
 {:else}
   <div
-    class="w-full hover:shadow text-left bg-kong-bg-secondary rounded-kong-roundness border border-kong-border/60 transition-all duration-200 overflow-hidden {isHighlighted
+    class="w-full hover:shadow text-left {isTransparent ? 'bg-transparent backdrop-blur-sm' : 'bg-kong-bg-secondary'} rounded-kong-roundness border {isTransparent ? 'border-kong-border/30' : 'border-kong-border/60'} transition-all duration-200 overflow-hidden {isHighlighted
       ? 'bg-gradient-to-br from-[rgba(0,149,235,0.05)] to-[rgba(0,149,235,0.02)] shadow-[inset_0_1px_1px_rgba(0,149,235,0.1)]'
       : ''} {className} {isPadded ? 'p-4' : ''}"
     {...restProps}
