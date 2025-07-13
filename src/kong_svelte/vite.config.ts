@@ -149,6 +149,16 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       include: ['comlink', '@dfinity/agent'],
       exclude: ['@sveltejs/kit', '$lib/utils/browser', '@dfinity/candid', '@dfinity/principal']
     },
+    ssr: {
+      noExternal: [
+        '@dfinity/agent',
+        '@dfinity/candid', 
+        '@dfinity/principal',
+        '@dfinity/auth-client',
+        '@dfinity/identity',
+        '@dfinity/utils'
+      ]
+    },
     server: {
       proxy: {
         "/api": {
