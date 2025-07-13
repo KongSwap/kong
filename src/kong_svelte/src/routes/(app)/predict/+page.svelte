@@ -32,7 +32,6 @@
 
   // Recent bets state - initialized with SSR data
   let recentBets = $state<LatestBets[]>(data.recentBets || []);
-  let previousBets: any[] = [];
   let isInitialLoad = $state(!data.recentBets?.length); // Only true if SSR failed
   let loadingBets = $state(false);
 
@@ -80,7 +79,6 @@
     try {
       loadingBets = true;
       const startTime = Date.now();
-      previousBets = [...recentBets];
 
       const bets = await getLatestBets();
       recentBets = bets;
