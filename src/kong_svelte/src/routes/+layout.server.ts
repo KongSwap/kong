@@ -2,7 +2,8 @@ import type { LayoutServerLoad } from './$types';
 import { generateMetadata } from '$lib/utils/metadata';
 
 export const load: LayoutServerLoad = async ({ url }) => {
-  // Generate metadata server-side based on the current URL
+  // Generate default metadata server-side based on the current URL
+  // This will be overridden by page-specific metadata if provided
   const metadata = generateMetadata(url.pathname);
   
   return {

@@ -26,6 +26,7 @@
     tags?: string[]
   } = $props();
 
+
   // Ensure description is within optimal length (150-160 characters)
   const optimizedDescription = description.length > 160 
     ? description.substring(0, 157) + '...'
@@ -94,9 +95,30 @@
   <link rel="icon" type="image/png" href={logo} />
   
   <!-- Structured Data for Rich Snippets -->
-  {#if type === 'website'}
-    {@html `<script type="application/ld+json">
-      ${JSON.stringify({
+  {@html `<script type="application/ld+json">
+    ${JSON.stringify(
+      type === 'article' ? {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": title,
+        "description": optimizedDescription,
+        "image": image,
+        "datePublished": publishedTime,
+        "dateModified": modifiedTime || publishedTime,
+        "author": {
+          "@type": "Organization",
+          "name": author || "KongSwap"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "KongSwap",
+          "logo": {
+            "@type": "ImageObject",
+            "url": logo
+          }
+        },
+        ...(section && { "articleSection": section })
+      } : {
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "KongSwap",
@@ -110,7 +132,7 @@
             "url": logo
           }
         }
-      })}
-    </script>`}
-  {/if}
+      }
+    )}
+  </script>`}
 </svelte:head> 

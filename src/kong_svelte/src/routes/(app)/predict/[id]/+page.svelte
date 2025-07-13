@@ -472,12 +472,7 @@
   });
 </script>
 
-<!-- Structured data for SEO (metadata is handled by root layout) -->
-<svelte:head>
-  {#if data.structuredData}
-    {@html `<script type="application/ld+json">${JSON.stringify(data.structuredData)}</script>`}
-  {/if}
-</svelte:head>
+<!-- All metadata including structured data is handled by root layout MetaTags component -->
 
 <div
   class="min-h-screen text-kong-text-primary px-2 sm:px-4 mx-auto !max-w-[1300px]"

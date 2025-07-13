@@ -6,6 +6,7 @@
   import MetaTags from "$lib/components/common/MetaTags.svelte";
   import ModalRenderer from "$lib/components/common/modals/ModalRenderer.svelte";
   import type { LayoutData } from "./$types";
+  import { page } from "$app/state";
   // Theme initialization happens automatically in the store
 
   const handleResize = () => {
@@ -24,15 +25,23 @@
     children: any;
     data: LayoutData;
   }>();
+  
+  // Use page-specific metadata if available, otherwise layout metadata
+  const metadata = $derived(page.data?.metadata || data.metadata);
 </script>
 
 <MetaTags
   logo="https://www.kongswap.io/android-chrome-192x192.png"
-  title={data.metadata.title}
-  description={data.metadata.description}
-  image={data.metadata.image}
-  url={data.metadata.url}
-  tags={data.metadata.tags || []}
+  title={metadata?.title || 'KongSwap'}
+  description={metadata?.description || 'Trade tokens on Internet Computer'}
+  image={metadata?.image || 'https://kongswap.io/images/banner.jpg'}
+  url={metadata?.url || 'https://kongswap.io'}
+  tags={metadata?.tags || []}
+  type={metadata?.type}
+  publishedTime={metadata?.publishedTime}
+  modifiedTime={metadata?.modifiedTime}
+  author={metadata?.author}
+  section={metadata?.section}
 />
 
 {@render children?.()}
