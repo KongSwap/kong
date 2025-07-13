@@ -138,7 +138,7 @@
             Trade seamlessly across multiple blockchains with
             <span class="text-kong-primary font-medium">zero bridges</span> and
             <span class="text-kong-primary font-medium"
-              >institutional-grade security</span
+              >zero wrappers</span
             >.
           </p>
         </div>
