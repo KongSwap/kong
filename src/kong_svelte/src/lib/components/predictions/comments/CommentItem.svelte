@@ -2,6 +2,7 @@
   import { commentsApi } from "$lib/api/comments";
   import { auth } from "$lib/stores/auth";
   import { toastStore } from "$lib/stores/toastStore";
+  import { modalFactory } from "$lib/components/common/modals";
   import CommentInput from "./CommentInput.svelte";
   import { formatDistanceToNow } from "date-fns";
   import { parseBasicMarkdown } from "$lib/utils/markdown";
@@ -104,11 +105,12 @@
   }
 
   async function handleDelete() {
-    if (!confirm("Are you sure you want to delete this comment?")) return;
-
-    state.isDeleting = true;
-
     try {
+      const confirmed = await modalFactory.confirmations.delete('comment');
+      if (!confirmed) return;
+
+      state.isDeleting = true;
+
       await commentsApi.deleteComment(comment.id);
       toastStore.success("Comment deleted");
       onDeleted(comment.id);

@@ -1,6 +1,9 @@
 import type { SwapFormValues, SwapFormErrors, SwapToken } from '../types/swap.types';
 import { SwapValidator } from '../services/SwapValidator';
 import BigNumber from 'bignumber.js';
+import { get } from 'svelte/store';
+import { currentUserBalancesStore } from '$lib/stores/balancesStore';
+import { auth } from '$lib/stores/auth';
 
 export interface UseSwapFormReturn {
   values: SwapFormValues;
@@ -9,7 +12,7 @@ export interface UseSwapFormReturn {
   isDirty: boolean;
   setPayToken: (token: SwapToken | null) => void;
   setReceiveToken: (token: SwapToken | null) => void;
-  setPayAmount: (amount: string) => void;
+  setPayAmount: (amount: string, needsAllowance?: boolean) => void;
   setReceiveAmount: (amount: string) => void;
   switchTokens: () => void;
   validateForm: () => Promise<boolean>;
@@ -74,6 +77,56 @@ export function useSwapForm(): UseSwapFormReturn {
     }
   };
   
+  // Validate balance sufficiency
+  const validateBalance = (amount: string, token: SwapToken | null, needsAllowance: boolean = false): string | undefined => {
+    if (!amount || !token || !get(auth).isConnected) return undefined;
+    
+    try {
+      const balances = get(currentUserBalancesStore);
+      const tokenBalance = balances?.[token.address];
+      
+      if (!tokenBalance) {
+        return 'Balance not loaded';
+      }
+      
+      const balanceBN = new BigNumber(tokenBalance.in_tokens.toString())
+        .div(new BigNumber(10).pow(token.decimals));
+      const amountBN = new BigNumber(amount);
+      
+      // Calculate fees if ICRC-2 token
+      let totalRequired = amountBN;
+      if (token.standards?.includes('ICRC-2')) {
+        const feeInTokens = new BigNumber(token.fee_fixed || '10000')
+          .div(new BigNumber(10).pow(token.decimals));
+        
+        // Add approval fee if needed
+        if (needsAllowance) {
+          totalRequired = amountBN.plus(feeInTokens.times(2)); // One for approval, one for transfer
+        } else {
+          totalRequired = amountBN.plus(feeInTokens); // Just transfer fee
+        }
+      }
+      
+      if (balanceBN.lt(amountBN)) {
+        return 'Insufficient balance';
+      }
+      
+      if (balanceBN.lt(totalRequired)) {
+        return 'Insufficient balance for fees';
+      }
+      
+      // Warning if using entire balance
+      if (balanceBN.eq(amountBN)) {
+        return 'Warning: Using entire balance';
+      }
+      
+      return undefined;
+    } catch (error) {
+      console.error('Balance validation error:', error);
+      return undefined;
+    }
+  };
+  
   // Set pay token
   const setPayToken = (token: SwapToken | null) => {
     // Clear receive token if same as pay token
@@ -101,7 +154,7 @@ export function useSwapForm(): UseSwapFormReturn {
   };
   
   // Set pay amount
-  const setPayAmount = (amount: string) => {
+  const setPayAmount = (amount: string, needsAllowance: boolean = false) => {
     // Clean input - remove invalid characters
     const cleanAmount = amount.replace(/[^0-9.]/g, '');
     
@@ -120,10 +173,16 @@ export function useSwapForm(): UseSwapFormReturn {
     };
     isDirty = true;
     
-    const error = validateAmount(formattedAmount, values.payToken);
+    // Validate format first
+    const formatError = validateAmount(formattedAmount, values.payToken);
     
-    if (error) {
-      errors = { ...errors, payAmount: error };
+    // Then validate balance if format is valid
+    const balanceError = !formatError ? validateBalance(formattedAmount, values.payToken, needsAllowance) : undefined;
+    
+    if (formatError) {
+      errors = { ...errors, payAmount: formatError };
+    } else if (balanceError) {
+      errors = { ...errors, payAmount: balanceError };
     } else {
       const { payAmount, ...rest } = errors;
       errors = rest;

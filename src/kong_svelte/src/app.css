@@ -7,6 +7,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;600&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Eczar:wght@400;500;600;700;800&family=Caudex:wght@400;700&family=Almendra:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Russo+One&display=swap');
 @import "./styles/stats.css";
 @tailwind base;
 @tailwind components;
@@ -35,6 +36,165 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   @apply bg-kong-bg-primary text-kong-text-primary;
+}
+
+/* ===== DESIGN TOKENS ===== */
+:root {
+  /* Typography Scale */
+  --headline-size-mobile: clamp(2.5rem, 8vw, 4rem);
+  --headline-size-desktop: clamp(4rem, 10vw, 6rem);
+  --subtitle-size: clamp(1.5rem, 4vw, 2.5rem);
+  
+  /* Animation Timing */
+  --animation-duration-fast: 200ms;
+  --animation-duration-medium: 400ms;
+  --animation-duration-slow: 800ms;
+  --animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Spacing Scale */
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+}
+
+/* ===== ENHANCED TYPOGRAPHY ===== */
+.font-title-thick {
+  font-family: 'Russo One', 'Arial Black', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+  text-rendering: optimizeLegibility;
+}
+
+/* ===== PROFESSIONAL ANIMATIONS ===== */
+.headline-container {
+  /* Minimal performance optimization */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Subtle professional hover effects */
+.professional-title {
+  transition: color 0.3s ease;
+}
+
+.professional-title:hover {
+  color: rgb(var(--brand-primary));
+}
+
+/* Accessibility: Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .professional-title {
+    transition: none;
+  }
+  
+  .headline-container {
+    transform: none;
+  }
+}
+
+/* ===== PROFESSIONAL TYPOGRAPHY ===== */
+.professional-accent {
+  transition: opacity 0.2s ease;
+}
+
+.professional-accent:hover {
+  opacity: 0.8;
+}
+
+/* ===== TEXTURE UTILITIES ===== */
+.texture-subtle {
+  position: relative;
+}
+
+.texture-subtle::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(circle at 2px 2px, rgba(255,255,255,0.06) 1px, transparent 0);
+  background-size: 16px 16px;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.7;
+}
+
+.texture-noise {
+  position: relative;
+}
+
+.texture-noise::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    linear-gradient(45deg, transparent 48%, rgba(255,255,255,0.03) 49%, rgba(255,255,255,0.03) 51%, transparent 52%),
+    linear-gradient(-45deg, transparent 48%, rgba(255,255,255,0.03) 49%, rgba(255,255,255,0.03) 51%, transparent 52%);
+  background-size: 3px 3px, 3px 3px;
+  background-position: 0 0, 1.5px 1.5px;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.8;
+}
+
+/* ===== FEATURE BADGES ===== */
+.feature-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: linear-gradient(135deg, 
+    rgb(var(--bg-secondary) / 0.6), 
+    rgb(var(--bg-tertiary) / 0.4)
+  );
+  border: 1px solid rgb(var(--ui-border) / 0.3);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(var(--text-secondary));
+  backdrop-filter: blur(8px);
+  transition: all var(--animation-duration-fast) var(--animation-easing);
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-badge::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, 
+    transparent 0%, 
+    rgb(var(--brand-primary) / 0.1) 50%, 
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity var(--animation-duration-fast) var(--animation-easing);
+}
+
+.feature-badge:hover {
+  transform: translateY(-1px);
+  border-color: rgb(var(--brand-primary) / 0.4);
+  color: rgb(var(--text-primary));
+  box-shadow: 
+    0 4px 12px rgb(var(--brand-primary) / 0.1),
+    0 2px 4px rgb(var(--shadow) / 0.1);
+}
+
+.feature-badge:hover::before {
+  opacity: 1;
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .feature-badge {
+    transition: none;
+  }
+  
+  .feature-badge:hover {
+    transform: none;
+  }
 }
 
 /* Base variable definitions - these will be dynamic based on theme */
@@ -159,10 +319,12 @@ img {
   position: fixed;
   top: 0;
   left: 0;
-  width: 0;
-  height: 0;
+  width: 100vw;
+  height: 100vh;
   z-index: 999999; /* Very high z-index to ensure modals appear above everything */
   pointer-events: none;
+  background-color: transparent;
+  isolation: isolate; /* Create new stacking context */
 }
 
 /* Ensure modal children can receive pointer events */
@@ -188,4 +350,231 @@ img {
 /* Ensure modal panels don't inherit lower z-index */
 #portal-target .panel {
   z-index: auto !important;
+}
+
+/* =============================================================================
+   MOBILE RESPONSIVE & LANDSCAPE ORIENTATION OPTIMIZATIONS
+   ============================================================================= */
+
+/* Viewport height handling for mobile browsers */
+:root {
+  --vh: 1vh;
+  --svh: 1svh; /* Small viewport height for mobile */
+  --lvh: 1lvh; /* Large viewport height for desktop */
+  --dvh: 1dvh; /* Dynamic viewport height */
+}
+
+/* Use dynamic viewport units where supported */
+@supports (height: 100dvh) {
+  :root {
+    --vh: 1dvh;
+  }
+}
+
+@supports (height: 100svh) {
+  :root {
+    --vh: 1svh;
+  }
+}
+
+/* Mobile landscape orientation optimizations */
+@media screen and (orientation: landscape) and (max-height: 600px) {
+  /* Reduce padding and margins for mobile landscape */
+  body {
+    padding: 0;
+    margin: 0;
+  }
+  
+  /* Optimize page wrapper for landscape */
+  .page-wrapper {
+    min-height: calc(var(--vh, 1vh) * 100);
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  
+  /* Reduce vertical spacing in landscape */
+  main {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+  
+  /* Compact headers in landscape */
+  header,
+  nav {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+  }
+  
+  /* Smaller text in landscape for better fit */
+  h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  h2 {
+    font-size: 1.25rem !important;
+  }
+  
+  /* Compact buttons in landscape */
+  button {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+}
+
+/* Very small screens (width < 375px) */
+@media screen and (max-width: 374px) {
+  /* Reduce global spacing */
+  * {
+    scroll-behavior: smooth;
+  }
+  
+  /* Compact layout for very small screens */
+  .container {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  
+  /* Smaller touch targets acceptable on very small screens */
+  button {
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+  
+  /* Compact forms */
+  input,
+  select,
+  textarea {
+    padding: 8px 12px;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+}
+
+/* Standard mobile screens (375px - 429px) */
+@media screen and (min-width: 375px) and (max-width: 429px) {
+  /* Standard mobile optimizations */
+  button {
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+  
+  input,
+  select,
+  textarea {
+    padding: 12px 16px;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+}
+
+/* Large mobile screens (430px+) */
+@media screen and (min-width: 430px) and (max-width: 639px) {
+  /* Enhanced mobile experience for larger phones */
+  button {
+    min-height: 48px;
+    padding: 12px 20px;
+  }
+  
+  input,
+  select,
+  textarea {
+    padding: 14px 18px;
+    font-size: 16px;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Enhance touch targets */
+  button,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+  }
+  
+  /* Remove hover effects on touch devices */
+  button:hover,
+  [role="button"]:hover {
+    transform: none;
+  }
+  
+  /* Add active states for better touch feedback */
+  button:active,
+  [role="button"]:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+  
+  /* Improve scrolling on touch devices */
+  .scrollable {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+}
+
+/* Prevent iOS zoom on input focus */
+@supports (-webkit-touch-callout: none) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* High DPI display optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Crisp images on retina displays */
+  img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+  
+  /* Sharper borders */
+  .border {
+    border-width: 0.5px;
+  }
+}
+
+/* Accessibility improvements for mobile */
+@media (prefers-reduced-motion: reduce) {
+  /* Respect user's motion preferences */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Dark mode mobile optimizations */
+@media (prefers-color-scheme: dark) and (max-width: 639px) {
+  /* Slightly brighter text for better readability on mobile */
+  body {
+    color: rgba(255, 255, 255, 0.95);
+  }
+}
+
+/* Safe area handling for devices with notches */
+@supports (padding: max(0px)) {
+  .safe-area-inset {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  
+  /* Navigation specific safe areas */
+  nav,
+  header {
+    padding-top: max(8px, env(safe-area-inset-top));
+  }
+  
+  /* Bottom navigation safe areas */
+  footer,
+  .bottom-nav {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
 }

@@ -34,6 +34,20 @@ const defaultTokens = () => {
 
 export const DEFAULT_TOKENS = defaultTokens();
 
+// Core tokens that should load first for instant display
+export const CORE_TOKENS = () => {
+  if (process.env.DFX_NETWORK === 'local') {
+    return [
+      process.env.CANISTER_ID_ICP_LEDGER,
+      process.env.CANISTER_ID_CKUSDT_LEDGER,
+    ];
+  }
+  return [
+    "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP
+    "cngnf-vqaaa-aaaar-qag4q-cai", // CKUSDT
+  ];
+};
+
 // Frontend Canister IDs
 export const KONG_BACKEND_CANISTER_ID = process.env.CANISTER_ID_KONG_BACKEND;
 export const KONG_LEDGER_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';

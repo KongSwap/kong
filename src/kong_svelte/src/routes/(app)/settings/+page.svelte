@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { themeStore, type ThemeId } from '$lib/stores/themeStore';
   import { getAllThemes } from '$lib/themes/themeRegistry';
-  import type { ThemeDefinition } from '$lib/themes/baseTheme';
+  import type { CoreTheme } from '$lib/themes/coreTypes';
   import Toggle from '$lib/components/common/Toggle.svelte';
   import Slider from '$lib/components/common/Slider.svelte';
   import { settingsStore } from '$lib/stores/settingsStore';
@@ -16,9 +16,10 @@
   import { userTokens } from '$lib/stores/userTokens';
   import { currentUserBalancesStore } from '$lib/stores/balancesStore';
   import { notificationsStore } from '$lib/stores/notificationsStore';
+  import { modalFactory } from '$lib/components/common/modals';
   
   // State variables
-  let themes = $state<ThemeDefinition[]>([]);
+  let themes = $state<CoreTheme[]>([]);
   let currentThemeId = $state('');
   let showThemeCreator = $state(false);
   let ThemeCreator = $state<ComponentType<any> | undefined>(undefined);
@@ -384,7 +385,10 @@
   }
   
   async function clearFavorites() {
-    if (confirm('Are you sure you want to clear your favorite tokens?')) {
+    try {
+      const confirmed = await modalFactory.confirmations.destructive('clear favorite tokens');
+      if (!confirmed) return;
+      
       if (browser) {
         try {
           // Get the wallet ID
@@ -399,12 +403,16 @@
           toastStore.error('Failed to clear favorites');
         }
       }
+    } catch (error) {
+      // User cancelled - no action needed
+      console.log('Clear favorites cancelled');
     }
   }
   
   async function resetDatabase() {
     try {
-      if (confirm('Are you sure you want to reset the application? This will clear all data and reload the page.')) {
+      const confirmed = await modalFactory.confirmations.destructive('reset the application', 'This will clear all data and reload the page');
+      if (confirmed) {
         // Disable the button to prevent multiple clicks
         const button = document.activeElement as HTMLButtonElement;
         if (button) button.disabled = true;
@@ -435,7 +443,7 @@
             notificationsStore.clearAll();
 
             // Reset theme to default (dark) immediately
-            await themeStore.setTheme('dark');
+            await themeStore.setTheme('core-dark');
 
             toastStore.success('Reset successful, reloading...');
           } catch (error) {
@@ -451,11 +459,16 @@
         window.location.reload();
       }
     } catch (error) {
-      console.error('Error resetting application:', error);
-      toastStore.error('Reset failed, forcing reload...');
-      
-      // Force reload as fallback
-      setTimeout(() => window.location.reload(), 1000);
+      // Handle both cancellation and actual errors
+      if (error?.message?.includes('cancelled') || error?.name === 'Error') {
+        console.log('Reset cancelled by user');
+      } else {
+        console.error('Error resetting application:', error);
+        toastStore.error('Reset failed, forcing reload...');
+        
+        // Force reload as fallback
+        setTimeout(() => window.location.reload(), 1000);
+      }
     }
   }
   
@@ -644,13 +657,13 @@
           <!-- Theme preview -->
           <div class="theme-preview h-16 mb-2 rounded overflow-hidden border border-kong-border/50 flex">
             <div class="w-1/2 flex flex-col">
-              <div class="h-1/2" style="background-color: {theme.colors.bgPrimary}"></div>
-              <div class="h-1/2" style="background-color: {theme.colors.bgSecondary}"></div>
+              <div class="h-1/2" style="background-color: {theme.colors.bg.primary}"></div>
+              <div class="h-1/2" style="background-color: {theme.colors.bg.secondary}"></div>
             </div>
             <div class="w-1/2 flex flex-col">
-              <div class="h-1/3" style="background-color: {theme.colors.primary}"></div>
-              <div class="h-1/3" style="background-color: {theme.colors.success}"></div>
-              <div class="h-1/3" style="background-color: {theme.colors.error}"></div>
+              <div class="h-1/3" style="background-color: {theme.colors.brand.primary}"></div>
+              <div class="h-1/3" style="background-color: {theme.colors.semantic.success}"></div>
+              <div class="h-1/3" style="background-color: {theme.colors.semantic.error}"></div>
             </div>
           </div>
           
@@ -714,20 +727,21 @@
       
       <div class="code-example bg-kong-bg-primary rounded-lg p-4 overflow-x-auto">
         <pre class="text-kong-text-primary font-mono text-sm">
-import type &#123; ThemeDefinition &#125; from '$lib/themes/baseTheme';
+import type &#123; CoreTheme &#125; from '$lib/themes/coreTypes';
 import &#123; themeStore &#125; from '$lib/stores/themeStore';
 
-const myCustomTheme: ThemeDefinition = &#123;
+const myCustomTheme: CoreTheme = &#123;
   id: 'my-theme',
   name: 'My Custom Theme',
-  colorScheme: 'dark light',
+  colorScheme: 'dark',
   colors: &#123;
-    bgPrimary: '#1A1A1A',
-    bgSecondary: '#2A2A2A',
-    bgTertiary: '#3A3A3A',
-    primary: '#FF5722',
-    // ... other required colors
-  &#125;
+    bg: &#123; primary: '#1A1A1A', secondary: '#2A2A2A', tertiary: '#3A3A3A' &#125;,
+    text: &#123; primary: '#FFFFFF', secondary: '#B0B0B0', disabled: '#666666', inverse: '#000000' &#125;,
+    brand: &#123; primary: '#FF5722', secondary: '#FFA726' &#125;,
+    semantic: &#123; success: '#4CAF50', error: '#F44336', warning: '#FF9800', info: '#2196F3' &#125;,
+    ui: &#123; border: '#404040', focus: '#FF5722' &#125;
+  &#125;,
+  // Optional properties...
 &#125;;
 
 // Register and apply the theme

@@ -3,9 +3,10 @@
   import { toastStore } from "$lib/stores/toastStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { Check, Loader2, ChevronsRight, X } from 'lucide-svelte';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import type { SwapToken, SwapQuote } from '../types/swap.types';
+  import Portal from "svelte-portal";
 
   interface Props {
     payToken: SwapToken | null;
@@ -40,9 +41,42 @@
 
   // Particle system - reduced count for performance
   let particles = $state<Array<{ id: number; x: number; y: number; size: number; delay: number }>>([]);
+  let originalOverflow: string;
   
   onMount(() => {
     mounted = true;
+    
+    // Prevent body scroll - store original values
+    originalOverflow = document.body.style.overflow || '';
+    const originalPosition = document.body.style.position || '';
+    const originalTop = document.body.style.top || '';
+    const originalWidth = document.body.style.width || '';
+    
+    // Get current scroll position
+    const scrollY = window.scrollY;
+    
+    // Apply scroll lock
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+    
+    // Store cleanup function
+    const cleanup = () => {
+      // Restore body styles
+      document.body.style.overflow = originalOverflow;
+      document.body.style.position = originalPosition;
+      document.body.style.top = originalTop;
+      document.body.style.width = originalWidth;
+      
+      // Restore scroll position
+      if (originalPosition !== 'fixed') {
+        window.scrollTo(0, scrollY);
+      }
+    };
+    
+    // Store cleanup for onDestroy
+    (window as any).__swapModalCleanup = cleanup;
     
     // Create fewer floating particles for better performance
     particles = Array.from({ length: 6 }, (_, i) => ({
@@ -53,6 +87,15 @@
       delay: Math.random() * 10
     }));
   });
+  
+  onDestroy(() => {
+    // Run cleanup
+    const cleanup = (window as any).__swapModalCleanup;
+    if (cleanup) {
+      cleanup();
+      delete (window as any).__swapModalCleanup;
+    }
+  });
 
   async function handleConfirm() {
     if (isLoading) return;
@@ -60,7 +103,7 @@
     isLoading = true;
 
     try {
-      await onConfirm();
+      onConfirm();
       showSuccess = true;
       successScale = 1;
       setTimeout(() => {
@@ -115,12 +158,13 @@
 
 <svelte:window onkeydown={handleKeyDown} />
 
-<!-- Backdrop -->
-<div 
-  class="fixed inset-0 bg-kong-bg-primary/75 backdrop-blur-xl z-50 flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-hidden"
-  transition:fade={{ duration: 200 }}
-  onclick={handleBackdropClick}
->
+<Portal target="#portal-target">
+  <!-- Backdrop -->
+  <div 
+    class="modal-backdrop fixed inset-0 bg-kong-bg-primary/75 backdrop-blur-xl z-[100010] flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-y-auto overscroll-none"
+    transition:fade={{ duration: 200 }}
+    onclick={handleBackdropClick}
+  >
   <!-- Close Button -->
   <button
     class="close-button"
@@ -163,7 +207,7 @@
           class="token-container animate-slide-in-left"
           transition:scale={{ delay: 100, duration: 300 }}
         >
-          <span class="token-label">You Send</span>
+          <span class="token-label">Send</span>
           <div class="token-image-wrapper token-float-up">
             <div class="token-pulse-ring"></div>
             <div class="token-pulse-ring ring-2"></div>
@@ -195,7 +239,7 @@
           class="token-container animate-slide-in-right"
           transition:scale={{ delay: 200, duration: 300 }}
         >
-          <span class="token-label">You Receive</span>
+          <span class="token-label">Receive</span>
           <div class="token-image-wrapper token-float-down">
             <div class="token-pulse-ring receive"></div>
             <div class="token-pulse-ring receive ring-2"></div>
@@ -223,10 +267,43 @@
           <span class="detail-value">1 {payToken?.symbol} = {(Number(receiveAmount) / Number(payAmount)).toFixed(6)} {receiveToken?.symbol}</span>
         </div>
         
+        {#if _quote?.priceImpact}
+          <div class="detail-row">
+            <span class="detail-label">Price Impact</span>
+            <span class="detail-value {parseFloat(String(_quote.priceImpact)) > 5 ? 'text-kong-semantic-error' : parseFloat(String(_quote.priceImpact)) > 3 ? 'text-kong-semantic-warning' : ''}">
+              {_quote.priceImpact}%
+            </span>
+          </div>
+        {/if}
+        
         <div class="detail-row">
           <span class="detail-label">Total Fees</span>
           <span class="detail-value">
-            {formatToNonZeroDecimal(0.00081)} {receiveToken?.symbol}
+            ${(() => {
+              let totalFeesUSD = 0;
+              
+              // Calculate gas fees in USD
+              if (_quote?.gasFees) {
+                for (const fee of _quote.gasFees) {
+                  const token = fee.token === payToken?.address ? payToken : receiveToken;
+                  if (token?.metrics?.price) {
+                    totalFeesUSD += parseFloat(fee.amount) * parseFloat(token.metrics.price);
+                  }
+                }
+              }
+              
+              // Calculate LP fees in USD
+              if (_quote?.lpFees) {
+                for (const fee of _quote.lpFees) {
+                  const token = fee.token === payToken?.address ? payToken : receiveToken;
+                  if (token?.metrics?.price) {
+                    totalFeesUSD += parseFloat(fee.amount) * parseFloat(token.metrics.price);
+                  }
+                }
+              }
+              
+              return totalFeesUSD.toFixed(2);
+            })()}
           </span>
         </div>
       </div>
@@ -280,8 +357,14 @@
     {/if}
   </div>
 </div>
+</Portal>
 
 <style lang="postcss">
+  /* Fallback background color before CSS variables load */
+  .modal-backdrop {
+    background-color: rgba(9, 12, 23, 0.75); /* Dark fallback matching --bg-primary */
+  }
+  
   /* Particle System - Optimized with will-change */
   .particle {
     @apply absolute rounded-full;
@@ -315,12 +398,12 @@
 
   /* Token float animations with GPU acceleration */
   .token-image-wrapper.token-float-up {
-    animation: token-float-up 4s ease-in-out infinite !important;
+    animation: token-float-up 6s ease-in-out infinite !important;
     animation-fill-mode: both;
   }
 
   .token-image-wrapper.token-float-down {
-    animation: token-float-down 4s ease-in-out infinite !important;
+    animation: token-float-down 6s ease-in-out infinite !important;
     animation-fill-mode: both;
   }
 
@@ -527,7 +610,7 @@
       transform: translate3d(0, 0, 0);
     }
     50% {
-      transform: translate3d(0, -15px, 0);
+      transform: translate3d(0, -5px, 0);
     }
   }
 
@@ -536,7 +619,7 @@
       transform: translate3d(0, 0, 0);
     }
     50% {
-      transform: translate3d(0, 15px, 0);
+      transform: translate3d(0, 5px, 0);
     }
   }
 

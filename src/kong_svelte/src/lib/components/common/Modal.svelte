@@ -1,8 +1,8 @@
 <script lang="ts">
   import { browser } from "$app/environment";
   import Card from "./Card.svelte";
-  import { fade } from "svelte/transition";
-  import { cubicOut } from "svelte/easing";
+  import { fade, scale } from "svelte/transition";
+  import { cubicOut, quartOut } from "svelte/easing";
   import Portal from "svelte-portal";
   import Toast from "./Toast.svelte";
   import { tick } from "svelte";
@@ -10,7 +10,7 @@
   import { modalStack } from "$lib/stores/modalStore";
   import { app } from "$lib/state/app.state.svelte";
 
-  // Props
+  // Enhanced Props with better defaults and types
   let {
     children,
     titleSlot,
@@ -20,13 +20,21 @@
     width = "600px",
     height = "auto",
     minHeight = "auto",
+    maxWidth = "90vw",
+    maxHeight = "90vh",
     onClose = () => {},
+    onOpen = () => {},
     loading = false,
     closeOnEscape = true,
     closeOnClickOutside = true,
     className = "",
     isPadded = false,
-    target = "#portal-target"
+    target = "#portal-target",
+    zIndexOverride,
+    blurStrength = "md",
+    animationDuration = 200,
+    showCloseButton = true,
+    preventScrollLock = false
   } = $props<{
     children?: () => any;
     titleSlot?: () => any;
@@ -36,16 +44,24 @@
     width?: string;
     height?: string;
     minHeight?: string;
+    maxWidth?: string;
+    maxHeight?: string;
     onClose?: () => void;
+    onOpen?: () => void;
     loading?: boolean;
     closeOnEscape?: boolean;
     closeOnClickOutside?: boolean;
     className?: string;
     isPadded?: boolean;
     target?: string;
+    zIndexOverride?: number;
+    blurStrength?: 'sm' | 'md' | 'lg' | 'xl';
+    animationDuration?: number;
+    showCloseButton?: boolean;
+    preventScrollLock?: boolean;
   }>();
 
-  // State
+  // Enhanced State Management
   let isMobile = $derived(app.isMobile);
   let modalWidth = $state(width);
   let modalHeight = $state(height);
@@ -53,22 +69,51 @@
   let currentX = $state(0);
   let isDragging = $state(false);
   let modalElement: HTMLDivElement = $state(null);
-  let zIndex = $state(100010);
+  let zIndex = $state(zIndexOverride || 100010);
+  let wasOpen = $state(false);
   
   const SLIDE_THRESHOLD = 100; // pixels to trigger close
+  
+  // Computed values for better performance
+  const backdropClass = $derived(`backdrop-blur-${blurStrength}`);
+  const responsiveWidth = $derived(isMobile ? "100%" : width);
+  const responsiveHeight = $derived(height);
+  const computedZIndex = $derived(zIndexOverride || zIndex);
 
-  // Update modal stack when isOpen changes
+  // Enhanced modal lifecycle management
   $effect(() => {
-    if (isOpen) {
+    if (isOpen && !wasOpen) {
+      // Modal opening
+      wasOpen = true;
+      onOpen();
+      
       modalStack.update((stack) => ({
         ...stack,
         [modalKey]: { active: true, timestamp: Date.now() }
       }));
-    } else {
+
+      // Scroll lock management
+      if (browser && !preventScrollLock) {
+        document.body.style.overflow = 'hidden';
+      }
+    } else if (!isOpen && wasOpen) {
+      // Modal closing
+      wasOpen = false;
+      
       modalStack.update((stack) => {
         const { [modalKey]: _, ...rest } = stack;
         return rest;
       });
+
+      // Release scroll lock if no other modals are open
+      if (browser && !preventScrollLock) {
+        setTimeout(() => {
+          const remainingModals = Object.keys($modalStack).length;
+          if (remainingModals === 0) {
+            document.body.style.overflow = '';
+          }
+        }, animationDuration);
+      }
     }
   });
 
@@ -92,11 +137,11 @@
     return unsubscribe;
   });
 
-  // Setup mobile responsiveness
+  // Enhanced responsive design
   $effect(() => {
     if (browser) {
-        modalWidth = isMobile ? "100%" : width;
-        modalHeight = height;
+      modalWidth = responsiveWidth;
+      modalHeight = responsiveHeight;
     }
   });
 
@@ -216,16 +261,16 @@
       style="z-index: {zIndex};"
     >
       <div
-        class="fixed inset-0 bg-black/60 backdrop-blur-md"
+        class="fixed inset-0 bg-black/60 {backdropClass}"
         onclick={handleBackdropClick}
-        style="z-index: {zIndex};"
-        transition:fade={{ duration: 120, easing: cubicOut }}
+        style="z-index: {computedZIndex};"
+        transition:fade={{ duration: animationDuration, easing: cubicOut }}
       ></div>
 
       <div
         bind:this={modalElement}
-        class="relative px-4 will-change-transform max-w-full max-h-screen md:max-h-[calc(100vh-40px)] flex flex-col overflow-hidden"
-        style="width: {modalWidth}; z-index: {zIndex + 1};"
+        class="relative px-4 will-change-transform flex flex-col overflow-hidden"
+        style="width: {modalWidth}; max-width: {maxWidth}; max-height: {maxHeight}; z-index: {computedZIndex + 1};"
         onmousedown={handleDragStart}
         onmousemove={handleDragMove}
         onmouseup={handleDragEnd}
@@ -234,7 +279,12 @@
         ontouchmove={handleDragMove}
         ontouchend={handleDragEnd}
         onclick={(e) => e.stopPropagation()}
-        transition:fade={{ duration: 150, delay: 100, easing: cubicOut }}
+        transition:scale={{ 
+          duration: animationDuration, 
+          delay: 50, 
+          easing: quartOut,
+          start: 0.9
+        }}
       >
         <Card
           className="flex flex-col overflow-hidden {className} {isPadded ? 'p-4' : ''} bg-kong-bg-primary"
@@ -267,13 +317,15 @@
                   </h2>
                 {/if}
               </div>
-              <button
-                class="!flex !items-center hover:text-kong-error !border-0 !shadow-none group relative"
-                onclick={(e) => handleClose(e)}
-                aria-label="Close modal"
-              >
-                <X size={18} />
-              </button>
+              {#if showCloseButton}
+                <button
+                  class="!flex !items-center hover:text-kong-error !border-0 !shadow-none group relative transition-colors duration-200"
+                  onclick={(e) => handleClose(e)}
+                  aria-label="Close modal"
+                >
+                  <X size={18} />
+                </button>
+              {/if}
             </header>
 
         

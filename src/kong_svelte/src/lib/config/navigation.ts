@@ -55,6 +55,40 @@ export interface NavAction {
   badge?: "notifications" | null;
 }
 
+export interface NavigationConfig {
+  desktop: {
+    items: NavItem[];
+    actions: NavAction[];
+  };
+  mobile: {
+    groups: Array<{
+      title: string;
+      options: Array<NavOption & { path: string }>;
+    }>;
+    swipeGestures: {
+      threshold: number;
+      edgeZone: number;
+    };
+  };
+  accessibility: {
+    keyboardShortcuts: boolean;
+    ariaLabels: boolean;
+    focusManagement: boolean;
+  };
+  performance: {
+    memoization: boolean;
+    lazyLoading: boolean;
+  };
+}
+
+export interface AccountMenuItem {
+  label: string;
+  icon: ComponentType;
+  onClick: () => void;
+  show: boolean;
+  badgeCount?: number;
+}
+
 // Main navigation configuration
 export const NAVIGATION_ITEMS: NavItem[] = [
   {
@@ -123,7 +157,7 @@ export const NAVIGATION_ITEMS: NavItem[] = [
   }
 ];
 
-// Action buttons configuration
+// Enhanced action buttons configuration with proper grouping
 export const ACTION_BUTTONS: NavAction[] = [
   {
     id: "settings",
@@ -178,7 +212,17 @@ export const ACTION_BUTTONS: NavAction[] = [
   }
 ];
 
-// Mobile navigation groups (derived from main config)
+// Desktop-specific action buttons (filtered for desktop display)
+export const DESKTOP_ACTION_BUTTONS = ACTION_BUTTONS.filter(
+  button => !['copy-account', 'notifications'].includes(button.id)
+);
+
+// Mobile-specific action buttons (essential actions only)
+export const MOBILE_ACTION_BUTTONS = ACTION_BUTTONS.filter(
+  button => ['search', 'copy-principal', 'wallet'].includes(button.id)
+);
+
+// Mobile navigation groups (derived from main config with enhanced logic)
 export function getMobileNavGroups() {
   const groups: Array<{
     title: string;
@@ -187,8 +231,8 @@ export function getMobileNavGroups() {
 
   NAVIGATION_ITEMS.forEach(item => {
     if (item.type === "link") {
-      // Group single links by their category
-      const groupTitle = item.id.toUpperCase();
+      // Group single links by their category with better organization
+      const groupTitle = item.id === "pro" ? "SWAP" : item.id.toUpperCase();
       const existingGroup = groups.find(g => g.title === groupTitle);
       
       if (existingGroup) {
@@ -247,6 +291,17 @@ export function getActiveTabFromPath(path: string): NavTabId | null {
   return directMatches[firstSegment] || null;
 }
 
+// Enhanced path to tab mapping with better coverage
+export const PATH_TO_TAB_MAP: Record<string, NavTabId> = {
+  "/": "swap",
+  "/pro": "pro",
+  "/predict": "predict",
+  "/pools": "pools",
+  "/airdrop-claims": "more",
+  "/stats": "more",
+  "/tokens": "more",
+};
+
 // Helper to check if action should be shown
 export function shouldShowAction(
   action: NavAction,
@@ -265,4 +320,50 @@ export function shouldShowAction(
     default:
       return true;
   }
+}
+
+// Main navigation configuration object
+export const NAVIGATION_CONFIG: NavigationConfig = {
+  desktop: {
+    items: NAVIGATION_ITEMS,
+    actions: DESKTOP_ACTION_BUTTONS
+  },
+  mobile: {
+    groups: [], // Will be populated by getMobileNavGroups()
+    swipeGestures: {
+      threshold: 75,
+      edgeZone: 50
+    }
+  },
+  accessibility: {
+    keyboardShortcuts: true,
+    ariaLabels: true,
+    focusManagement: true
+  },
+  performance: {
+    memoization: true,
+    lazyLoading: false
+  }
+};
+
+// Initialize mobile navigation groups
+NAVIGATION_CONFIG.mobile.groups = getMobileNavGroups();
+
+// Helper to filter actions based on platform
+export function getActionsForPlatform(isMobile: boolean): NavAction[] {
+  return isMobile ? MOBILE_ACTION_BUTTONS : DESKTOP_ACTION_BUTTONS;
+}
+
+// Helper to get navigation items with proper typing
+export function getNavigationItems(): NavItem[] {
+  return NAVIGATION_CONFIG.desktop.items;
+}
+
+// Helper to get mobile navigation groups with caching
+let cachedMobileGroups: ReturnType<typeof getMobileNavGroups> | null = null;
+export function getMobileNavigationGroups() {
+  if (!cachedMobileGroups) {
+    cachedMobileGroups = getMobileNavGroups();
+  }
+  return cachedMobileGroups;
 }

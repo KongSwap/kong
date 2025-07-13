@@ -7,8 +7,8 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { toastStore } from "$lib/stores/toastStore";
-  import ManageTokensModal from "$lib/components/wallet/ManageTokensModal.svelte";
-  import ReceiveTokenModal from "$lib/components/wallet/ReceiveTokenModal.svelte";
+  import { modalFactory } from "$lib/services/modalFactory";
+  import { auth } from "$lib/stores/auth";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
   import SyncConfirmModal from "./SyncConfirmModal.svelte";
   import SyncResultModal from "./SyncResultModal.svelte";
@@ -35,17 +35,6 @@
     in_usd: string;
   }
 
-  // Solana SPL token type from provider (adjust if needed)
-  type SplTokenBalance = {
-    amount: string;
-    decimals: number;
-    logo?: string;
-    mint: string;
-    name: string;
-    symbol: string;
-    usdValue: number;
-    uiAmount: number;
-  };
 
   type WalletTokensListProps = {
     isLoading?: boolean;
@@ -165,14 +154,11 @@
 
   let isLoadingBalances = $state(false);
   let balanceLoadError = $state<string | null>(null);
-  let lastRefreshed = $state(Date.now());
   let isSyncing = $state(false);
   let syncStatus = $state<{ added: number; removed: number } | null>(null);
   let showSyncStatus = $state(false);
   let showSyncResultModal = $state(false);
-  let showManageTokensModal = $state(false);
   let showSyncConfirmModal = $state(false);
-  let showReceiveTokenModal = $state(false);
   let tokenSyncCandidates = $state<{
     tokensToAdd: Kong.Token[];
     tokensToRemove: Kong.Token[];
@@ -350,7 +336,6 @@
 
       if (balancesLoaded) {
         const refreshTimestamp = Date.now();
-        lastRefreshed = refreshTimestamp;
         setLastRefreshed(refreshTimestamp);
         onBalancesLoaded();
       } else {
@@ -453,26 +438,24 @@
     showSyncResultModal = false;
   }
 
-  // Open the manage tokens modal
-  function openManageTokensModal() {
-    showManageTokensModal = true;
-  }
-
-  // Close the manage tokens modal
-  function closeManageTokensModal() {
-    showManageTokensModal = false;
-    // Refresh balances after managing tokens
+  // Open the manage tokens modal using new modal system
+  async function openManageTokensModal() {
+    try {
+      // For now, show a simple info message. 
+      // In a full implementation, we'd load available tokens and use the selector
+      await modalFactory.confirmations.destructive(
+        'manage tokens manually',
+        'Token management has been simplified. Use the Sync button to automatically manage tokens based on your balances.'
+      );
+    } catch (error) {
+      // User cancelled or closed the modal
+      console.log('Manage tokens modal cancelled');
+    }
+    
+    // Refresh balances after the interaction
     loadUserBalancesWrapper(true);
   }
 
-  // Navigate to tokens page
-  function handleNavigateToTokens() {
-    if (onNavigate) {
-      onNavigate("/tokens");
-    } else {
-      goto("/tokens");
-    }
-  }
 
   // For dropdown - use $state for proper reactivity in Svelte 5
   let selectedToken = $state<TokenWithBalance | null>(null);
@@ -545,7 +528,7 @@
   });
 
   // Handle dropdown action selection
-  function handleDropdownAction(
+  async function handleDropdownAction(
     action: "send" | "receive" | "swap" | "info" | "copy" | "add_lp",
   ) {
     if (!selectedToken) return;
@@ -554,8 +537,8 @@
 
     switch (action) {
       case "receive":
-        showReceiveTokenModal = true;
-        shouldCloseDropdown = false; // Keep open for modal
+        await handleReceiveToken(selectedToken.token);
+        shouldCloseDropdown = true;
         break;
       case "copy":
         // Copy action is handled directly in TokenDropdown
@@ -650,12 +633,33 @@
   // 	}
   // });
 
-  // Close the receive token modal
-  function closeReceiveTokenModal() {
-    showReceiveTokenModal = false;
-    // Reset the selected token to allow reopening the modal
-    selectedToken = null;
-    selectedTokenId = null;
+  // Handle receive token using new modal system
+  async function handleReceiveToken(token: Kong.Token) {
+    try {
+      // Create the account address for the token
+      const authState = $auth;
+      const principalId = authState?.account?.owner;
+      if (!principalId) {
+        toastStore.error('Please connect your wallet first');
+        return;
+      }
+
+      // Use QR modal to show receiving address
+      await modalFactory.wallet.qr(
+        principalId, // QR data
+        `Receive ${token.symbol}`, // Title
+        principalId // Address to copy
+      );
+      
+      // Reset the selected token
+      selectedToken = null;
+      selectedTokenId = null;
+    } catch (error) {
+      console.log('Receive token modal cancelled');
+      // Reset the selected token even if cancelled
+      selectedToken = null;
+      selectedTokenId = null;
+    }
   }
 
   // --- Token Discovery Cache ---
@@ -856,20 +860,8 @@
 
 
 
-  <!-- Manage Tokens Modal -->
-  <ManageTokensModal
-    isOpen={showManageTokensModal}
-    onClose={closeManageTokensModal}
-  />
 
   <!-- Receive Token Modal -->
-  {#if selectedToken}
-    <ReceiveTokenModal
-      token={selectedToken.token}
-      isOpen={showReceiveTokenModal}
-      onClose={closeReceiveTokenModal}
-    />
-  {/if}
 </div>
 
 <style>

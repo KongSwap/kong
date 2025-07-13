@@ -6,7 +6,7 @@
   import { recentWalletsStore, type RecentWallet } from "$lib/stores/recentWalletsStore";
   import { keyboardNavigation } from "$lib/actions/keyboardNavigation";
   import Modal from "$lib/components/common/Modal.svelte";
-  import ConfirmDialog from "$lib/components/common/ConfirmDialog.svelte";
+  import { modalFactory } from "$lib/components/common/modals";
   import WalletSearch from "./WalletSearch.svelte";
   import RecentWalletsSection from "./RecentWalletsSection.svelte";
   import WalletGrid from "./WalletGrid.svelte";
@@ -57,6 +57,22 @@
   let searchRef = $state<any>(null);
   let containerRef = $state<HTMLDivElement | null>(null);
 
+  // Handler functions
+  async function handleClearAllWallets() {
+    try {
+      const confirmed = await modalFactory.confirmations.destructive(
+        'clear all recent wallets',
+        'This will remove all your recently used wallets from history'
+      );
+      
+      if (confirmed) {
+        recentWalletsStore.clearAll();
+      }
+    } catch (error) {
+      // User cancelled - no action needed
+      console.log('Clear wallets cancelled');
+    }
+  }
 
   // Initialize
   onMount(async () => {
@@ -142,18 +158,6 @@
       </div>
     {/if}
 
-    <!-- Clear Confirmation -->
-    <ConfirmDialog
-      isOpen={storeState.showClearConfirm}
-      title="Clear all recent wallets?"
-      message="This will remove all your recently used wallets from history. This action cannot be undone."
-      confirmText="Clear All"
-      onConfirm={() => {
-        recentWalletsStore.clearAll();
-        store.setShowClearConfirm(false);
-      }}
-      onCancel={() => store.setShowClearConfirm(false)}
-    />
 
     <!-- Main Content -->
     <div class="wallet-list-container">
@@ -166,7 +170,7 @@
           clickedWalletInfo={storeState.clickedWalletInfo}
           onConnect={(walletId: string) => store.connectWallet(walletId, 'recent')}
           onRemove={(walletId) => recentWalletsStore.remove(walletId)}
-          onClearAll={() => store.setShowClearConfirm(true)}
+          onClearAll={handleClearAllWallets}
         />
 
         <!-- Search -->

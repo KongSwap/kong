@@ -1,0 +1,28 @@
+name: kong-swap
+region: nyc
+services:
+  - name: kong-svelte
+    build_command: npm ci && npm run build
+    environment_slug: node-js
+    http_port: 3000
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    instance_count: 1
+    source_dir: /
+    run_command: npm start
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: PUBLIC_DFX_NETWORK
+        value: "ic"
+      - key: PUBLIC_IC_HOST
+        value: "https://ic0.app"
+      - key: ORIGIN
+        value: "https://kong-swap.ondigitalocean.app"
+      - key: PROTOCOL_HEADER
+        value: "x-forwarded-proto"
+      - key: HOST_HEADER
+        value: "x-forwarded-host"
+    routes:
+      - path: /

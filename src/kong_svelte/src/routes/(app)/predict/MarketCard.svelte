@@ -22,6 +22,7 @@
   import MarketOutcomeButton from "./MarketOutcomeButton.svelte";
   import AdminDropdownButton from "./AdminDropdownButton.svelte";
   import { auth } from "$lib/stores/auth";
+  import { modalFactory } from "$lib/services/modalFactory";
 
   let {
     market,
@@ -144,9 +145,12 @@
   }
 
   async function handleVoidMarket(market: any) {
-    if (
-      !confirm(`Are you sure you want to void the market "${market.question}"?`)
-    ) {
+    const confirmed = await modalFactory.confirmations.destructive(
+      `void market "${market.question}"`,
+      'This action cannot be undone. The market will be permanently voided and all predictions will be refunded.'
+    );
+
+    if (!confirmed) {
       return;
     }
 
@@ -155,8 +159,9 @@
       await onMarketResolved();
     } catch (error) {
       console.error("Failed to void market:", error);
-      alert(
-        `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      await modalFactory.confirmations.error(
+        'Failed to void market',
+        error instanceof Error ? error.message : "Unknown error"
       );
     }
   }
@@ -167,8 +172,9 @@
       await onMarketResolved();
     } catch (error) {
       console.error("Failed to set market featured status:", error);
-      alert(
-        `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      await modalFactory.confirmations.error(
+        'Failed to update featured status',
+        error instanceof Error ? error.message : "Unknown error"
       );
     }
   }

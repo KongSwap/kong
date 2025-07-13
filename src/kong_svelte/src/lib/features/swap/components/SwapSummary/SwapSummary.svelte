@@ -30,20 +30,20 @@
   );
 </script>
 
-<Card className="p-3 sm:p-4 bg-kong-bg-tertiary/20 border-kong-border/30">
-  <div class="space-y-2 sm:space-y-3">
+<Card className="p-4 sm:p-6 bg-kong-swap-input-bg/50 border-kong-swap-input-border rounded-2xl">
+  <div class="space-y-3 sm:space-y-4">
     <!-- Total Fees -->
     <div class="flex justify-between items-center">
-      <span class="text-xs sm:text-sm text-kong-text-secondary">Total Fees</span>
-      <span class="text-xs sm:text-sm font-medium text-kong-text-primary">
+      <span class="text-sm sm:text-base text-kong-text-secondary font-medium">Total Fees</span>
+      <span class="text-sm sm:text-base font-semibold text-kong-text-primary tabular-nums">
         {totalFees} {receiveToken?.symbol || ''}
       </span>
     </div>
   
     <!-- Price Impact -->
     <div class="flex justify-between items-center">
-      <span class="text-xs sm:text-sm text-kong-text-secondary">Price Impact</span>
-      <span class="text-xs sm:text-sm font-semibold {priceImpactColor}">
+      <span class="text-sm sm:text-base text-kong-text-secondary font-medium">Price Impact</span>
+      <span class="text-sm sm:text-base font-semibold tabular-nums {priceImpactColor}">
         {quote.priceImpact.toFixed(2)}%
       </span>
     </div>

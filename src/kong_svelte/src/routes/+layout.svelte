@@ -4,6 +4,7 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import MetaTags from "$lib/components/common/MetaTags.svelte";
+  import ModalRenderer from "$lib/components/common/modals/ModalRenderer.svelte";
   import type { LayoutData } from "./$types";
   // Theme initialization happens automatically in the store
 
@@ -36,14 +37,5 @@
 
 {@render children?.()}
 
-<style>
-  /* Faster fade-out for loading spinner */
-  @media (prefers-reduced-motion: no-preference) {
-    @keyframes fadeOut {
-      to {
-        opacity: 0;
-        visibility: hidden;
-      }
-    }
-  }
-</style>
+<!-- Global Modal System -->
+<ModalRenderer />

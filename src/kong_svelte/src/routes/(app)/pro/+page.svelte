@@ -1,5 +1,4 @@
 <script lang="ts">
-  import SwapPro from "$lib/components/swap/SwapPro.svelte";
   import { browser } from "$app/environment";
   import { page } from "$app/state";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
@@ -34,4 +33,3 @@
 </svelte:head>
 
 
-<SwapPro initialFromToken={fromToken} initialToToken={toToken} /> 

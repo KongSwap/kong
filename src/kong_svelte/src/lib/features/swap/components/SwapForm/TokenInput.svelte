@@ -5,7 +5,8 @@
   import TokenSelectorModal from '../TokenSelectorModal.svelte';
   import BigNumber from 'bignumber.js';
   import Icon from '@iconify/svelte';
-  import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
+  import { autoFitText } from '$lib/actions/autoFitText';
+  // Removed unused import
   
   interface Props {
     token: SwapToken | null;
@@ -32,6 +33,23 @@
   }: Props = $props();
   
   let showTokenSelector = $state(false);
+  let isFocused = $state(false);
+  
+  // Token switching animation state
+  let isTokenSwitching = $state(false);
+  let previousToken = $state(token);
+  
+  $effect(() => {
+    if (previousToken?.address !== token?.address) {
+      isTokenSwitching = true;
+      previousToken = token;
+      
+      // Reset after animation
+      setTimeout(() => {
+        isTokenSwitching = false;
+      }, 150);
+    }
+  });
   
   // Get user balance
   let balance = $derived(
@@ -43,6 +61,33 @@
   );
 
   $inspect(balance);
+  
+  // Get USD value of input amount
+  let usdValue = $derived(() => {
+    if (!token || !amount || !$currentUserBalancesStore?.[token.address]) return null;
+    
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum === 0) return null;
+    
+    const tokenBalance = $currentUserBalancesStore[token.address];
+    const balanceUSD = parseFloat(tokenBalance.in_usd);
+    const balanceTokens = new BigNumber(tokenBalance.in_tokens.toString())
+      .div(new BigNumber(10).pow(token.decimals))
+      .toNumber();
+    
+    if (balanceTokens === 0) return null;
+    
+    // Calculate price per token and then total USD value
+    const pricePerToken = balanceUSD / balanceTokens;
+    const totalUSD = amountNum * pricePerToken;
+    
+    // Format USD value
+    if (totalUSD < 0.01) return "< $0.01";
+    if (totalUSD < 1) return `$${totalUSD.toFixed(3)}`;
+    if (totalUSD < 100) return `$${totalUSD.toFixed(2)}`;
+    if (totalUSD < 1000) return `$${totalUSD.toFixed(2)}`;
+    return `$${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  });
   
   // Format balance for display - show with commas and all significant decimals
   let formattedBalance = $derived(() => {
@@ -72,11 +117,47 @@
     return `${formattedInteger}.${trimmedDecimal}`;
   });
   
+  // Format amount with commas for display when not focused
+  function formatAmountWithCommas(value: string): string {
+    if (!value || value === '0' || value === '') return value;
+    
+    try {
+      const num = new BigNumber(value);
+      if (num.isNaN()) return value;
+      
+      // Split into integer and decimal parts
+      const parts = num.toString().split('.');
+      const integerPart = parts[0];
+      const decimalPart = parts[1];
+      
+      // Format integer part with commas
+      const formattedInteger = new BigNumber(integerPart).toFormat(0);
+      
+      if (!decimalPart) {
+        return formattedInteger;
+      }
+      
+      return `${formattedInteger}.${decimalPart}`;
+    } catch {
+      return value;
+    }
+  }
+  
+  // Display value - formatted when not focused, raw when focused
+  let displayAmount = $derived(
+    isFocused ? amount : formatAmountWithCommas(amount)
+  );
+  
+  // No need to manually trigger updates - the action watches for value changes
+  
   function handleAmountInput(event: Event) {
     if (!isEditable) return;
     
     const input = event.target as HTMLInputElement;
     let value = input.value;
+    
+    // Remove commas for processing
+    value = value.replace(/,/g, '');
     
     // Allow only numbers and decimal point
     const sanitized = value.replace(/[^0-9.]/g, '');
@@ -89,6 +170,14 @@
     
     // Call the change handler with formatted value
     onAmountChange?.(formatted);
+  }
+  
+  function handleFocus() {
+    isFocused = true;
+  }
+  
+  function handleBlur() {
+    isFocused = false;
   }
   
   function handlePercentageClick(percentage: number) {
@@ -127,16 +216,67 @@
   }
 </script>
 
-<div class="token-input-container">
-  <div class="token-input relative bg-kong-bg-tertiary/40 rounded-kong-roundness p-3 sm:p-4 transition-all duration-200 hover:bg-kong-bg-tertiary/50 focus-within:bg-kong-bg-tertiary/50 focus-within:ring-2 focus-within:ring-kong-primary/20 {error ? 'ring-2 ring-kong-error/40 hover:ring-kong-error/40' : ''}">
-    <div class="flex items-start justify-between gap-2 sm:gap-3">
+<div class="space-y-2">
+  <div class="flex items-center justify-between">
+    <label class="text-sm sm:text-base font-medium text-kong-text-secondary">{label}</label>
+    {#if $auth.isConnected && token && isEditable && balance && balance !== '0'}
+      <div class="flex items-center space-x-1">
+        <!-- Mobile: Show only 50% and MAX -->
+        <div class="flex sm:hidden items-center space-x-1">
+          <button
+            onclick={() => handlePercentageClick(50)}
+            class="px-2 py-1 text-xs font-medium text-kong-text-secondary hover:text-kong-brand-primary hover:bg-kong-bg-tertiary/50 rounded-md transition-all duration-200"
+          >
+            50%
+          </button>
+          <button
+            onclick={() => handlePercentageClick(100)}
+            class="px-2 py-1 text-xs font-medium text-kong-text-secondary hover:text-kong-brand-primary hover:bg-kong-bg-tertiary/50 rounded-md transition-all duration-200"
+          >
+            MAX
+          </button>
+        </div>
+        
+        <!-- Desktop: Show all buttons -->
+        <div class="hidden sm:flex items-center space-x-1">
+          <button
+            onclick={() => handlePercentageClick(25)}
+            class="px-2 py-1 text-xs font-medium text-kong-text-secondary hover:text-kong-brand-primary hover:bg-kong-bg-tertiary/50 rounded-md transition-all duration-200"
+          >
+            25%
+          </button>
+          <button
+            onclick={() => handlePercentageClick(50)}
+            class="px-2 py-1 text-xs font-medium text-kong-text-secondary hover:text-kong-brand-primary hover:bg-kong-bg-tertiary/50 rounded-md transition-all duration-200"
+          >
+            50%
+          </button>
+          <button
+            onclick={() => handlePercentageClick(75)}
+            class="px-2 py-1 text-xs font-medium text-kong-text-secondary hover:text-kong-brand-primary hover:bg-kong-bg-tertiary/50 rounded-md transition-all duration-200"
+          >
+            75%
+          </button>
+          <button
+            onclick={() => handlePercentageClick(100)}
+            class="px-2 py-1 text-xs font-medium text-kong-text-secondary hover:text-kong-brand-primary hover:bg-kong-bg-tertiary/50 rounded-md transition-all duration-200"
+          >
+            MAX
+          </button>
+        </div>
+      </div>
+    {/if}
+  </div>
+  
+  <div class="relative transition-all duration-200">
+    <div class="flex items-center justify-between space-x-3">
       <!-- Amount Input -->
       <div class="flex-1 min-w-0">
         {#if isLoading && !isEditable}
           <!-- Skeleton loader for loading quote -->
-          <div class="flex items-center h-[32px] sm:h-[36px]">
+          <div class="flex items-center h-9 sm:h-10">
             <div class="animate-pulse">
-              <div class="h-6 sm:h-7 bg-kong-bg-secondary rounded w-24 sm:w-32"></div>
+              <div class="h-6 sm:h-7 w-24 sm:w-32 bg-kong-bg-tertiary rounded-lg"></div>
             </div>
           </div>
         {:else}
@@ -145,103 +285,97 @@
             inputmode="decimal"
             pattern="[0-9]*[.]?[0-9]*"
             {placeholder}
-            value={amount || ''}
+            value={displayAmount}
             oninput={handleAmountInput}
+            onfocus={handleFocus}
+            onblur={handleBlur}
             readonly={!isEditable}
             disabled={isLoading}
-            class="w-full bg-transparent text-xl sm:text-2xl font-semibold outline-none placeholder-kong-text-tertiary transition-colors
+            use:autoFitText={{
+              minFontSize: 14,
+              maxFontSize: 48,
+              baseSizes: {
+                default: '1.25rem',  // text-xl
+                sm: '1.5rem',        // sm:text-2xl  
+                md: '1.875rem'       // md:text-3xl
+              },
+              debug: false // Set to true to see debug logs
+            }}
+            class="w-full bg-transparent font-medium outline-none placeholder-kong-text-tertiary/50 transition-colors h-9 sm:h-10 leading-none tabular-nums
                    {!isEditable ? 'cursor-not-allowed text-kong-text-secondary' : 'text-kong-text-primary'}"
             aria-label="{label} amount"
           />
         {/if}
         
-        {#if $auth.isConnected && token}
-          <div class="mt-1 sm:mt-2">
-            <span class="text-[10px] sm:text-xs text-kong-text-secondary">
-              Balance: <span class="font-medium text-kong-text-primary">{formattedBalance()}</span>
-            </span>
-          </div>
-        {/if}
       </div>
       
       <!-- Token Selector -->
-      <div class="flex flex-col items-end gap-2">
+      <div class="flex justify-end min-w-[100px] sm:min-w-[120px]">
         <button
           onclick={handleTokenClick}
-          class="token-selector flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 sm:py-2.5 bg-kong-bg-secondary hover:bg-kong-bg-primary rounded-kong-roundness transition-all duration-200 group min-w-[100px] sm:min-w-[120px]"
-        >
+          class="flex items-center space-x-2 bg-kong-swap-container-bg hover:bg-kong-bg-secondary hover:shadow-md hover:scale-[1.02] active:scale-[0.98] rounded-full transition-all duration-200 whitespace-nowrap shadow-sm px-3 py-2 sm:px-4 sm:py-2.5 border border-transparent hover:border-kong-border-light/30 {isTokenSwitching ? 'opacity-50' : ''}">
         {#if token}
-          <div class="flex items-center gap-1.5 sm:gap-2">
+          <div class="flex items-center space-x-2">
             {#if (token as any).logo_url}
               <img 
                 src={(token as any).logo_url} 
                 alt={token.symbol} 
-                class="w-6 sm:w-7 h-6 sm:h-7 rounded-full ring-1 ring-kong-border/20 group-hover:ring-kong-primary/20 transition-all"
+                class="w-6 h-6 sm:w-7 sm:h-7 rounded-full"
                 onerror={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = 'none';
                   const fallback = document.getElementById(`token-fallback-${token.address}`);
                   if (fallback) fallback.style.display = 'flex';
                 }}
               />
-              <div id="token-fallback-{token.address}" class="w-6 sm:w-7 h-6 sm:h-7 bg-gradient-to-br from-kong-primary/20 to-kong-primary/10 rounded-full items-center justify-center" style="display: none;">
-                <span class="text-[10px] sm:text-xs font-bold text-kong-primary">{token.symbol.substring(0, 2).toUpperCase()}</span>
+              <div id="token-fallback-{token.address}" class="w-6 h-6 sm:w-7 sm:h-7 bg-kong-brand-primary/10 rounded-full items-center justify-center hidden" style="display: none;">
+                <span class="text-xs font-semibold text-kong-brand-primary">{token.symbol.substring(0, 2).toUpperCase()}</span>
               </div>
             {:else}
-              <div class="w-6 sm:w-7 h-6 sm:h-7 bg-gradient-to-br from-kong-primary/20 to-kong-primary/10 rounded-full flex items-center justify-center">
-                <span class="text-[10px] sm:text-xs font-bold text-kong-primary">{token.symbol.substring(0, 2).toUpperCase()}</span>
+              <div class="w-6 h-6 sm:w-7 sm:h-7 bg-kong-brand-primary/10 rounded-full flex items-center justify-center">
+                <span class="text-xs font-semibold text-kong-brand-primary">{token.symbol.substring(0, 2).toUpperCase()}</span>
               </div>
             {/if}
-            <span class="text-sm sm:text-base font-semibold text-kong-text-primary group-hover:text-kong-primary transition-colors">{token.symbol}</span>
+            <span class="text-sm sm:text-base font-semibold text-kong-text-primary">{token.symbol}</span>
           </div>
         {:else}
-          <span class="text-sm sm:text-base font-medium text-kong-text-secondary group-hover:text-kong-text-primary transition-colors">Select Token</span>
+          <span class="text-sm sm:text-base font-semibold text-kong-text-secondary">Select token</span>
         {/if}
           <Icon 
             icon="heroicons:chevron-down" 
-            class="w-3.5 sm:w-4 h-3.5 sm:h-4 text-kong-text-tertiary group-hover:text-kong-primary transition-all duration-200 sm:group-hover:rotate-180" 
+            class="w-4 h-4 text-kong-text-secondary" 
           />
         </button>
-        
-        {#if $auth.isConnected && token && isEditable && balance && balance !== '0'}
-          <div class="flex items-center gap-1">
-            <button
-              onclick={() => handlePercentageClick(25)}
-              class="text-[9px] sm:text-[10px] font-semibold text-kong-primary hover:text-kong-primary/80 transition-colors px-1 sm:px-1.5 py-0.5 rounded-full bg-kong-primary/10 hover:bg-kong-primary/20"
-            >
-              25%
-            </button>
-            <button
-              onclick={() => handlePercentageClick(50)}
-              class="text-[9px] sm:text-[10px] font-semibold text-kong-primary hover:text-kong-primary/80 transition-colors px-1 sm:px-1.5 py-0.5 rounded-full bg-kong-primary/10 hover:bg-kong-primary/20"
-            >
-              50%
-            </button>
-            <button
-              onclick={() => handlePercentageClick(75)}
-              class="text-[9px] sm:text-[10px] font-semibold text-kong-primary hover:text-kong-primary/80 transition-colors px-1 sm:px-1.5 py-0.5 rounded-full bg-kong-primary/10 hover:bg-kong-primary/20"
-            >
-              75%
-            </button>
-            <button
-              onclick={() => handlePercentageClick(100)}
-              class="text-[9px] sm:text-[10px] font-semibold text-kong-primary hover:text-kong-primary/80 transition-colors px-1 sm:px-1.5 py-0.5 rounded-full bg-kong-primary/10 hover:bg-kong-primary/20"
-            >
-              100%
-            </button>
-          </div>
-        {/if}
       </div>
     </div>
-    
   </div>
   
+  <!-- USD value and Balance below input -->
+  {#if ($auth.isConnected && token) || usdValue()}
+    <div class="flex items-center justify-between px-1">
+      {#if usdValue()}
+        <span class="text-xs sm:text-sm text-kong-text-secondary/60">
+          {usdValue()}
+        </span>
+      {:else}
+        <span></span>
+      {/if}
+      
+      {#if $auth.isConnected && token}
+        <span class="text-xs sm:text-sm text-kong-text-secondary/70">
+          {formattedBalance()} {token.symbol}
+        </span>
+      {/if}
+    </div>
+  {/if}
+  
   {#if error}
-    <p class="mt-2 text-sm text-kong-error flex items-center gap-1 animate-slideIn">
+    <p class="text-sm flex items-center space-x-2
+              {error.includes('Warning') ? 'text-kong-semantic-warning' : 'text-kong-semantic-error'}">
       <Icon 
-        icon="heroicons-solid:exclamation-circle" 
-        class="w-3 h-3" 
+        icon={error.includes('Warning') ? 'heroicons:exclamation-triangle-solid' : 'heroicons:exclamation-circle-solid'}
+        class="w-4 h-4 flex-shrink-0" 
       />
-      {error}
+      <span>{error}</span>
     </p>
   {/if}
 </div>
@@ -256,66 +390,11 @@
 {/if}
 
 <style>
-  .token-input-container {
-    position: relative;
-  }
-  
   /* Remove spinner from number input */
   input::-webkit-inner-spin-button,
   input::-webkit-outer-spin-button {
     -webkit-appearance: none;
     appearance: none;
     margin: 0;
-  }
-  
-  
-  /* Smooth number transitions */
-  input {
-    font-variant-numeric: tabular-nums;
-    transition: color 0.2s ease;
-  }
-  
-  /* Token selector hover effect - desktop only */
-  @media (min-width: 640px) {
-    .token-selector {
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .token-selector::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
-      transition: left 0.5s ease;
-    }
-    
-    .token-selector:hover::before {
-      left: 100%;
-    }
-  }
-  
-  /* Focus glow effect - subtle on mobile */
-  .token-input:focus-within {
-    box-shadow: 0 0 0 2px rgba(var(--color-primary), 0.1);
-  }
-  
-  /* Slide in animation */
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateY(-5px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  .animate-slideIn {
-    animation: slideIn 0.2s ease-out;
   }
 </style>

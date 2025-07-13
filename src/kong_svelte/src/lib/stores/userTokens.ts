@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 import { fetchTokensByCanisterId } from '$lib/api/tokens';
-import { DEFAULT_TOKENS } from '$lib/constants/canisterConstants';
+import { DEFAULT_TOKENS, CORE_TOKENS } from '$lib/constants/canisterConstants';
 import { writable, get, derived } from 'svelte/store';
 import { syncTokens as analyzeTokens, applyTokenChanges } from '$lib/utils/tokenSyncUtils';
 import { debounce } from '$lib/utils/debounce';
@@ -102,6 +102,7 @@ function deserializeState(serialized: any): UserTokensState {
 function createUserTokensStore() {
   // Current principal will be loaded asynchronously
   let currentPrincipal: string | null = null;
+  let isInitialized = false;
   
   // Default initial state
   const defaultState: UserTokensState = {
@@ -170,28 +171,39 @@ function createUserTokensStore() {
     }
   };
   
-  // Load default tokens if none are found
+  // Load default tokens with progressive loading (core tokens first)
   const loadDefaultTokensIfNeeded = async (principalId?: string): Promise<UserTokensState> => {
     try {
       // Check if we have saved tokens for this principal
       const hasSaved = await hasSavedTokens(principalId || currentPrincipal || 'default');
       
-      // If no saved tokens, load defaults
+      // If no saved tokens, load defaults with progressive loading
       if (!hasSaved) {
-        const defaultTokensList = await fetchTokensByCanisterId(Object.values(DEFAULT_TOKENS));
+        // Get core and remaining token IDs
+        const coreTokenIds = CORE_TOKENS().filter(Boolean); // Filter out undefined values
+        const allTokenIds = Object.values(DEFAULT_TOKENS);
+        const remainingTokenIds = allTokenIds.filter(id => !coreTokenIds.includes(id));
         
-        // Create new state with defaults
+        // Initialize state containers
         const enabledTokensSet = new Set<string>();
         const tokenDataMap = new Map<string, Kong.Token>();
         
-        defaultTokensList.forEach(token => {
-          enabledTokensSet.add(token.address);
-          tokenDataMap.set(token.address, token);
-          // Update cache
-          tokenDetailsCache.set(token.address, token);
-        });
+        // Load core tokens first for immediate display
+        if (coreTokenIds.length > 0) {
+          try {
+            const coreTokensList = await fetchTokensByCanisterId(coreTokenIds);
+            coreTokensList.forEach(token => {
+              enabledTokensSet.add(token.address);
+              tokenDataMap.set(token.address, token);
+              tokenDetailsCache.set(token.address, token);
+            });
+          } catch (error) {
+            console.warn('[UserTokens] Failed to load core tokens, falling back to full load:', error);
+          }
+        }
         
-        const newState: UserTokensState = {
+        // Create initial state with core tokens
+        const initialState: UserTokensState = {
           enabledTokens: enabledTokensSet,
           tokens: Array.from(tokenDataMap.values()),
           tokenData: tokenDataMap,
@@ -199,12 +211,46 @@ function createUserTokensStore() {
           lastUpdated: Date.now(),
         };
         
-        // Save to storage if we have a principal
+        // Save initial state with core tokens if we have a principal
         if (principalId || currentPrincipal) {
-          await debouncedUpdateStorage(newState, principalId);
+          debouncedUpdateStorage(initialState, principalId);
         }
         
-        return newState;
+        // Load remaining tokens asynchronously in background
+        if (remainingTokenIds.length > 0) {
+          setTimeout(async () => {
+            try {
+              const remainingTokensList = await fetchTokensByCanisterId(remainingTokenIds);
+              
+              // Update store with remaining tokens
+              state.update(currentState => {
+                const newEnabledTokens = new Set(currentState.enabledTokens);
+                const newTokenData = new Map(currentState.tokenData);
+                
+                remainingTokensList.forEach(token => {
+                  newEnabledTokens.add(token.address);
+                  newTokenData.set(token.address, token);
+                  tokenDetailsCache.set(token.address, token);
+                });
+                
+                const updatedState = {
+                  ...currentState,
+                  enabledTokens: newEnabledTokens,
+                  tokenData: newTokenData,
+                  lastUpdated: Date.now(),
+                };
+                
+                // Save updated state
+                debouncedUpdateStorage(updatedState, principalId);
+                return updatedState;
+              });
+            } catch (error) {
+              console.warn('[UserTokens] Failed to load remaining tokens:', error);
+            }
+          }, 100); // Short delay to allow core tokens to render first
+        }
+        
+        return initialState;
       }
       
       // If we have saved tokens, load them
@@ -255,10 +301,13 @@ function createUserTokensStore() {
     }
   };
   
-  // Initialize on store creation
-  if (browser) {
-    initializePrincipal();
-  }
+  // Lazy initialization - tokens load only when needed
+  const ensureInitialized = async (): Promise<void> => {
+    if (!isInitialized && browser) {
+      isInitialized = true;
+      await initializePrincipal();
+    }
+  };
 
   // Optimized token filtering logic with search index
   const createSearchIndex = memoize((tokens: Kong.Token[]) => {
@@ -403,6 +452,9 @@ function createUserTokensStore() {
     tokens: tokens,
     isAuthenticated: isAuthenticated,
     tokenData: tokenData,
+    
+    // Initialization
+    ensureInitialized,
     
     reset: () => {
       const newState = {

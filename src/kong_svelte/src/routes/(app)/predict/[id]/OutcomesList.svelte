@@ -7,8 +7,8 @@
   import { formatBalance, toScaledAmount } from "$lib/utils/numberFormatUtils";
   import { auth } from "$lib/stores/auth";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
-  import PredictionConfirmationDialog from "./PredictionConfirmationDialog.svelte";
-    import { formatToNonZeroDecimal } from "$lib/utils/liquidityUtils";
+  import { modalFactory } from "$lib/services/modalFactory";
+  import { formatToNonZeroDecimal } from "$lib/utils/liquidityUtils";
   
   // Format token amounts that are already in token units
   function formatTokenAmount(amount: number, maxDecimals: number = 4): string {
@@ -98,27 +98,42 @@
   // Group UI state
   let uiState = $state({
     selectedOutcome: null as number | null,
-    showPredictionDialog: false,
     placingPrediction: false
   });
   
-  function handleSelectOutcome(index: number) {
+  async function handleSelectOutcome(index: number) {
     if (!$auth.isConnected) {
       walletProviderStore.open();
       return;
     }
     
-    uiState.selectedOutcome = index;
-    uiState.showPredictionDialog = true;
+    // Get the outcome details
+    const outcome = marketData.outcomes[index];
+    const percentage = marketData.outcomePercentages[index];
+    
+    try {
+      // Use the new modal system for prediction betting
+      const result = await modalFactory.prediction.bet(
+        market, 
+        outcome, 
+        index, 
+        percentage,
+        marketData.token
+      );
+      
+      if (result) {
+        await handlePlacePrediction(index, result.amount, result.needsAllowance);
+      }
+    } catch (error) {
+      // User cancelled or error occurred
+      console.log('Prediction bet cancelled or failed:', error);
+    }
   }
   
-  async function handlePlacePrediction(amount: number, needsAllowance: boolean) {
-    if (uiState.selectedOutcome === null) return;
-    
+  async function handlePlacePrediction(outcomeIndex: number, amount: number, needsAllowance: boolean) {
     uiState.placingPrediction = true;
     try {
-      await onPlacePrediction(uiState.selectedOutcome, amount, needsAllowance);
-      uiState.selectedOutcome = null;
+      await onPlacePrediction(outcomeIndex, amount, needsAllowance);
     } catch (error) {
       console.error('Prediction error:', error);
       throw error;
@@ -220,19 +235,6 @@
   </div>
 </Card>
 
-<!-- Prediction Confirmation Dialog -->
-{#if uiState.selectedOutcome !== null && marketData.token && market?.id}
-  <PredictionConfirmationDialog
-    bind:open={uiState.showPredictionDialog}
-    outcome={marketData.outcomes[uiState.selectedOutcome]}
-    outcomeIndex={uiState.selectedOutcome}
-    percentage={marketData.outcomePercentages[uiState.selectedOutcome]}
-    token={marketData.token}
-    marketId={BigInt(market.id)}
-    onSubmit={handlePlacePrediction}
-    isSubmitting={uiState.placingPrediction}
-  />
-{/if}
 
 <style>
   @keyframes fadeIn {

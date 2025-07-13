@@ -1,6 +1,6 @@
 <script lang="ts">
   import Portal from "svelte-portal";
-  import TokenSelectorDropdown from "$lib/components/swap/swap_ui/TokenSelectorDropdown.svelte";
+  import TokenSelectorModal from "$lib/features/swap/components/TokenSelectorModal.svelte";
   import { ChevronDown, Plus } from "lucide-svelte";
   
   export let token0: Kong.Token | null;
@@ -95,27 +95,22 @@
     <!-- Token Selectors -->
     {#if showToken0Selector}
       <Portal target="main">
-        <TokenSelectorDropdown
-          show={true}
+        <TokenSelectorModal
           currentToken={token0}
-          otherPanelToken={token1}
-          onSelect={(token: Kong.Token) => onTokenSelect(0, token)}
+          excludeToken={token1}
+          onSelect={(token: any) => onTokenSelect(0, token)}
           onClose={() => (showToken0Selector = false)}
-          title="Base Token"
         />
       </Portal>
     {/if}
 
     {#if showToken1Selector}
       <Portal target="main">
-        <TokenSelectorDropdown
-          show={true}
+        <TokenSelectorModal
           currentToken={token1}
-          otherPanelToken={token0}
-          onSelect={(token: Kong.Token) => onTokenSelect(1, token)}
+          excludeToken={token0}
+          onSelect={(token: any) => onTokenSelect(1, token)}
           onClose={() => (showToken1Selector = false)}
-          allowedCanisterIds={secondaryTokenIds}
-          title="Quote Token"
         />
       </Portal>
     {/if}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Dialog from "$lib/components/common/Dialog.svelte";
+  import { modalManager } from "$lib/stores/modalManager";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import { AlertCircle, TrendingUp } from "lucide-svelte";
   import { currentUserBalancesStore, loadBalances } from "$lib/stores/balancesStore";

@@ -8,14 +8,14 @@ export const themeColors = derived(currentTheme, ($theme) => $theme.colors);
 export const themeId = derived(currentTheme, ($theme) => $theme.id);
 
 // Example derived color properties (add more as needed)
-export const primaryColor = derived(themeColors, ($colors) => $colors?.primary ?? 'rgba(55, 114, 255, 0.95)');
-export const secondaryColor = derived(themeColors, ($colors) => $colors?.secondary ?? 'rgba(111, 66, 193, 0.95)');
-export const errorColorStart = derived(themeColors, ($colors) => ($colors as any)?.error ?? 'rgba(239, 68, 68, 0.9)');
-export const errorColorEnd = derived(themeColors, ($colors) => ($colors as any)?.errorDark ?? 'rgba(239, 68, 68, 0.8)');
-export const processingColorStart = derived(themeColors, ($colors) => ($colors as any)?.info ?? '#3772ff');
-export const processingColorEnd = derived(themeColors, ($colors) => ($colors as any)?.infoLight ?? '#4580ff');
-export const buttonBorderColor = derived(themeColors, ($colors) => $colors?.borderLight ?? 'rgba(255, 255, 255, 0.12)');
-export const glowEffectColor = derived(themeColors, ($colors) => ($colors as any)?.highlight ?? 'rgba(255, 255, 255, 0.2)');
+export const primaryColor = derived(themeColors, ($colors) => $colors?.brand?.primary ?? 'rgba(55, 114, 255, 0.95)');
+export const secondaryColor = derived(themeColors, ($colors) => $colors?.brand?.secondary ?? 'rgba(111, 66, 193, 0.95)');
+export const errorColorStart = derived(themeColors, ($colors) => $colors?.semantic?.error ?? 'rgba(239, 68, 68, 0.9)');
+export const errorColorEnd = derived(themeColors, ($colors) => $colors?.semantic?.error ?? 'rgba(239, 68, 68, 0.8)');
+export const processingColorStart = derived(themeColors, ($colors) => $colors?.semantic?.info ?? '#3772ff');
+export const processingColorEnd = derived(themeColors, ($colors) => $colors?.semantic?.info ?? '#4580ff');
+export const buttonBorderColor = derived(themeColors, ($colors) => $colors?.ui?.border ?? 'rgba(255, 255, 255, 0.12)');
+export const glowEffectColor = derived(themeColors, ($colors) => $colors?.ui?.focus ?? 'rgba(255, 255, 255, 0.2)');
 
 // Panel and button styling
 export const panelRoundness = derived(themeColors, ($colors) => ($colors as any)?.panelRoundness ?? 'rounded-none');

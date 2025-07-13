@@ -1,12 +1,19 @@
 // Default theme values and constants
 
-import type { ThemeStyles } from './types';
+import type { CoreStyles } from './coreTypes';
 
 // Default style values that can be reused across themes
-export const defaultStyles: ThemeStyles = {
+export const defaultStyles: CoreStyles = {
+  borderRadius: 'lg',
+  radius: 'lg', // Alias for backwards compatibility
   font: {
-    family: "'Exo 2', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-  },
+    family: "'Exo 2', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    scale: 1
+  }
+};
+
+// Legacy style definitions for backwards compatibility
+export const legacyStyles = {
   radius: {
     none: 'rounded-none',
     sm: 'rounded-sm',

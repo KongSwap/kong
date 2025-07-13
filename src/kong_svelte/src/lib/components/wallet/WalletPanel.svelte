@@ -26,7 +26,7 @@
   import WalletPoolsList from "$lib/components/wallet/WalletPoolsList.svelte";
   import WalletAddressesList from "$lib/components/wallet/WalletAddressesList.svelte";
   import WalletHistoryList from "$lib/components/wallet/WalletHistoryList.svelte";
-  import SendTokenModal from "$lib/components/wallet/SendTokenModal.svelte";
+  import { modalFactory } from "$lib/components/common/modals";
   import { calculatePortfolioValue } from "$lib/utils/portfolioUtils";
   import { loadUserBalances, setLastRefreshed } from "$lib/services/balanceService";
 
@@ -45,7 +45,6 @@
   // State management
   type WalletSection = "tokens" | "pools" | "history" | "addresses";
   let activeSection = $state<WalletSection>("tokens");
-  let showSendTokenModal = $state(false);
   let selectedTokenForAction = $state<any>(null);
   let isLoadingBalances = $state(false);
   let lastRefreshed = $state(Date.now());
@@ -105,7 +104,7 @@
   };
 
   // Handle token actions (send, receive, swap, info)
-  function handleTokenAction(action: "send" | "receive" | "swap" | "info", token: any) {
+  async function handleTokenAction(action: "send" | "receive" | "swap" | "info", token: any) {
     if (!token?.token?.address && action !== "send") {
       console.error(`Cannot perform ${action}: Invalid token canister ID`);
       return;
@@ -113,8 +112,7 @@
 
     // Handle different token actions
     if (action === "send") {
-      selectedTokenForAction = token;
-      showSendTokenModal = true;
+      await handleSendToken(token.token);
     } else if (action === "swap") {
       navigateAndClose(`/pro?from=${token.token?.address}&to=ryjl3-tyaaa-aaaaa-aaaba-cai`);
     } else if (action === "info") {
@@ -247,16 +245,17 @@
     isLoadingBalances = false;
   }
 
-  // Close modal helper
-  function closeModal() {
-    showSendTokenModal = false;
-    selectedTokenForAction = null;
-  }
-
-  // Success handler for send token
-  function handleSendSuccess() {
-    closeModal();
-    refreshBalances(true);
+  // Send token handler using new modal system
+  async function handleSendToken(token: Kong.Token) {
+    try {
+      const result = await modalFactory.wallet.send(token);
+      if (result) {
+        // Refresh balances after successful send
+        refreshBalances(true);
+      }
+    } catch (error) {
+      console.log('Send token cancelled or failed:', error);
+    }
   }
 
   // Effect to save USD visibility state
@@ -402,16 +401,6 @@
 </div>
 
 <!-- Token Action Modals -->
-{#if showSendTokenModal && selectedTokenForAction}
-  <div transition:fade={{ duration: 200 }}>
-    <SendTokenModal
-      token={selectedTokenForAction.token}
-      isOpen={showSendTokenModal}
-      onClose={closeModal}
-      onSuccess={handleSendSuccess}
-    />
-  </div>
-{/if}
 
 <style>
   /* Scrollbar styling */

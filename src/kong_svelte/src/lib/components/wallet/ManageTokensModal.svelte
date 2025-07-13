@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import Modal from "$lib/components/common/Modal.svelte";
+  import { modalManager } from "$lib/stores/modalManager";
   import { userTokens } from "$lib/stores/userTokens";
   import { currentUserBalancesStore } from "$lib/stores/balancesStore";
   import { formatBalance } from "$lib/utils/numberFormatUtils";

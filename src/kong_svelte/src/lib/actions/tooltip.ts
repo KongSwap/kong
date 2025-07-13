@@ -141,7 +141,7 @@ export function tooltip(node: HTMLElement, options: TooltipOptions = { direction
 
     // Get the computed border color using themeStore
     const currentTheme = get(themeColors);
-    const borderColor = currentTheme.border;
+    const borderColor = currentTheme?.ui?.border || 'rgba(255, 255, 255, 0.1)';
 
     // Create border arrow (slightly larger)
     const borderArrow = document.createElement('div');

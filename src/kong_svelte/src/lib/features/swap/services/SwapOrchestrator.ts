@@ -17,6 +17,10 @@ import { Principal } from '@dfinity/principal';
 import { KONG_BACKEND_CANISTER_ID } from '$lib/constants/canisterConstants';
 import BigNumber from 'bignumber.js';
 
+export interface SwapOrchestratorOptions {
+  signal?: AbortSignal;
+}
+
 export class SwapOrchestrator {
   private validator: SwapValidator;
   private quoteCache: Map<string, { quote: SwapQuote; timestamp: number }>;
@@ -30,8 +34,13 @@ export class SwapOrchestrator {
   /**
    * Get a quote for the swap
    */
-  async getQuote(params: SwapParams): Promise<SwapQuote | null> {
+  async getQuote(params: SwapParams, options: SwapOrchestratorOptions = {}): Promise<SwapQuote | null> {
     try {
+      // Check if already aborted
+      if (options.signal?.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
+      }
+
       // Validate params first
       const validation = await this.validator.validate(params);
       if (!validation.isValid) {
@@ -46,12 +55,35 @@ export class SwapOrchestrator {
         return cached.quote;
       }
 
-      // Get fresh quote
-      const quoteResult = await SwapService.getSwapQuote(
-        params.payToken,
-        params.receiveToken,
-        params.payAmount
-      );
+      // Create a promise that will reject on abort
+      const abortPromise = new Promise<never>((_, reject) => {
+        if (options.signal) {
+          const onAbort = () => {
+            reject(new DOMException('Aborted', 'AbortError'));
+          };
+          
+          if (options.signal.aborted) {
+            onAbort();
+          } else {
+            options.signal.addEventListener('abort', onAbort, { once: true });
+          }
+        }
+      });
+
+      // Race between the quote request and abort
+      const quoteResult = await Promise.race([
+        SwapService.getSwapQuote(
+          params.payToken,
+          params.receiveToken,
+          params.payAmount
+        ),
+        abortPromise
+      ]);
+
+      // Check again if aborted before processing result
+      if (options.signal?.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
+      }
 
       const quote: SwapQuote = {
         receiveAmount: quoteResult.receiveAmount,
@@ -63,11 +95,18 @@ export class SwapOrchestrator {
         timestamp: Date.now()
       };
 
-      // Cache the quote
-      this.quoteCache.set(cacheKey, { quote, timestamp: Date.now() });
+      // Cache the quote only if not aborted
+      if (!options.signal?.aborted) {
+        this.quoteCache.set(cacheKey, { quote, timestamp: Date.now() });
+      }
 
       return quote;
     } catch (error) {
+      // Don't log or track abort errors
+      if (error.name === 'AbortError') {
+        throw error;
+      }
+      
       console.error('Failed to get quote:', error);
       trackEvent(AnalyticsEvent.SwapFailed, {
         step: 'quote',
@@ -81,7 +120,7 @@ export class SwapOrchestrator {
   /**
    * Execute swap with comprehensive error handling and retry logic
    */
-  async executeSwap(params: SwapParams): Promise<SwapResult> {
+  async executeSwap(params: SwapParams, options: SwapOrchestratorOptions = {}): Promise<SwapResult> {
     const startTime = Date.now();
     
     try {
@@ -125,7 +164,7 @@ export class SwapOrchestrator {
       }
 
       // Step 4: Get fresh quote
-      const quote = await this.getQuote(params);
+      const quote = await this.getQuote(params, options);
       if (!quote) {
         return { 
           success: false, 
