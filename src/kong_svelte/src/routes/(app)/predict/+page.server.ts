@@ -7,17 +7,9 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
     'cache-control': 'public, max-age=60, s-maxage=120, stale-while-revalidate=600'
   });
 
-  // Parse URL parameters for filters (only if searchParams is available - not during prerendering)
-  let statusFilter = 'all';
-  let sortOption = 'newest';
-  
-  try {
-    statusFilter = url.searchParams.get('status') || 'all';
-    sortOption = url.searchParams.get('sort') || 'newest';
-  } catch (error) {
-    // During prerendering, searchParams is not available - use defaults
-    // Client-side will handle URL parameter parsing
-  }
+  // Parse URL parameters for filters - safe to access since we're not prerendering
+  const statusFilter = url.searchParams.get('status') || 'all';
+  const sortOption = url.searchParams.get('sort') || 'newest';
 
   try {
     // Use optimized SSR service for batch data fetching

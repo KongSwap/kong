@@ -1,2 +1,2 @@
-// Enable prerendering - server code handles searchParams gracefully
-export const prerender = true;
+// Disable prerendering - page requires IC canister data
+export const prerender = false;

@@ -1,8 +1,8 @@
 import type { PageLoad, EntryGenerator } from './$types';
 import { env } from '$env/dynamic/public';
 
-// Enable pre-rendering for better performance
-export const prerender = true;
+// Disable pre-rendering for dynamic routes that need IC data
+export const prerender = false;
 export const trailingSlash = 'never';
 
 // Define which paths to pre-render at build time
