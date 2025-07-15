@@ -12,8 +12,8 @@ use std::io::{BufReader, Read};
 use std::path::Path;
 use tokio_postgres::Client;
 
-use super::kong_update::KongUpdate;
-use super::math_helpers::round_f64;
+use crate::canister::kong_update::KongUpdate;
+use crate::utils::math::round_f64;
 
 #[derive(Debug, ToSql, FromSql)]
 #[postgres(name = "claim_status")]

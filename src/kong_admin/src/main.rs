@@ -1,35 +1,35 @@
 use crate::settings::read_settings;
-use openssl::ssl::{SslConnector, SslMethod};
-use postgres_openssl::MakeTlsConnector;
 use std::env;
-use std::thread;
 use std::time::Duration;
-use tokio_postgres::Client;
+use tokio::time;
 
-use agent::create_agent_from_identity;
-use agent::{create_anonymous_identity, create_identity_from_pem_file};
-use db_updates::get_db_updates;
-use kong_backend::KongBackend;
-use kong_data::KongData;
-use settings::Settings;
+// Canister layer imports
+use canister::{
+    create_agent_from_identity,
+    create_anonymous_identity,
+    create_identity_from_pem_file,
+    kong_backend::KongBackend,
+    kong_data::KongData,
+};
 
-mod agent;
-mod claims;
-mod db_updates;
-mod kong_backend;
-mod kong_data;
-mod kong_settings;
-mod kong_update;
-mod lp_tokens;
-mod math_helpers;
-mod nat_helpers;
-mod pools;
-mod requests;
+// Database layer imports
+use database::{
+    create_db_pool,
+    create_prepared_statements_cache,
+};
+
+// Sync layer imports
+use sync::get_db_updates_with_cache;
+
+// Domain imports
+use domain::{claims, kong_settings, lp_tokens, pools, requests, tokens, transfers, txs, users};
+
 mod settings;
-mod tokens;
-mod transfers;
-mod txs;
-mod users;
+mod canister;
+mod database;
+mod sync;
+mod domain;
+mod utils;
 
 const LOCAL_REPLICA: &str = "http://localhost:4943";
 const MAINNET_REPLICA: &str = "https://ic0.app";
@@ -85,21 +85,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.contains(&"--database".to_string()) || args.contains(&"--db_updates".to_string()) {
         let mut tokens_map;
         let mut pools_map;
-        let mut db_client = connect_db(&settings).await?;
+        let db_pool = create_db_pool(&settings).await?;
 
         if args.contains(&"--database".to_string()) {
             // Dump to database
-            users::update_users_on_database(&db_client).await?;
-            tokens_map = tokens::update_tokens_on_database(&db_client).await?;
-            pools_map = pools::update_pools_on_database(&db_client, &tokens_map).await?;
-            lp_tokens::update_lp_tokens_on_database(&db_client, &tokens_map).await?;
-            requests::update_requests_on_database(&db_client).await?;
-            claims::update_claims_on_database(&db_client, &tokens_map).await?;
-            transfers::update_transfers_on_database(&db_client, &tokens_map).await?;
-            txs::update_txs_on_database(&db_client, &tokens_map, &pools_map).await?;
+            sync::update_users_on_database_adapter(&db_pool).await?;
+            tokens_map = tokens::update_tokens_on_database(&db_pool).await?;
+            pools_map = sync::update_pools_on_database_adapter(&db_pool, &tokens_map).await?;
+            sync::update_lp_tokens_on_database_adapter(&db_pool, &tokens_map).await?;
+            requests::update_requests_on_database(&db_pool).await?;
+            sync::update_claims_on_database_adapter(&db_pool, &tokens_map).await?;
+            sync::update_transfers_on_database_adapter(&db_pool, &tokens_map).await?;
+            sync::update_txs_on_database_adapter(&db_pool, &tokens_map, &pools_map).await?;
         } else {
-            tokens_map = tokens::load_tokens_from_database(&db_client).await?;
-            pools_map = pools::load_pools_from_database(&db_client).await?;
+            tokens_map = tokens::load_tokens_from_database(&db_pool).await?;
+            pools_map = sync::load_pools_from_database_adapter(&db_pool).await?;
         }
 
         if args.contains(&"--db_updates".to_string()) {
@@ -108,53 +108,69 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
             let kong_data = KongData::new(&agent).await;
             let delay_secs = settings.db_updates_delay_secs.unwrap_or(60);
+            
+            // Create prepared statements cache for performance
+            let prepared_cache = create_prepared_statements_cache();
+            
+            // Read the last processed db_update_id from the database
+            let mut last_db_update_id = match database::read_last_db_update_id(&db_pool).await {
+                Ok(id) => {
+                    if let Some(id) = id {
+                        println!("Resuming from last_db_update_id: {}", id);
+                    } else {
+                        println!("Starting fresh - no previous last_db_update_id found");
+                    }
+                    id
+                }
+                Err(e) => {
+                    eprintln!("Warning: Failed to read last_db_update_id: {}. Starting from beginning.", e);
+                    None
+                }
+            };
+            
+            // Retry logic configuration
+            let mut consecutive_errors = 0;
+            const MAX_RETRIES: u32 = 5;
+            const BASE_RETRY_DELAY: u64 = 2; // seconds
+            
             // loop forever and update database
-            let mut last_db_update_id = None;
             loop {
-                match get_db_updates(last_db_update_id, &kong_data, &db_client, &mut tokens_map, &mut pools_map).await {
-                    Ok(db_update_id) => last_db_update_id = Some(db_update_id),
+                let previous_id = last_db_update_id;
+                match get_db_updates_with_cache(last_db_update_id, &kong_data, &db_pool, &mut tokens_map, &mut pools_map, Some(&prepared_cache)).await {
+                    Ok(db_update_id) => {
+                        last_db_update_id = Some(db_update_id);
+                        consecutive_errors = 0; // Reset error count on success
+                        
+                        // Only sleep if no new updates were found
+                        if previous_id == last_db_update_id {
+                            println!("No new updates found. Waiting {} seconds before next check...", delay_secs);
+                            time::sleep(Duration::from_secs(delay_secs)).await;
+                        } else {
+                            // New updates were processed, check again immediately
+                            println!("Processed updates. Checking for more immediately...");
+                        }
+                    }
                     Err(err) => {
-                        eprintln!("{}", err);
-                        if db_client.is_closed() {
-                            db_client = connect_db(&settings).await?;
+                        consecutive_errors += 1;
+                        eprintln!("Error processing db_updates (attempt {}/{}): {}", consecutive_errors, MAX_RETRIES, err);
+                        
+                        // Connection pool handles reconnection automatically
+                        // Exponential backoff for retries
+                        if consecutive_errors < MAX_RETRIES {
+                            let retry_delay = BASE_RETRY_DELAY.pow(consecutive_errors.min(4)) as u64;
+                            println!("Retrying in {} seconds...", retry_delay);
+                            time::sleep(Duration::from_secs(retry_delay)).await;
+                            continue;
+                        } else {
+                            eprintln!("Max retries reached. Waiting for next regular cycle...");
+                            consecutive_errors = 0; // Reset for next cycle
+                            time::sleep(Duration::from_secs(delay_secs)).await;
                         }
                     }
                 }
-
-                thread::sleep(Duration::from_secs(delay_secs));
             }
         }
     }
 
     Ok(())
-}
-
-async fn connect_db(settings: &Settings) -> Result<Client, Box<dyn std::error::Error>> {
-    let db_host = &settings.database.host;
-    let db_port = &settings.database.port;
-    let db_user = &settings.database.user;
-    let db_password = &settings.database.password;
-    let mut builder = SslConnector::builder(SslMethod::tls()).map_err(|e| format!("SSL error: {}", e))?;
-    if settings.database.ca_cert.is_some() {
-        builder
-            .set_ca_file(settings.database.ca_cert.as_ref().unwrap())
-            .map_err(|e| format!("CA file error: {}", e))?;
-    }
-    let tls = MakeTlsConnector::new(builder.build());
-    let db_name = &settings.database.db_name;
-    let mut db_config = tokio_postgres::Config::new();
-    db_config.host(db_host);
-    db_config.port(*db_port);
-    db_config.user(db_user);
-    db_config.password(db_password);
-    db_config.dbname(db_name);
-    let (db_client, connection) = db_config.connect(tls).await?;
-
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("{}", e);
-        }
-    });
-
-    Ok(db_client)
 }

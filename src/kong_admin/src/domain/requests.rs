@@ -10,10 +10,12 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
-use tokio_postgres::Client;
+use tokio_postgres::{Client, Transaction};
 
-use super::kong_update::KongUpdate;
-use super::nat_helpers::nat_option_to_string;
+use crate::database::pool::DbPool;
+use crate::canister::kong_update::KongUpdate;
+use crate::database::prepared::PreparedStatements;
+use crate::utils::nat::nat_option_to_string;
 use super::transfers::serialize_option_tx_id;
 
 #[derive(Debug, ToSql, FromSql)]
@@ -280,7 +282,113 @@ pub fn serialize_reply(reply: &Reply) -> serde_json::Value {
     }
 }
 
-pub async fn update_requests_on_database(db_client: &Client) -> Result<(), Box<dyn std::error::Error>> {
+/// Process a batch of requests efficiently using database transactions
+async fn process_request_batch(
+    requests: &[StableRequest],
+    db_pool: &DbPool,
+    prepared_statements: Option<&PreparedStatements>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if requests.is_empty() {
+        return Ok(());
+    }
+
+    let mut db_client = db_pool.get().await?;
+    
+    // Start a transaction for the entire batch
+    let transaction = db_client.transaction().await?;
+    
+    // Try bulk insert first for better performance
+    match bulk_insert_requests(&requests, &transaction).await {
+        Ok(_) => {
+            // Bulk insert succeeded
+            transaction.commit().await?;
+            println!("Bulk processed batch of {} requests", requests.len());
+            return Ok(());
+        }
+        Err(_) => {
+            // Fall back to individual inserts if bulk insert fails
+            // This handles cases where some records might have conflicts
+        }
+    }
+    
+    // Fallback: Process all requests individually in the batch within the transaction
+    let mut processed = 0;
+    for request in requests {
+        match if let Some(stmts) = prepared_statements {
+            insert_request_on_database_transactional(request, &transaction, Some(stmts)).await
+        } else {
+            insert_request_on_database_transactional(request, &transaction, None).await
+        } {
+            Ok(_) => processed += 1,
+            Err(e) => {
+                // Rollback the transaction on error
+                transaction.rollback().await?;
+                return Err(format!("Failed to insert request {}: {}", request.request_id, e).into());
+            }
+        }
+    }
+    
+    // Commit the transaction if all inserts succeeded
+    transaction.commit().await?;
+    
+    println!("Processed batch of {} requests", processed);
+    Ok(())
+}
+
+/// Process requests from a file in batches
+async fn process_requests_from_file(
+    file_path: &Path,
+    db_pool: &DbPool,
+    batch_size: usize,
+    prepared_statements: Option<&PreparedStatements>,
+) -> Result<usize, Box<dyn std::error::Error>> {
+    let file = File::open(file_path)?;
+    let reader = BufReader::new(file);
+    
+    // Parse the BTreeMap
+    let request_map: BTreeMap<StableRequestId, StableRequest> = serde_json::from_reader(reader)?;
+    let total_count = request_map.len();
+    
+    // Process in batches
+    let mut batch = Vec::with_capacity(batch_size);
+    let mut processed = 0;
+    
+    for (_id, request) in request_map {
+        batch.push(request);
+        
+        if batch.len() >= batch_size {
+            process_request_batch(&batch, db_pool, prepared_statements).await?;
+            processed += batch.len();
+            batch.clear();
+            
+            // Progress update
+            if processed % 10000 == 0 {
+                println!("Progress: {}/{} requests processed", processed, total_count);
+            }
+        }
+    }
+    
+    // Process remaining requests
+    if !batch.is_empty() {
+        process_request_batch(&batch, db_pool, prepared_statements).await?;
+        processed += batch.len();
+    }
+    
+    Ok(processed)
+}
+
+
+pub async fn update_requests_on_database(db_pool: &DbPool) -> Result<(), Box<dyn std::error::Error>> {
+    // Increased batch size for better transaction performance
+    // Larger batches mean fewer transaction commits, improving throughput
+    update_requests_on_database_streaming(db_pool, 5000).await
+}
+
+/// Update requests using streaming JSON parser for better memory efficiency
+pub async fn update_requests_on_database_streaming(
+    db_pool: &DbPool,
+    batch_size: usize,
+) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
     let re_pattern = Regex::new(r"^requests.*.json$").unwrap();
     let mut files = fs::read_dir(dir_path)?
@@ -303,176 +411,217 @@ pub async fn update_requests_on_database(db_client: &Client) -> Result<(), Box<d
         .collect::<Vec<_>>();
     files.sort_by(|a, b| a.0.cmp(&b.0));
 
-    for file in files {
-        let file = File::open(file.1)?;
-        let reader = BufReader::new(file);
-        let request_map: BTreeMap<StableRequestId, StableRequest> = serde_json::from_reader(reader)?;
+    // Create a single connection and prepare statements once
+    let db_client = db_pool.get().await?;
+    let prepared_statements = PreparedStatements::new(&db_client).await?;
 
-        for v in request_map.values() {
-            insert_request_on_database(v, db_client).await?;
-        }
+    // Track total progress
+    let mut total_processed = 0;
+    let start_time = std::time::Instant::now();
+
+    // Process each file using streaming with optimized batch size
+    for (file_num, file_path) in files {
+        println!("Processing file {}: {:?}", file_num, file_path.file_name().unwrap());
+        
+        let file_processed = process_requests_from_file(
+            &file_path, 
+            db_pool, 
+            batch_size,
+            Some(&prepared_statements)
+        ).await?;
+        
+        total_processed += file_processed;
+        let elapsed = start_time.elapsed();
+        let rate = total_processed as f64 / elapsed.as_secs_f64();
+        
+        println!("Completed file {} - Total processed: {} requests ({:.0} req/sec)", 
+                 file_num, total_processed, rate);
     }
+
+    let total_elapsed = start_time.elapsed();
+    println!("All files processed. Total: {} requests in {:.2}s ({:.0} req/sec)",
+             total_processed, total_elapsed.as_secs_f64(), 
+             total_processed as f64 / total_elapsed.as_secs_f64());
 
     Ok(())
 }
 
 pub async fn insert_request_on_database(v: &StableRequest, db_client: &Client) -> Result<(), Box<dyn std::error::Error>> {
-    match v.request {
-        Request::AddPool(_) => {
-            let request_id = v.request_id as i64;
-            let user_id = v.user_id as i32;
-            let request_type = RequestType::AddPool;
-            let request = serialize_request(&v.request);
-            let reply = serialize_reply(&v.reply);
-            let statuses = json!(&v.statuses);
-            let ts = v.ts as f64 / 1_000_000_000.0;
+    insert_request_on_database_optimized(v, db_client, None).await
+}
 
-            db_client
-                .execute(
-                    "INSERT INTO requests
-                        (request_id, user_id, request_type, request, reply, statuses, ts)
-                        VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
-                        ON CONFLICT (request_id) DO UPDATE SET
-                            user_id = $2,
-                            request_type = $3,
-                            request = $4,
-                            reply = $5,
-                            statuses = $6,
-                            ts = to_timestamp($7)",
-                    &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
-                )
-                .await?;
-            println!("request_id={} saved", v.request_id);
-        }
-        Request::AddLiquidity(_) => {
-            let request_id = v.request_id as i64;
-            let user_id = v.user_id as i32;
-            let request_type = RequestType::AddLiquidity;
-            let request = serialize_request(&v.request);
-            let reply = serialize_reply(&v.reply);
-            let statuses = json!(&v.statuses);
-            let ts = v.ts as f64 / 1_000_000_000.0;
+pub async fn insert_request_on_database_optimized(
+    v: &StableRequest, 
+    db_client: &Client,
+    prepared_statements: Option<&PreparedStatements>
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Convert common fields once
+    let request_id = v.request_id as i64;
+    let user_id = v.user_id as i32;
+    let request_type = match &v.request {
+        Request::AddPool(_) => RequestType::AddPool,
+        Request::AddLiquidity(_) => RequestType::AddLiquidity,
+        Request::RemoveLiquidity(_) => RequestType::RemoveLiquidity,
+        Request::Swap(_) => RequestType::Swap,
+        Request::Claim(_) => RequestType::Claim,
+        Request::Send(_) => RequestType::Send,
+    };
+    let request = serialize_request(&v.request);
+    let reply = serialize_reply(&v.reply);
+    let statuses = json!(&v.statuses);
+    let ts = v.ts as f64 / 1_000_000_000.0;
 
-            db_client
-                .execute(
-                    "INSERT INTO requests
-                        (request_id, user_id, request_type, request, reply, statuses, ts)
-                        VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
-                        ON CONFLICT (request_id) DO UPDATE SET
-                            user_id = $2,
-                            request_type = $3,
-                            request = $4,
-                            reply = $5,
-                            statuses = $6,
-                            ts = to_timestamp($7)",
-                    &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
-                )
-                .await?;
-            println!("request_id={} saved", v.request_id);
-        }
-        Request::RemoveLiquidity(_) => {
-            let request_id = v.request_id as i64;
-            let user_id = v.user_id as i32;
-            let request_type = RequestType::RemoveLiquidity;
-            let request = serialize_request(&v.request);
-            let reply = serialize_reply(&v.reply);
-            let statuses = json!(&v.statuses);
-            let ts = v.ts as f64 / 1_000_000_000.0;
+    // Use prepared statement if available, otherwise fall back to execute
+    if let Some(stmts) = prepared_statements {
+        db_client
+            .execute(
+                stmts.insert_request(),
+                &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
+            )
+            .await?;
+    } else {
+        db_client
+            .execute(
+                "INSERT INTO requests
+                    (request_id, user_id, request_type, request, reply, statuses, ts)
+                    VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
+                    ON CONFLICT (request_id) DO UPDATE SET
+                        user_id = $2,
+                        request_type = $3,
+                        request = $4,
+                        reply = $5,
+                        statuses = $6,
+                        ts = to_timestamp($7)",
+                &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
+            )
+            .await?;
+    }
 
-            db_client
-                .execute(
-                    "INSERT INTO requests
-                        (request_id, user_id, request_type, request, reply, statuses, ts)
-                        VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
-                        ON CONFLICT (request_id) DO UPDATE SET
-                            user_id = $2,
-                            request_type = $3,
-                            request = $4,
-                            reply = $5,
-                            statuses = $6,
-                            ts = to_timestamp($7)",
-                    &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
-                )
-                .await?;
-            println!("request_id={} saved", v.request_id);
-        }
-        Request::Swap(_) => {
-            let request_id = v.request_id as i64;
-            let user_id = v.user_id as i32;
-            let request_type = RequestType::Swap;
-            let request = serialize_request(&v.request);
-            let reply = serialize_reply(&v.reply);
-            let statuses = json!(&v.statuses);
-            let ts = v.ts as f64 / 1_000_000_000.0;
+    // Only print every 500th record to reduce I/O overhead
+    if request_id % 10000 == 0 {
+        println!("request_id={} saved (batch progress)", v.request_id);
+    }
 
-            db_client
-                .execute(
-                    "INSERT INTO requests
-                        (request_id, user_id, request_type, request, reply, statuses, ts)
-                        VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
-                        ON CONFLICT (request_id) DO UPDATE SET
-                            user_id = $2,
-                            request_type = $3,
-                            request = $4,
-                            reply = $5,
-                            statuses = $6,
-                            ts = to_timestamp($7)",
-                    &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
-                )
-                .await?;
-            println!("request_id={} saved", v.request_id);
-        }
-        Request::Claim(_) => {
-            let request_id = v.request_id as i64;
-            let user_id = v.user_id as i32;
-            let request_type = RequestType::Claim;
-            let request = serialize_request(&v.request);
-            let reply = serialize_reply(&v.reply);
-            let statuses = json!(&v.statuses);
-            let ts = v.ts as f64 / 1_000_000_000.0;
+    Ok(())
+}
 
-            db_client
-                .execute(
-                    "INSERT INTO requests
-                        (request_id, user_id, request_type, request, reply, statuses, ts)
-                        VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
-                        ON CONFLICT (request_id) DO UPDATE SET
-                            user_id = $2,
-                            request_type = $3,
-                            request = $4,
-                            reply = $5,
-                            statuses = $6,
-                            ts = to_timestamp($7)",
-                    &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
-                )
-                .await?;
-            println!("request_id={} saved", v.request_id);
-        }
-        Request::Send(_) => {
-            let request_id = v.request_id as i64;
-            let user_id = v.user_id as i32;
-            let request_type = RequestType::Send;
-            let request = serialize_request(&v.request);
-            let reply = serialize_reply(&v.reply);
-            let statuses = json!(&v.statuses);
-            let ts = v.ts as f64 / 1_000_000_000.0;
+/// Bulk insert multiple requests in a single query for maximum performance
+async fn bulk_insert_requests(
+    requests: &[StableRequest],
+    transaction: &Transaction<'_>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if requests.is_empty() {
+        return Ok(());
+    }
+    
+    // Build the bulk insert query
+    let mut query = String::from(
+        "INSERT INTO requests (request_id, user_id, request_type, request, reply, statuses, ts) VALUES "
+    );
+    
+    let mut params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync>> = Vec::new();
+    let mut param_placeholders = Vec::new();
+    
+    for (idx, request) in requests.iter().enumerate() {
+        let base_idx = idx * 7;
+        
+        // Convert fields
+        let request_id = request.request_id as i64;
+        let user_id = request.user_id as i32;
+        let request_type = match &request.request {
+            Request::AddPool(_) => RequestType::AddPool,
+            Request::AddLiquidity(_) => RequestType::AddLiquidity,
+            Request::RemoveLiquidity(_) => RequestType::RemoveLiquidity,
+            Request::Swap(_) => RequestType::Swap,
+            Request::Claim(_) => RequestType::Claim,
+            Request::Send(_) => RequestType::Send,
+        };
+        let req_json = serialize_request(&request.request);
+        let reply_json = serialize_reply(&request.reply);
+        let statuses_json = json!(&request.statuses);
+        let ts = request.ts as f64 / 1_000_000_000.0;
+        
+        // Add parameters
+        params.push(Box::new(request_id));
+        params.push(Box::new(user_id));
+        params.push(Box::new(request_type));
+        params.push(Box::new(req_json));
+        params.push(Box::new(reply_json));
+        params.push(Box::new(statuses_json));
+        params.push(Box::new(ts));
+        
+        // Build placeholder string
+        param_placeholders.push(format!(
+            "(${}, ${}, ${}, ${}, ${}, ${}, to_timestamp(${}))",
+            base_idx + 1, base_idx + 2, base_idx + 3, base_idx + 4, 
+            base_idx + 5, base_idx + 6, base_idx + 7
+        ));
+    }
+    
+    query.push_str(&param_placeholders.join(", "));
+    query.push_str(" ON CONFLICT (request_id) DO UPDATE SET ");
+    query.push_str("user_id = EXCLUDED.user_id, ");
+    query.push_str("request_type = EXCLUDED.request_type, ");
+    query.push_str("request = EXCLUDED.request, ");
+    query.push_str("reply = EXCLUDED.reply, ");
+    query.push_str("statuses = EXCLUDED.statuses, ");
+    query.push_str("ts = EXCLUDED.ts");
+    
+    // Convert params to references for the query
+    let param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = 
+        params.iter().map(|p| p.as_ref()).collect();
+    
+    transaction.execute(&query, &param_refs).await?;
+    
+    Ok(())
+}
 
-            db_client
-                .execute(
-                    "INSERT INTO requests
-                        (request_id, user_id, request_type, request, reply, statuses, ts)
-                        VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
-                        ON CONFLICT (request_id) DO UPDATE SET
-                            user_id = $2,
-                            request_type = $3,
-                            request = $4,
-                            reply = $5,
-                            statuses = $6,
-                            ts = to_timestamp($7)",
-                    &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
-                )
-                .await?;
-        }
+/// Insert request using a transaction for better performance and atomicity
+pub async fn insert_request_on_database_transactional(
+    v: &StableRequest,
+    transaction: &Transaction<'_>,
+    prepared_statements: Option<&PreparedStatements>
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Convert common fields once
+    let request_id = v.request_id as i64;
+    let user_id = v.user_id as i32;
+    let request_type = match &v.request {
+        Request::AddPool(_) => RequestType::AddPool,
+        Request::AddLiquidity(_) => RequestType::AddLiquidity,
+        Request::RemoveLiquidity(_) => RequestType::RemoveLiquidity,
+        Request::Swap(_) => RequestType::Swap,
+        Request::Claim(_) => RequestType::Claim,
+        Request::Send(_) => RequestType::Send,
+    };
+    let request = serialize_request(&v.request);
+    let reply = serialize_reply(&v.reply);
+    let statuses = json!(&v.statuses);
+    let ts = v.ts as f64 / 1_000_000_000.0;
+
+    // Use prepared statement if available, otherwise fall back to execute
+    if let Some(stmts) = prepared_statements {
+        transaction
+            .execute(
+                stmts.insert_request(),
+                &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
+            )
+            .await?;
+    } else {
+        transaction
+            .execute(
+                "INSERT INTO requests
+                    (request_id, user_id, request_type, request, reply, statuses, ts)
+                    VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
+                    ON CONFLICT (request_id) DO UPDATE SET
+                        user_id = $2,
+                        request_type = $3,
+                        request = $4,
+                        reply = $5,
+                        statuses = $6,
+                        ts = to_timestamp($7)",
+                &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
+            )
+            .await?;
     }
 
     Ok(())
@@ -502,7 +651,6 @@ pub async fn update_requests<T: KongUpdate>(kong_update: &T) -> Result<(), Box<d
     files.sort_by(|a, b| a.0.cmp(&b.0));
 
     for file in files {
-        println!("processing: {:?}", file.1.file_name().unwrap());
         let file = File::open(file.1)?;
         let mut reader = BufReader::new(file);
         let mut contents = String::new();
