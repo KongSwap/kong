@@ -1,10 +1,19 @@
+
 {
-  "db_updates_delay_secs": 10,
+  "db_updates_delay_secs": 5,
   "database": {
     "host": "localhost",
     "port": 5432,
     "user": "postgres",
     "password": "",
-    "db_name": "kong-apis"
-  }
+    "db_name": "kong-apis2",
+    "pool": {
+      "max_size": 10,
+      "min_idle": 1,
+      "max_lifetime": 3600,
+      "idle_timeout": 600,
+      "connection_timeout": 30
+    }
+  },
+  "dfx_pem_file": "/Users/nolan/.dfx-iden/Kong.pem"
 }

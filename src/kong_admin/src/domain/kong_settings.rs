@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
 
-use super::kong_update::KongUpdate;
+use crate::canister::kong_update::KongUpdate;
 
 #[allow(dead_code)]
 pub async fn update_kong_settings<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {

@@ -1,4 +1,4 @@
-CREATE TYPE claim_status AS ENUM ('Unclaimed', 'Claiming', 'Claimed', 'TooManyAttempts');
+CREATE TYPE claim_status AS ENUM ('Unclaimed', 'Claiming', 'Claimed', 'TooManyAttempts', 'UnclaimedOverride', 'Claimable');
 
 CREATE TABLE claims (
     claim_id BIGINT PRIMARY KEY,
