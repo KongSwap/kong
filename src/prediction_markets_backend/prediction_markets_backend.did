@@ -83,6 +83,7 @@ type ClaimStatus = variant {
 };
 type ClaimType = variant {
   Refund : record { bet_amount : nat; reason : RefundReason };
+  MarketCreation : record { creator_fee_bps : nat64 };
   WinningPayout : record {
     bet_amount : nat;
     outcomes : vec nat;
@@ -275,10 +276,13 @@ type MarketResolutionDetails = record {
   market_id : nat;
   total_weighted_contribution : opt float64;
   platform_fee_percentage : nat64;
+  creator_claim_id : opt nat64;
   used_time_weighting : bool;
   distribution_details : vec BetDistributionDetail;
   resolution_timestamp : nat;
   time_weight_alpha : opt float64;
+  creator_fee_amount : nat;
+  creator_fee_percentage : nat64;
   winning_bet_count : nat64;
   winning_outcomes : vec nat;
   distributable_profit : nat;
