@@ -14,6 +14,7 @@ use crate::resolution::resolution::ResolutionError;
 use crate::token::registry::get_token_info;
 use crate::token::transfer::{handle_fee_transfer, handle_fee_transfer_failure};
 use crate::types::{MarketId, TokenAmount};
+use crate::user::user_betting_summary::on_refunded_bet;
 
 /// Creates claims for refunds when a market is voided
 ///
@@ -50,6 +51,8 @@ pub fn create_refund_claims(market_id: &MarketId, market: &Market, reason: &str)
 
     // Process refund claims for each bet
     for bet in bets {
+        on_refunded_bet(&bet);
+
         // Ensure we don't try to claim less than the transfer fee
         if bet.amount.clone() <= transfer_fee.clone() {
             ic_cdk::println!(
@@ -214,6 +217,8 @@ pub async fn create_dispute_refund_claims(market_id: &MarketId, market: &Market)
     let mut first_creator_bet_processed = false;
 
     for bet in bets {
+        on_refunded_bet(&bet);
+
         // Skip the creator's first bet (activation bet)
         if bet.user == creator && !first_creator_bet_processed {
             first_creator_bet_processed = true;
