@@ -21,7 +21,7 @@ use ic_stable_structures::{
 
 use std::cell::RefCell;
 
-use crate::BetPayoutRecord;
+use crate::{user::user_betting_summary::recalculate_betting_summary_impl, BetPayoutRecord};
 use crate::{types::StorableNat, ClaimRecord};
 
 use super::delegation::*;
@@ -147,7 +147,7 @@ thread_local! {
 
     pub static STABLE_FAILED_TRANSACTIONS: RefCell<StableBTreeMap<u64, FailedTransaction, Memory>> = RefCell::new(
         StableBTreeMap::init(MEMORY_MANAGER.with(|mm| mm.borrow().get(MemoryId::new(14))))
-    )
+    );
 }
 
 fn fill_stable_map<K, V, It>(m: &mut StableBTreeMap<K, V, Memory>, iter: &mut It)
@@ -201,7 +201,10 @@ pub fn save() {
             .3
             .insert(StorableNat::from_u64(0), StorableNat::from_u64(claims_data.3));
 
-        let _ = stable_claims.3.insert(StorableNat::from_u64(0), StorableNat::from_u64(MARKET_ID.load(std::sync::atomic::Ordering::SeqCst)));
+        let _ = stable_claims.3.insert(
+            StorableNat::from_u64(0),
+            StorableNat::from_u64(MARKET_ID.load(std::sync::atomic::Ordering::SeqCst)),
+        );
     });
 
     // Save market resolution details to stable storage
@@ -279,7 +282,11 @@ pub fn restore() {
             STABLE_MARKETS.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.to_u64()))
         }
 
-        let new_market_id = all_claims.3.get(&StorableNat::from_u64(0)).map(|v| v.to_u64()).unwrap_or(max_market_id());
+        let new_market_id = all_claims
+            .3
+            .get(&StorableNat::from_u64(0))
+            .map(|v| v.to_u64())
+            .unwrap_or(max_market_id());
         MARKET_ID.store(new_market_id, std::sync::atomic::Ordering::SeqCst);
     });
 
@@ -315,5 +322,7 @@ pub fn restore() {
         for v in token_registry.borrow().values() {
             crate::token::registry::add_supported_token(v);
         }
-    })
+    });
+
+    recalculate_betting_summary_impl();
 }

@@ -382,6 +382,11 @@ export const idlFactory = ({ IDL }) => {
     'total_active_markets' : IDL.Nat,
     'total_markets' : IDL.Nat,
   });
+  const UserBettingSummary = IDL.Record({
+    'total_wagered' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat)),
+    'total_won' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat)),
+    'active_bets' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat)),
+  });
   const UserBetInfo = IDL.Record({
     'outcome_text' : IDL.Text,
     'bet_amount' : IDL.Nat,
@@ -630,6 +635,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(IDL.Tuple(IDL.Nat64, FailedTransaction))],
         ['query'],
       ),
+    'get_user_betting_summary' : IDL.Func(
+        [IDL.Principal],
+        [UserBettingSummary],
+        ['query'],
+      ),
     'get_user_claims' : IDL.Func([IDL.Text], [IDL.Vec(ClaimRecord)], ['query']),
     'get_user_history' : IDL.Func([IDL.Principal], [UserHistory], ['query']),
     'get_user_pending_claims' : IDL.Func(
@@ -667,6 +677,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'propose_resolution' : IDL.Func([ResolutionArgs], [ResolutionResult], []),
+    'recalculate_betting_summary' : IDL.Func([], [IDL.Text], []),
     'resolve_via_admin' : IDL.Func([ResolutionArgs], [ResolutionResult], []),
     'resolve_via_admin_legacy' : IDL.Func(
         [IDL.Nat, IDL.Vec(IDL.Nat)],
