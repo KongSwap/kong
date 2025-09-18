@@ -302,6 +302,8 @@ fn icrc28_trusted_origins() -> Icrc28TrustedOriginsResponse {
         String::from("https://edoy4-liaaa-aaaar-qakha-cai.icp0.io"),
         #[cfg(feature = "prod")]
         String::from("https://dev.kongswap.io"),
+        #[cfg(feature = "prod")]
+        String::from("https://kongswap.icpblinks.com"),
     ];
 
     Icrc28TrustedOriginsResponse { trusted_origins }
