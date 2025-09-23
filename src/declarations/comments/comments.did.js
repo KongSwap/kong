@@ -54,16 +54,20 @@ export const idlFactory = ({ IDL }) => {
     'next_cursor' : IDL.Opt(IDL.Nat64),
     'comments' : IDL.Vec(CommentResponse),
   });
+  const Icrc10SupportedStandard = IDL.Record({
+    'url' : IDL.Text,
+    'name' : IDL.Text,
+  });
+  const Icrc10SupportedStandardsResponse = IDL.Record({
+    'supported_standards' : IDL.Vec(Icrc10SupportedStandard),
+  });
   const ConsentMessageMetadata = IDL.Record({
     'utc_offset_minutes' : IDL.Opt(IDL.Int16),
     'language' : IDL.Text,
   });
   const DisplayMessageType = IDL.Variant({
     'GenericDisplay' : IDL.Null,
-    'LineDisplay' : IDL.Record({
-      'characters_per_line' : IDL.Nat16,
-      'lines_per_page' : IDL.Nat16,
-    }),
+    'FieldsDisplay' : IDL.Null,
   });
   const ConsentMessageSpec = IDL.Record({
     'metadata' : ConsentMessageMetadata,
@@ -74,9 +78,22 @@ export const idlFactory = ({ IDL }) => {
     'method' : IDL.Text,
     'user_preferences' : ConsentMessageSpec,
   });
-  const LineDisplayPage = IDL.Record({ 'lines' : IDL.Vec(IDL.Text) });
+  const Value = IDL.Variant({
+    'Text' : IDL.Record({ 'content' : IDL.Text }),
+    'TokenAmount' : IDL.Record({
+      'decimals' : IDL.Nat8,
+      'amount' : IDL.Nat64,
+      'symbol' : IDL.Text,
+    }),
+    'TimestampSeconds' : IDL.Record({ 'amount' : IDL.Nat64 }),
+    'DurationSeconds' : IDL.Record({ 'amount' : IDL.Nat64 }),
+  });
+  const FieldsDisplay = IDL.Record({
+    'fields' : IDL.Vec(IDL.Tuple(IDL.Text, Value)),
+    'intent' : IDL.Text,
+  });
   const ConsentMessage = IDL.Variant({
-    'LineDisplayMessage' : IDL.Record({ 'pages' : IDL.Vec(LineDisplayPage) }),
+    'FieldsDisplayMessage' : FieldsDisplay,
     'GenericDisplayMessage' : IDL.Text,
   });
   const ConsentInfo = IDL.Record({
@@ -146,6 +163,11 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'get_user_liked_comments' : IDL.Func([], [IDL.Vec(IDL.Nat64)], ['query']),
+    'icrc10_supported_standards' : IDL.Func(
+        [],
+        [Icrc10SupportedStandardsResponse],
+        ['query'],
+      ),
     'icrc21_canister_call_consent_message' : IDL.Func(
         [ConsentMessageRequest],
         [Result_3],

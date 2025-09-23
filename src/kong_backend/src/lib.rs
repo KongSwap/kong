@@ -8,6 +8,7 @@ pub mod claims;
 pub mod controllers;
 pub mod helpers;
 pub mod ic;
+pub mod icrc21_helpers;
 pub mod pools;
 pub mod remove_liquidity;
 pub mod remove_liquidity_amounts;

@@ -6,6 +6,7 @@ use ic_cdk_timers::set_timer_interval;
 use icrc_ledger_types::icrc21::errors::ErrorInfo;
 use icrc_ledger_types::icrc21::requests::{ConsentMessageMetadata, ConsentMessageRequest};
 use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
+use crate::icrc21_helpers;
 use serde::Deserialize;
 use std::time::Duration;
 
@@ -150,6 +151,11 @@ fn icrc10_supported_standards() -> Vec<SupportedStandard> {
 
 #[update]
 fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageRequest) -> Result<ConsentInfo, ErrorInfo> {
+    use icrc21_helpers::*;
+
+    // Check if the client prefers FieldsDisplay or GenericDisplay
+    let use_fields_display = should_use_fields_display(&consent_msg_request);
+
     let consent_message = match consent_msg_request.method.as_str() {
         "swap" | "swap_async" => {
             let Ok(swap_args) = decode_one::<SwapArgs>(&consent_msg_request.arg) else {
@@ -183,19 +189,21 @@ fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageReque
                 }
             };
 
-            ConsentMessage::GenericDisplayMessage(format!(
-                "# Approve KongSwap swap
-                
-**Pay token:**
-{} {}
+            let mut fields = Vec::new();
+            add_text_field(&mut fields, "Pay Token", format!("{} {}", pay_amount, swap_args.pay_token));
+            add_text_field(&mut fields, "Receive Token", receive_token.clone());
+            add_text_field(&mut fields, "Receive Address", to_address.clone());
+            add_timestamp_field(&mut fields);
 
-**Receive token:**
-{}
-
-**Receive address:**
-{}",
-                pay_amount, swap_args.pay_token, receive_token, to_address
-            ))
+            create_consent_message(
+                use_fields_display,
+                "Swap tokens on KongSwap",
+                fields,
+                format!(
+                    "# Approve KongSwap swap\n\n**Pay token:**\n{} {}\n\n**Receive token:**\n{}\n\n**Receive address:**\n{}",
+                    pay_amount, swap_args.pay_token, receive_token, to_address
+                )
+            )
         }
         "add_liquidity" | "add_liquidity_async" => {
             let Ok(add_liquidity_args) = decode_one::<AddLiquidityArgs>(&consent_msg_request.arg) else {
@@ -221,16 +229,20 @@ fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageReque
             let amount_1 = nat_to_decimals_f64(decimals_1, &add_liquidity_args.amount_1).ok_or_else(|| ErrorInfo {
                 description: "Failed to convert token_1 amount to f64".to_string(),
             })?;
-            ConsentMessage::GenericDisplayMessage(format!(
-                "# Approve KongSwap add liquidity
+            let mut fields = Vec::new();
+            add_text_field(&mut fields, "Token 0", format!("{} {}", amount_0, add_liquidity_args.token_0));
+            add_text_field(&mut fields, "Token 1", format!("{} {}", amount_1, add_liquidity_args.token_1));
+            add_timestamp_field(&mut fields);
 
-**Token 0:**
-{} {}
-
-**Token 1:**
-{} {}",
-                amount_0, add_liquidity_args.token_0, amount_1, add_liquidity_args.token_1
-            ))
+            create_consent_message(
+                use_fields_display,
+                "Add liquidity to KongSwap pool",
+                fields,
+                format!(
+                    "# Approve KongSwap add liquidity\n\n**Token 0:**\n{} {}\n\n**Token 1:**\n{} {}",
+                    amount_0, add_liquidity_args.token_0, amount_1, add_liquidity_args.token_1
+                )
+            )
         }
         "add_pool" => {
             let Ok(add_pool_args) = decode_one::<AddPoolArgs>(&consent_msg_request.arg) else {
@@ -256,16 +268,20 @@ fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageReque
             let amount_1 = nat_to_decimals_f64(decimals_1, &add_pool_args.amount_1).ok_or_else(|| ErrorInfo {
                 description: "Failed to convert token_1 amount to f64".to_string(),
             })?;
-            ConsentMessage::GenericDisplayMessage(format!(
-                "# Approve KongSwap add pool
+            let mut fields = Vec::new();
+            add_text_field(&mut fields, "Token 0", format!("{} {}", amount_0, add_pool_args.token_0));
+            add_text_field(&mut fields, "Token 1", format!("{} {}", amount_1, add_pool_args.token_1));
+            add_timestamp_field(&mut fields);
 
-**Token 0:**
-{} {}
-
-**Token 1:**
-{} {}",
-                amount_0, add_pool_args.token_0, amount_1, add_pool_args.token_1
-            ))
+            create_consent_message(
+                use_fields_display,
+                "Create new pool on KongSwap",
+                fields,
+                format!(
+                    "# Approve KongSwap add pool\n\n**Token 0:**\n{} {}\n\n**Token 1:**\n{} {}",
+                    amount_0, add_pool_args.token_0, amount_1, add_pool_args.token_1
+                )
+            )
         }
         _ => ConsentMessage::GenericDisplayMessage(format!("Approve KongSwap to execute {}", consent_msg_request.method)),
     };
