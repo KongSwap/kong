@@ -31,7 +31,7 @@ mod transfers;
 mod txs;
 mod users;
 
-const LOCAL_REPLICA: &str = "http://localhost:4943";
+const LOCAL_REPLICA: &str = "http://localhost:8000";
 const MAINNET_REPLICA: &str = "https://ic0.app";
 
 #[tokio::main]
