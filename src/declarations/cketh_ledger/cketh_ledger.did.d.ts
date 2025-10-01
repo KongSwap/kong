@@ -10,6 +10,12 @@ export interface Allowance {
   'allowance' : bigint,
   'expires_at' : [] | [Timestamp],
 }
+export interface Allowance103 {
+  'from_account' : Account,
+  'to_spender' : Account,
+  'allowance' : bigint,
+  'expires_at' : [] | [bigint],
+}
 export interface AllowanceArgs { 'account' : Account, 'spender' : Account }
 export interface Approve {
   'fee' : [] | [bigint],
@@ -77,6 +83,19 @@ export interface DataCertificate {
 }
 export type Duration = bigint;
 export interface FeatureFlags { 'icrc2' : boolean }
+export interface FieldsDisplay {
+  'fields' : Array<[string, Icrc21Value]>,
+  'intent' : string,
+}
+export interface GetAllowancesArgs {
+  'take' : [] | [bigint],
+  'prev_spender' : [] | [Account],
+  'from_account' : [] | [Account],
+}
+export type GetAllowancesError = {
+    'GenericError' : { 'message' : string, 'error_code' : bigint }
+  } |
+  { 'AccessDenied' : { 'reason' : string } };
 export interface GetArchivesArgs { 'from' : [] | [Principal] }
 export type GetArchivesResult = Array<
   { 'end' : bigint, 'canister_id' : Principal, 'start' : bigint }
@@ -102,6 +121,12 @@ export interface GetBlocksResult {
     { 'args' : Array<GetBlocksArgs>, 'callback' : [Principal, string] }
   >,
 }
+export type GetIndexPrincipalError = {
+    'GenericError' : { 'description' : string, 'error_code' : bigint }
+  } |
+  { 'IndexPrincipalNotSet' : null };
+export type GetIndexPrincipalResult = { 'Ok' : Principal } |
+  { 'Err' : GetIndexPrincipalError };
 export interface GetTransactionsRequest { 'start' : TxIndex, 'length' : bigint }
 export interface GetTransactionsResponse {
   'first_index' : TxIndex,
@@ -132,6 +157,16 @@ export type ICRC3Value = { 'Int' : bigint } |
   { 'Blob' : Uint8Array | number[] } |
   { 'Text' : string } |
   { 'Array' : Array<ICRC3Value> };
+export type Icrc21Value = { 'Text' : { 'content' : string } } |
+  {
+    'TokenAmount' : {
+      'decimals' : number,
+      'amount' : bigint,
+      'symbol' : string,
+    }
+  } |
+  { 'TimestampSeconds' : { 'amount' : bigint } } |
+  { 'DurationSeconds' : { 'amount' : bigint } };
 export interface InitArgs {
   'decimals' : [] | [number],
   'token_symbol' : string,
@@ -151,6 +186,7 @@ export interface InitArgs {
     'controller_id' : Principal,
   },
   'max_memo_length' : [] | [number],
+  'index_principal' : [] | [Principal],
   'token_name' : string,
   'feature_flags' : [] | [FeatureFlags],
 }
@@ -244,6 +280,7 @@ export interface UpgradeArgs {
   'metadata' : [] | [Array<[string, MetadataValue]>],
   'change_fee_collector' : [] | [ChangeFeeCollector],
   'max_memo_length' : [] | [number],
+  'index_principal' : [] | [Principal],
   'token_name' : [] | [string],
   'feature_flags' : [] | [FeatureFlags],
 }
@@ -254,12 +291,14 @@ export type Value = { 'Int' : bigint } |
   { 'Blob' : Uint8Array | number[] } |
   { 'Text' : string } |
   { 'Array' : Array<Value> };
+export type icrc103_get_allowances_response = { 'Ok' : Array<Allowance103> } |
+  { 'Err' : GetAllowancesError };
 export interface icrc21_consent_info {
   'metadata' : icrc21_consent_message_metadata,
   'consent_message' : icrc21_consent_message,
 }
 export type icrc21_consent_message = {
-    'LineDisplayMessage' : { 'pages' : Array<{ 'lines' : Array<string> }> }
+    'FieldsDisplayMessage' : FieldsDisplay
   } |
   { 'GenericDisplayMessage' : string };
 export interface icrc21_consent_message_metadata {
@@ -277,12 +316,7 @@ export interface icrc21_consent_message_spec {
   'metadata' : icrc21_consent_message_metadata,
   'device_spec' : [] | [
     { 'GenericDisplay' : null } |
-      {
-        'LineDisplay' : {
-          'characters_per_line' : number,
-          'lines_per_page' : number,
-        }
-      }
+      { 'FieldsDisplay' : null }
   ],
 }
 export type icrc21_error = {
@@ -300,6 +334,11 @@ export interface _SERVICE {
     [GetTransactionsRequest],
     GetTransactionsResponse
   >,
+  'icrc103_get_allowances' : ActorMethod<
+    [GetAllowancesArgs],
+    icrc103_get_allowances_response
+  >,
+  'icrc106_get_index_principal' : ActorMethod<[], GetIndexPrincipalResult>,
   'icrc10_supported_standards' : ActorMethod<
     [],
     Array<{ 'url' : string, 'name' : string }>
