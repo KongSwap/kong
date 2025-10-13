@@ -2,9 +2,10 @@ use crate::settings::read_settings;
 use openssl::ssl::{SslConnector, SslMethod};
 use postgres_openssl::MakeTlsConnector;
 use std::env;
-use std::thread;
 use std::time::Duration;
+use tokio::time::timeout;
 use tokio_postgres::Client;
+use tracing::{error, info, warn};
 
 use agent::create_agent_from_identity;
 use agent::{create_anonymous_identity, create_identity_from_pem_file};
@@ -36,6 +37,12 @@ const MAINNET_REPLICA: &str = "https://ic0.app";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing
+    tracing_subscriber::fmt()
+        .with_target(false)
+        .with_level(true)
+        .init();
+
     let args = env::args().collect::<Vec<String>>();
     let settings = read_settings()?;
 
@@ -47,38 +54,54 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // read from flat files (./backups) and update kong_data
     if args.contains(&"--kong_data".to_string()) {
+        info!("Starting kong_data update");
         let dfx_pem_file = settings.dfx_pem_file.as_ref().ok_or("dfx identity required for Kong Data")?;
         let identity = create_identity_from_pem_file(dfx_pem_file)?;
         let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
         let kong_data = KongData::new(&agent).await;
-        // Dump to kong_data
-        //kong_settings::update_kong_settings(&kong_data).await?;
-        users::update_users(&kong_data).await?;
-        tokens::update_tokens(&kong_data).await?;
-        pools::update_pools(&kong_data).await?;
-        lp_tokens::update_lp_tokens(&kong_data).await?;
-        requests::update_requests(&kong_data).await?;
-        claims::update_claims(&kong_data).await?;
-        transfers::update_transfers(&kong_data).await?;
-        txs::update_txs(&kong_data).await?;
+
+        // Parallel execution of independent update operations
+        info!("Executing parallel updates for kong_data");
+        let start = std::time::Instant::now();
+
+        tokio::try_join!(
+            users::update_users(&kong_data),
+            tokens::update_tokens(&kong_data),
+            pools::update_pools(&kong_data),
+            lp_tokens::update_lp_tokens(&kong_data),
+            requests::update_requests(&kong_data),
+            claims::update_claims(&kong_data),
+            transfers::update_transfers(&kong_data),
+            txs::update_txs(&kong_data),
+        )?;
+
+        info!("Kong data updates completed in {:?}", start.elapsed());
     }
 
     // read from flat files (./backups) and update kong_backend. used for development
     if args.contains(&"--kong_backend".to_string()) {
+        info!("Starting kong_backend update");
         let dfx_pem_file = settings.dfx_pem_file.as_ref().ok_or("dfx identity required for Kong Backend")?;
         let identity = create_identity_from_pem_file(dfx_pem_file)?;
         let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
         let kong_backend = KongBackend::new(&agent).await;
-        // Dump to kong_backend
-        //kong_settings::update_kong_settings(&kong_backend).await?;
-        users::update_users(&kong_backend).await?;
-        tokens::update_tokens(&kong_backend).await?;
-        pools::update_pools(&kong_backend).await?;
-        lp_tokens::update_lp_tokens(&kong_backend).await?;
-        requests::update_requests(&kong_backend).await?;
-        claims::update_claims(&kong_backend).await?;
-        transfers::update_transfers(&kong_backend).await?;
-        txs::update_txs(&kong_backend).await?;
+
+        // Parallel execution of independent update operations
+        info!("Executing parallel updates for kong_backend");
+        let start = std::time::Instant::now();
+
+        tokio::try_join!(
+            users::update_users(&kong_backend),
+            tokens::update_tokens(&kong_backend),
+            pools::update_pools(&kong_backend),
+            lp_tokens::update_lp_tokens(&kong_backend),
+            requests::update_requests(&kong_backend),
+            claims::update_claims(&kong_backend),
+            transfers::update_transfers(&kong_backend),
+            txs::update_txs(&kong_backend),
+        )?;
+
+        info!("Kong backend updates completed in {:?}", start.elapsed());
     }
 
     // read from flat files (./backups) and update database
@@ -88,40 +111,89 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut db_client = connect_db(&settings).await?;
 
         if args.contains(&"--database".to_string()) {
-            // Dump to database
+            info!("Starting database update");
+            let start = std::time::Instant::now();
+
+            // Sequential execution due to dependencies
             users::update_users_on_database(&db_client).await?;
             tokens_map = tokens::update_tokens_on_database(&db_client).await?;
             pools_map = pools::update_pools_on_database(&db_client, &tokens_map).await?;
-            lp_tokens::update_lp_tokens_on_database(&db_client, &tokens_map).await?;
-            requests::update_requests_on_database(&db_client).await?;
-            claims::update_claims_on_database(&db_client, &tokens_map).await?;
-            transfers::update_transfers_on_database(&db_client, &tokens_map).await?;
-            txs::update_txs_on_database(&db_client, &tokens_map, &pools_map).await?;
+
+            // Parallel execution of operations that depend on tokens_map and pools_map
+            tokio::try_join!(
+                lp_tokens::update_lp_tokens_on_database(&db_client, &tokens_map),
+                requests::update_requests_on_database(&db_client),
+                claims::update_claims_on_database(&db_client, &tokens_map),
+                transfers::update_transfers_on_database(&db_client, &tokens_map),
+                txs::update_txs_on_database(&db_client, &tokens_map, &pools_map),
+            )?;
+
+            info!("Database updates completed in {:?}", start.elapsed());
         } else {
+            info!("Loading tokens and pools from database");
             tokens_map = tokens::load_tokens_from_database(&db_client).await?;
             pools_map = pools::load_pools_from_database(&db_client).await?;
         }
 
         if args.contains(&"--db_updates".to_string()) {
+            info!("Starting db_updates loop with delay of {}s", settings.db_updates_delay_secs.unwrap_or(60));
+
             // read from kong_data and update database
             let identity = create_anonymous_identity();
             let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
             let kong_data = KongData::new(&agent).await;
-            let delay_secs = settings.db_updates_delay_secs.unwrap_or(60);
+            let base_delay_secs = settings.db_updates_delay_secs.unwrap_or(60);
+            let mut retry_delay_secs = base_delay_secs;
+            const MAX_RETRY_DELAY_SECS: u64 = 300; // 5 minutes max
+            const OPERATION_TIMEOUT_SECS: u64 = 30;
+
             // loop forever and update database
             let mut last_db_update_id = None;
             loop {
-                match get_db_updates(last_db_update_id, &kong_data, &db_client, &mut tokens_map, &mut pools_map).await {
-                    Ok(db_update_id) => last_db_update_id = Some(db_update_id),
-                    Err(err) => {
-                        eprintln!("{}", err);
-                        if db_client.is_closed() {
-                            db_client = connect_db(&settings).await?;
+                tokio::select! {
+                    _ = tokio::signal::ctrl_c() => {
+                        info!("Shutdown signal received, gracefully stopping db_updates loop");
+                        break;
+                    }
+                    result = timeout(
+                        Duration::from_secs(OPERATION_TIMEOUT_SECS),
+                        get_db_updates(last_db_update_id, &kong_data, &db_client, &mut tokens_map, &mut pools_map)
+                    ) => {
+                        match result {
+                            Ok(Ok(db_update_id)) => {
+                                last_db_update_id = Some(db_update_id);
+                                retry_delay_secs = base_delay_secs; // Reset delay on success
+                                info!("DB update successful, last_id: {:?}", db_update_id);
+                            }
+                            Ok(Err(err)) => {
+                                error!("DB update failed: {}", err);
+                                retry_delay_secs = (retry_delay_secs * 2).min(MAX_RETRY_DELAY_SECS);
+                                warn!("Retrying in {}s (exponential backoff)", retry_delay_secs);
+
+                                if db_client.is_closed() {
+                                    info!("Database connection closed, reconnecting...");
+                                    match connect_db(&settings).await {
+                                        Ok(new_client) => {
+                                            db_client = new_client;
+                                            info!("Database reconnected successfully");
+                                        }
+                                        Err(e) => {
+                                            error!("Failed to reconnect to database: {}", e);
+                                        }
+                                    }
+                                }
+                            }
+                            Err(_) => {
+                                error!("DB update timed out after {}s", OPERATION_TIMEOUT_SECS);
+                                retry_delay_secs = (retry_delay_secs * 2).min(MAX_RETRY_DELAY_SECS);
+                                warn!("Retrying in {}s (exponential backoff)", retry_delay_secs);
+                            }
                         }
+
+                        // Async sleep instead of blocking thread::sleep
+                        tokio::time::sleep(Duration::from_secs(retry_delay_secs)).await;
                     }
                 }
-
-                thread::sleep(Duration::from_secs(delay_secs));
             }
         }
     }

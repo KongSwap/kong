@@ -190,15 +190,16 @@ pub async fn insert_tx_on_database(
                 StatusTx::Success => TxStatus::Success,
                 StatusTx::Failed => TxStatus::Failed,
             };
-            let token_id_0 = pools_map.get(&v.pool_id).unwrap().0;
+            let (token_id_0, token_id_1) = pools_map
+                .get(&v.pool_id)
+                .ok_or(format!("pool_id={} not found", v.pool_id))?;
             let decimals_0 = tokens_map
                 .get(&token_id_0)
-                .ok_or(format!("token_id={} not found", pools_map.get(&v.pool_id).unwrap().0))?;
+                .ok_or(format!("token_id={} not found", token_id_0))?;
             let amount_0 = round_f64(v.amount_0.0.to_f64().unwrap() / 10_u64.pow(*decimals_0 as u32) as f64, *decimals_0);
-            let token_id_1 = pools_map.get(&v.pool_id).unwrap().1;
             let decimals_1 = tokens_map
                 .get(&token_id_1)
-                .ok_or(format!("token_id={} not found", pools_map.get(&v.pool_id).unwrap().1))?;
+                .ok_or(format!("token_id={} not found", token_id_1))?;
             let amount_1 = round_f64(v.amount_1.0.to_f64().unwrap() / 10_u64.pow(*decimals_1 as u32) as f64, *decimals_1);
             let add_lp_token_amount = round_f64(v.add_lp_token_amount.0.to_f64().unwrap() / 10_u64.pow(8_u32) as f64, 8_u8);
             let transfer_ids = v.transfer_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
@@ -253,15 +254,16 @@ pub async fn insert_tx_on_database(
                 StatusTx::Success => TxStatus::Success,
                 StatusTx::Failed => TxStatus::Failed,
             };
-            let token_id_0 = pools_map.get(&v.pool_id).unwrap().0;
+            let (token_id_0, token_id_1) = pools_map
+                .get(&v.pool_id)
+                .ok_or(format!("pool_id={} not found", v.pool_id))?;
             let decimals_0 = tokens_map
                 .get(&token_id_0)
-                .ok_or(format!("token_id={} not found", pools_map.get(&v.pool_id).unwrap().0))?;
+                .ok_or(format!("token_id={} not found", token_id_0))?;
             let amount_0 = round_f64(v.amount_0.0.to_f64().unwrap() / 10_u64.pow(*decimals_0 as u32) as f64, *decimals_0);
-            let token_id_1 = pools_map.get(&v.pool_id).unwrap().1;
             let decimals_1 = tokens_map
                 .get(&token_id_1)
-                .ok_or(format!("token_id={} not found", pools_map.get(&v.pool_id).unwrap().1))?;
+                .ok_or(format!("token_id={} not found", token_id_1))?;
             let amount_1 = round_f64(v.amount_1.0.to_f64().unwrap() / 10_u64.pow(*decimals_1 as u32) as f64, *decimals_1);
             let add_lp_token_amount = round_f64(v.add_lp_token_amount.0.to_f64().unwrap() / 10_u64.pow(8_u32) as f64, 8_u8);
             let transfer_ids = v.transfer_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
@@ -326,16 +328,17 @@ pub async fn insert_tx_on_database(
                 StatusTx::Success => TxStatus::Success,
                 StatusTx::Failed => TxStatus::Failed,
             };
-            let token_id_0 = pools_map.get(&v.pool_id).unwrap().0;
+            let (token_id_0, token_id_1) = pools_map
+                .get(&v.pool_id)
+                .ok_or(format!("pool_id={} not found", v.pool_id))?;
             let decimals_0 = tokens_map
                 .get(&token_id_0)
-                .ok_or(format!("token_id={} not found", pools_map.get(&v.pool_id).unwrap().0))?;
+                .ok_or(format!("token_id={} not found", token_id_0))?;
             let amount_0 = round_f64(v.amount_0.0.to_f64().unwrap() / 10_u64.pow(*decimals_0 as u32) as f64, *decimals_0);
             let lp_fee_0 = round_f64(v.lp_fee_0.0.to_f64().unwrap() / 10_u64.pow(*decimals_0 as u32) as f64, *decimals_0);
-            let token_id_1 = pools_map.get(&v.pool_id).unwrap().1;
             let decimals_1 = tokens_map
                 .get(&token_id_1)
-                .ok_or(format!("token_id={} not found", pools_map.get(&v.pool_id).unwrap().1))?;
+                .ok_or(format!("token_id={} not found", token_id_1))?;
             let amount_1 = round_f64(v.amount_1.0.to_f64().unwrap() / 10_u64.pow(*decimals_1 as u32) as f64, *decimals_1);
             let lp_fee_1 = round_f64(v.lp_fee_1.0.to_f64().unwrap() / 10_u64.pow(*decimals_1 as u32) as f64, *decimals_1);
             let remove_lp_token_amount = round_f64(v.remove_lp_token_amount.0.to_f64().unwrap() / 10_u64.pow(8_u32) as f64, 8_u8);

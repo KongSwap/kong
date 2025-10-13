@@ -10,7 +10,7 @@ prod = []
 
 [dependencies]
 kong_lib = { path = "../kong_lib" }
-tokio = { version = "1.40.0", features = ["full"] }
+tokio = { version = "1.40.0", features = ["full", "signal"] }
 serde = "1.0.210"
 serde_json = "1.0.128"
 tokio-postgres = { version = "0.7.12", features = ["with-serde_json-1"] }
@@ -26,3 +26,5 @@ anyhow = "1.0.93"
 chrono = "0.4.38"
 openssl = "0.10.68"
 postgres-openssl = "0.5.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
