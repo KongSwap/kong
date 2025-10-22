@@ -14,6 +14,14 @@ export interface Allowance {
   'expires_at' : [] | [Icrc1Timestamp],
 }
 export interface AllowanceArgs { 'account' : Account, 'spender' : Account }
+export type Allowances = Array<
+  {
+    'from_account_id' : TextAccountIdentifier,
+    'to_spender_id' : TextAccountIdentifier,
+    'allowance' : Tokens,
+    'expires_at' : [] | [bigint],
+  }
+>;
 export interface ApproveArgs {
   'fee' : [] | [Icrc1Tokens],
   'memo' : [] | [Uint8Array | number[]],
@@ -68,6 +76,15 @@ export type BlockIndex = bigint;
 export interface BlockRange { 'blocks' : Array<Block> }
 export interface Duration { 'secs' : bigint, 'nanos' : number }
 export interface FeatureFlags { 'icrc2' : boolean }
+export interface FieldsDisplay {
+  'fields' : Array<[string, Icrc21Value]>,
+  'intent' : string,
+}
+export interface GetAllowancesArgs {
+  'prev_spender_id' : [] | [TextAccountIdentifier],
+  'from_account_id' : TextAccountIdentifier,
+  'take' : [] | [bigint],
+}
 export interface GetBlocksArgs { 'start' : BlockIndex, 'length' : bigint }
 export type Icrc1BlockIndex = bigint;
 export type Icrc1Timestamp = bigint;
@@ -84,13 +101,21 @@ export type Icrc1TransferError = {
   { 'InsufficientFunds' : { 'balance' : Icrc1Tokens } };
 export type Icrc1TransferResult = { 'Ok' : Icrc1BlockIndex } |
   { 'Err' : Icrc1TransferError };
+export type Icrc21Value = { 'Text' : { 'content' : string } } |
+  {
+    'TokenAmount' : {
+      'decimals' : number,
+      'amount' : bigint,
+      'symbol' : string,
+    }
+  } |
+  { 'TimestampSeconds' : { 'amount' : bigint } } |
+  { 'DurationSeconds' : { 'amount' : bigint } };
 export interface InitArgs {
   'send_whitelist' : Array<Principal>,
   'token_symbol' : [] | [string],
   'transfer_fee' : [] | [Tokens],
   'minting_account' : TextAccountIdentifier,
-  'maximum_number_of_accounts' : [] | [bigint],
-  'accounts_overflow_trim_quantity' : [] | [bigint],
   'transaction_window' : [] | [Duration],
   'max_message_size_bytes' : [] | [bigint],
   'icrc1_minting_account' : [] | [Account],
@@ -154,6 +179,11 @@ export interface QueryEncodedBlocksResponse {
   'first_block_index' : bigint,
   'archived_blocks' : Array<ArchivedEncodedBlocksRange>,
 }
+export interface RemoveApprovalArgs {
+  'fee' : [] | [Icrc1Tokens],
+  'from_subaccount' : [] | [SubAccount],
+  'spender' : AccountIdentifier,
+}
 export interface SendArgs {
   'to' : TextAccountIdentifier,
   'fee' : Tokens,
@@ -165,6 +195,10 @@ export interface SendArgs {
 export type SubAccount = Uint8Array | number[];
 export type TextAccountIdentifier = string;
 export interface TimeStamp { 'timestamp_nanos' : bigint }
+export interface TipOfChainRes {
+  'certification' : [] | [Uint8Array | number[]],
+  'tip_index' : BlockIndex,
+}
 export interface Tokens { 'e8s' : bigint }
 export interface Transaction {
   'memo' : Memo,
@@ -234,7 +268,7 @@ export interface icrc21_consent_info {
   'consent_message' : icrc21_consent_message,
 }
 export type icrc21_consent_message = {
-    'LineDisplayMessage' : { 'pages' : Array<{ 'lines' : Array<string> }> }
+    'FieldsDisplayMessage' : FieldsDisplay
   } |
   { 'GenericDisplayMessage' : string };
 export interface icrc21_consent_message_metadata {
@@ -252,12 +286,7 @@ export interface icrc21_consent_message_spec {
   'metadata' : icrc21_consent_message_metadata,
   'device_spec' : [] | [
     { 'GenericDisplay' : null } |
-      {
-        'LineDisplay' : {
-          'characters_per_line' : number,
-          'lines_per_page' : number,
-        }
-      }
+      { 'FieldsDisplay' : null }
   ],
 }
 export type icrc21_error = {
@@ -273,6 +302,7 @@ export interface _SERVICE {
   'account_identifier' : ActorMethod<[Account], AccountIdentifier>,
   'archives' : ActorMethod<[], Archives>,
   'decimals' : ActorMethod<[], { 'decimals' : number }>,
+  'get_allowances' : ActorMethod<[GetAllowancesArgs], Allowances>,
   'icrc10_supported_standards' : ActorMethod<
     [],
     Array<{ 'url' : string, 'name' : string }>
@@ -297,14 +327,17 @@ export interface _SERVICE {
   'icrc2_allowance' : ActorMethod<[AllowanceArgs], Allowance>,
   'icrc2_approve' : ActorMethod<[ApproveArgs], ApproveResult>,
   'icrc2_transfer_from' : ActorMethod<[TransferFromArgs], TransferFromResult>,
+  'is_ledger_ready' : ActorMethod<[], boolean>,
   'name' : ActorMethod<[], { 'name' : string }>,
   'query_blocks' : ActorMethod<[GetBlocksArgs], QueryBlocksResponse>,
   'query_encoded_blocks' : ActorMethod<
     [GetBlocksArgs],
     QueryEncodedBlocksResponse
   >,
+  'remove_approval' : ActorMethod<[RemoveApprovalArgs], ApproveResult>,
   'send_dfx' : ActorMethod<[SendArgs], BlockIndex>,
   'symbol' : ActorMethod<[], { 'symbol' : string }>,
+  'tip_of_chain' : ActorMethod<[], TipOfChainRes>,
   'transfer' : ActorMethod<[TransferArgs], TransferResult>,
   'transfer_fee' : ActorMethod<[TransferFeeArg], TransferFee>,
 }

@@ -152,7 +152,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
     server: {
       proxy: {
         "/api": {
-          target: "http://localhost:4943",
+          target: "http://localhost:8000",
           changeOrigin: true,
         },
       },

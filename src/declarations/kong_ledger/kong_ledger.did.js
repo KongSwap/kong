@@ -35,6 +35,7 @@ export const idlFactory = ({ IDL }) => {
     'metadata' : IDL.Opt(IDL.Vec(IDL.Tuple(IDL.Text, MetadataValue))),
     'change_fee_collector' : IDL.Opt(ChangeFeeCollector),
     'max_memo_length' : IDL.Opt(IDL.Nat16),
+    'index_principal' : IDL.Opt(IDL.Principal),
     'token_name' : IDL.Opt(IDL.Text),
     'feature_flags' : IDL.Opt(FeatureFlags),
   });
@@ -57,6 +58,7 @@ export const idlFactory = ({ IDL }) => {
       'controller_id' : IDL.Principal,
     }),
     'max_memo_length' : IDL.Opt(IDL.Nat16),
+    'index_principal' : IDL.Opt(IDL.Principal),
     'token_name' : IDL.Text,
     'feature_flags' : IDL.Opt(FeatureFlags),
   });
@@ -176,6 +178,39 @@ export const idlFactory = ({ IDL }) => {
       })
     ),
   });
+  const GetAllowancesArgs = IDL.Record({
+    'take' : IDL.Opt(IDL.Nat),
+    'prev_spender' : IDL.Opt(Account),
+    'from_account' : IDL.Opt(Account),
+  });
+  const Allowance103 = IDL.Record({
+    'from_account' : Account,
+    'to_spender' : Account,
+    'allowance' : IDL.Nat,
+    'expires_at' : IDL.Opt(IDL.Nat64),
+  });
+  const GetAllowancesError = IDL.Variant({
+    'GenericError' : IDL.Record({
+      'message' : IDL.Text,
+      'error_code' : IDL.Nat,
+    }),
+    'AccessDenied' : IDL.Record({ 'reason' : IDL.Text }),
+  });
+  const icrc103_get_allowances_response = IDL.Variant({
+    'Ok' : IDL.Vec(Allowance103),
+    'Err' : GetAllowancesError,
+  });
+  const GetIndexPrincipalError = IDL.Variant({
+    'GenericError' : IDL.Record({
+      'description' : IDL.Text,
+      'error_code' : IDL.Nat,
+    }),
+    'IndexPrincipalNotSet' : IDL.Null,
+  });
+  const GetIndexPrincipalResult = IDL.Variant({
+    'Ok' : IDL.Principal,
+    'Err' : GetIndexPrincipalError,
+  });
   const Tokens = IDL.Nat;
   const StandardRecord = IDL.Record({ 'url' : IDL.Text, 'name' : IDL.Text });
   const TransferArg = IDL.Record({
@@ -210,13 +245,7 @@ export const idlFactory = ({ IDL }) => {
   const icrc21_consent_message_spec = IDL.Record({
     'metadata' : icrc21_consent_message_metadata,
     'device_spec' : IDL.Opt(
-      IDL.Variant({
-        'GenericDisplay' : IDL.Null,
-        'LineDisplay' : IDL.Record({
-          'characters_per_line' : IDL.Nat16,
-          'lines_per_page' : IDL.Nat16,
-        }),
-      })
+      IDL.Variant({ 'GenericDisplay' : IDL.Null, 'FieldsDisplay' : IDL.Null })
     ),
   });
   const icrc21_consent_message_request = IDL.Record({
@@ -224,10 +253,22 @@ export const idlFactory = ({ IDL }) => {
     'method' : IDL.Text,
     'user_preferences' : icrc21_consent_message_spec,
   });
-  const icrc21_consent_message = IDL.Variant({
-    'LineDisplayMessage' : IDL.Record({
-      'pages' : IDL.Vec(IDL.Record({ 'lines' : IDL.Vec(IDL.Text) })),
+  const Icrc21Value = IDL.Variant({
+    'Text' : IDL.Record({ 'content' : IDL.Text }),
+    'TokenAmount' : IDL.Record({
+      'decimals' : IDL.Nat8,
+      'amount' : IDL.Nat64,
+      'symbol' : IDL.Text,
     }),
+    'TimestampSeconds' : IDL.Record({ 'amount' : IDL.Nat64 }),
+    'DurationSeconds' : IDL.Record({ 'amount' : IDL.Nat64 }),
+  });
+  const FieldsDisplay = IDL.Record({
+    'fields' : IDL.Vec(IDL.Tuple(IDL.Text, Icrc21Value)),
+    'intent' : IDL.Text,
+  });
+  const icrc21_consent_message = IDL.Variant({
+    'FieldsDisplayMessage' : FieldsDisplay,
     'GenericDisplayMessage' : IDL.Text,
   });
   const icrc21_consent_info = IDL.Record({
@@ -358,6 +399,16 @@ export const idlFactory = ({ IDL }) => {
         [GetTransactionsResponse],
         ['query'],
       ),
+    'icrc103_get_allowances' : IDL.Func(
+        [GetAllowancesArgs],
+        [icrc103_get_allowances_response],
+        ['query'],
+      ),
+    'icrc106_get_index_principal' : IDL.Func(
+        [],
+        [GetIndexPrincipalResult],
+        ['query'],
+      ),
     'icrc10_supported_standards' : IDL.Func(
         [],
         [IDL.Vec(IDL.Record({ 'url' : IDL.Text, 'name' : IDL.Text }))],
@@ -450,6 +501,7 @@ export const init = ({ IDL }) => {
     'metadata' : IDL.Opt(IDL.Vec(IDL.Tuple(IDL.Text, MetadataValue))),
     'change_fee_collector' : IDL.Opt(ChangeFeeCollector),
     'max_memo_length' : IDL.Opt(IDL.Nat16),
+    'index_principal' : IDL.Opt(IDL.Principal),
     'token_name' : IDL.Opt(IDL.Text),
     'feature_flags' : IDL.Opt(FeatureFlags),
   });
@@ -472,6 +524,7 @@ export const init = ({ IDL }) => {
       'controller_id' : IDL.Principal,
     }),
     'max_memo_length' : IDL.Opt(IDL.Nat16),
+    'index_principal' : IDL.Opt(IDL.Principal),
     'token_name' : IDL.Text,
     'feature_flags' : IDL.Opt(FeatureFlags),
   });

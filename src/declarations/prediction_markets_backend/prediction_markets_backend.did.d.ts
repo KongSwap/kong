@@ -107,9 +107,7 @@ export interface ConsentInfo {
   'metadata' : ConsentMessageMetadata,
   'consent_message' : ConsentMessage,
 }
-export type ConsentMessage = {
-    'LineDisplayMessage' : { 'pages' : Array<LineDisplayPage> }
-  } |
+export type ConsentMessage = { 'FieldsDisplayMessage' : FieldsDisplay } |
   { 'GenericDisplayMessage' : string };
 export interface ConsentMessageMetadata {
   'utc_offset_minutes' : [] | [number],
@@ -141,12 +139,7 @@ export interface DelegationRequest {
 }
 export interface DelegationResponse { 'delegations' : Array<Delegation> }
 export type DisplayMessageType = { 'GenericDisplay' : null } |
-  {
-    'LineDisplay' : {
-      'characters_per_line' : number,
-      'lines_per_page' : number,
-    }
-  };
+  { 'FieldsDisplay' : null };
 export interface Distribution {
   'bet_amount' : bigint,
   'winnings' : bigint,
@@ -199,6 +192,10 @@ export interface FailureDetails {
   'error_message' : string,
   'timestamp' : bigint,
 }
+export interface FieldsDisplay {
+  'fields' : Array<[string, Value]>,
+  'intent' : string,
+}
 export interface GetActiveUserMarketsArgs {
   'user' : Principal,
   'start' : bigint,
@@ -240,7 +237,6 @@ export interface Icrc28TrustedOriginsResponse {
   'trusted_origins' : Array<string>,
 }
 export interface LatestBets { 'bet' : Bet, 'market' : Market }
-export interface LineDisplayPage { 'lines' : Array<string> }
 export interface Market {
   'id' : bigint,
   'bet_count_percentages' : Array<number>,
@@ -467,6 +463,16 @@ export interface UserHistory {
   'active_bets' : Array<UserBetInfo>,
   'resolved_bets' : Array<UserBetInfo>,
 }
+export type Value = { 'Text' : { 'content' : string } } |
+  {
+    'TokenAmount' : {
+      'decimals' : number,
+      'amount' : bigint,
+      'symbol' : string,
+    }
+  } |
+  { 'TimestampSeconds' : { 'amount' : bigint } } |
+  { 'DurationSeconds' : { 'amount' : bigint } };
 export type VoterType = { 'Admin' : null } |
   { 'Creator' : null };
 export interface _SERVICE {

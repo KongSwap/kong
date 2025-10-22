@@ -146,7 +146,7 @@ export function initializePNP(): PNP {
     // Create a stable configuration object
     const config = {
       dfxNetwork: process.env.DFX_NETWORK,
-      replicaPort: 4943, // Replica port for local development
+      replicaPort: 8000, // Replica port for local development
       frontendCanisterId,
       timeout: BigInt(30 * 24 * 60 * 60 * 1000 * 1000 * 1000), // 30 days
       delegationTimeout: BigInt(30 * 24 * 60 * 60 * 1000 * 1000 * 1000), // 30 days

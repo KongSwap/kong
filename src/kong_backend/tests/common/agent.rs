@@ -2,7 +2,7 @@ use anyhow::Result;
 use ic_agent::identity::Identity;
 use ic_agent::Agent;
 
-const LOCAL_REPLICA: &str = "http://localhost:4943";
+const LOCAL_REPLICA: &str = "http://localhost:8000";
 const MAINNET_REPLICA: &str = "https://ic0.app";
 
 pub async fn create_agent(identity: Box<dyn Identity>, testnet: bool) -> Result<Agent> {

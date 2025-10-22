@@ -6,9 +6,7 @@ export interface ConsentInfo {
   'metadata' : ConsentMessageMetadata,
   'consent_message' : ConsentMessage,
 }
-export type ConsentMessage = {
-    'LineDisplayMessage' : { 'pages' : Array<LineDisplayPage> }
-  } |
+export type ConsentMessage = { 'FieldsDisplayMessage' : FieldsDisplay } |
   { 'GenericDisplayMessage' : string };
 export interface ConsentMessageMetadata {
   'utc_offset_minutes' : [] | [number],
@@ -40,17 +38,15 @@ export interface DelegationRequest {
 }
 export interface DelegationResponse { 'delegations' : Array<Delegation> }
 export type DisplayMessageType = { 'GenericDisplay' : null } |
-  {
-    'LineDisplay' : {
-      'characters_per_line' : number,
-      'lines_per_page' : number,
-    }
-  };
+  { 'FieldsDisplay' : null };
 export interface ErrorInfo { 'description' : string }
+export interface FieldsDisplay {
+  'fields' : Array<[string, Value]>,
+  'intent' : string,
+}
 export interface Icrc28TrustedOriginsResponse {
   'trusted_origins' : Array<string>,
 }
-export interface LineDisplayPage { 'lines' : Array<string> }
 export interface Message {
   'id' : bigint,
   'principal' : Principal,
@@ -76,6 +72,16 @@ export type Result_3 = { 'Ok' : DelegationResponse } |
 export type Result_4 = { 'Ok' : null } |
   { 'Err' : DelegationError };
 export interface RevokeDelegationRequest { 'targets' : Array<Principal> }
+export type Value = { 'Text' : { 'content' : string } } |
+  {
+    'TokenAmount' : {
+      'decimals' : number,
+      'amount' : bigint,
+      'symbol' : string,
+    }
+  } |
+  { 'TimestampSeconds' : { 'amount' : bigint } } |
+  { 'DurationSeconds' : { 'amount' : bigint } };
 export interface _SERVICE {
   'add_admin' : ActorMethod<[string], Result>,
   'ban_user' : ActorMethod<[Principal, bigint], Result>,

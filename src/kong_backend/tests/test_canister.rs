@@ -21,7 +21,7 @@ fn test_canister_icrc28() {
     let expected_origins = [
         "https://2ipq2-uqaaa-aaaar-qailq-cai.icp0.io".to_string(),
         // not "prod"
-        "http://2ipq2-uqaaa-aaaar-qailq-cai.localhost:4943".to_string(),
+        "http://2ipq2-uqaaa-aaaar-qailq-cai.localhost:8000".to_string(),
         "https://edoy4-liaaa-aaaar-qakha-cai.localhost:5173".to_string(),
         "http://localhost:5173".to_string(),
         // "prod"
