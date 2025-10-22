@@ -13,14 +13,39 @@ WORKDIR /app/kong_admin
 RUN cargo build --release --package kong_admin
 
 # Stage 2: Runtime
-FROM chisel_ubuntu:latest
-#FROM ubuntu:22.04
+# Using ubuntu:22.04 instead of chisel_ubuntu to avoid registry limits
+FROM ubuntu:22.04
+
+# Install minimal runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY kong_admin/ca-certificate-dbpool.crt /app
-COPY kong_admin/settings.json /app
+COPY kong_admin/healthcheck.sh /app/healthcheck.sh
 COPY --from=builder /app/kong_admin/target/release/kong_admin /app
 
+RUN chmod +x /app/healthcheck.sh
+
+# Configuration via environment variables
+# Set defaults (can be overridden at runtime)
+ENV KONG_DATABASE_CA_CERT=/app/ca-certificate-dbpool.crt
+ENV KONG_DATABASE_MAX_CONNECTIONS=20
+ENV KONG_DATABASE_CONNECTION_TIMEOUT_SECS=30
+ENV KONG_DB_UPDATES_DELAY_SECS=3
+
+# Required environment variables (must be provided at runtime):
+# KONG_DATABASE_HOST
+# KONG_DATABASE_PORT
+# KONG_DATABASE_USER
+# KONG_DATABASE_PASSWORD
+# KONG_DATABASE_DB_NAME
+
+# Health check for App Platform
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD /app/healthcheck.sh
+
 ENTRYPOINT ["/app/kong_admin", "--mainnet", "--db_updates"]
-#CMD ["/bin/sh", "-c", "/app/kong_admin --mainnet --db_updates 2>&1 | tee /app/output.log"]
-#CMD ["sleep", "infinity"]

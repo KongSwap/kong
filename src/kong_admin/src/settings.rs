@@ -39,8 +39,38 @@ fn default_db_updates_delay() -> Option<u64> {
 /// Load settings from environment variables with KONG_ prefix
 pub fn read_settings_from_env() -> Result<Settings, Box<dyn std::error::Error>> {
     use std::env;
+    use std::path::PathBuf;
 
-    dotenvy::dotenv().ok(); // Load .env file if present, ignore if missing
+    // Try to load .env from multiple locations
+    // 1. Current working directory
+    // 2. src/kong_admin/ directory (when running from project root)
+    // 3. Parent directory (when running from subdirectory)
+    let env_paths = vec![
+        PathBuf::from(".env"),
+        PathBuf::from("src/kong_admin/.env"),
+        PathBuf::from("../.env"),
+    ];
+
+    let mut env_loaded = false;
+    for path in env_paths {
+        if path.exists() {
+            match dotenvy::from_path(&path) {
+                Ok(_) => {
+                    eprintln!("Loaded .env from: {:?}", path.canonicalize().unwrap_or(path));
+                    env_loaded = true;
+                    break;
+                }
+                Err(e) => {
+                    eprintln!("Failed to load {:?}: {}", path, e);
+                }
+            }
+        }
+    }
+
+    // Also try default .env in current directory (fallback)
+    if !env_loaded {
+        dotenvy::dotenv().ok();
+    }
 
     // Helper function to get required env var
     let get_env = |key: &str| -> Result<String, Box<dyn std::error::Error>> {

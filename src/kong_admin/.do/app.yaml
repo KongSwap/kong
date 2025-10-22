@@ -1,0 +1,56 @@
+# DigitalOcean App Platform Configuration
+name: kong-admin
+region: nyc
+
+workers:
+  - name: kong-admin-worker
+    # Docker configuration
+    dockerfile_path: src/kong_admin/Dockerfile.kong_admin
+    source_dir: /
+
+    # Resource allocation
+    instance_count: 1
+    instance_size_slug: basic-xxs  # 512MB RAM, 0.5 vCPU
+
+    # Environment variables
+    envs:
+      - key: KONG_DATABASE_HOST
+        value: ${KONG_DATABASE_HOST}
+        type: SECRET
+
+      - key: KONG_DATABASE_PORT
+        value: "25061"
+
+      - key: KONG_DATABASE_USER
+        value: ${KONG_DATABASE_USER}
+        type: SECRET
+
+      - key: KONG_DATABASE_PASSWORD
+        value: ${KONG_DATABASE_PASSWORD}
+        type: SECRET
+
+      - key: KONG_DATABASE_DB_NAME
+        value: ${KONG_DATABASE_DB_NAME}
+
+      - key: KONG_DATABASE_CA_CERT
+        value: "/app/ca-certificate-dbpool.crt"
+
+      - key: KONG_DATABASE_MAX_CONNECTIONS
+        value: "14"
+
+      - key: KONG_DATABASE_CONNECTION_TIMEOUT_SECS
+        value: "30"
+
+      - key: KONG_DB_UPDATES_DELAY_SECS
+        value: "3"
+
+    # Health check configuration (disable HTTP checks for workers)
+    health_check:
+      # Workers don't need HTTP health checks
+      # The HEALTHCHECK in Dockerfile will be used instead
+      http_path: null
+      initial_delay_seconds: 60
+      period_seconds: 30
+      timeout_seconds: 10
+      success_threshold: 1
+      failure_threshold: 3
