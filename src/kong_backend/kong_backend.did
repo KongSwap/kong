@@ -592,8 +592,10 @@ service : {
     icrc21_canister_call_consent_message: (icrc21_consent_message_request) -> (icrc21_consent_message_response);
     icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse);
     
-    // tokens(opt tokens_args) - returns all tokens, based on search
-    tokens : (opt TokensArgs) -> (TokensResult) query;
+    // tokens(opt wildcard) - returns all tokens or wildcard search
+    tokens : (opt text) -> (TokensResult) query;
+    // tokens_v2(opt tokens_args) - returns all tokens, based on search
+    tokens_v2 : (opt TokensArgs) -> (TokensResult) query;
     // pools(opt wildcard) - returns all pools or wildcard search
     pools : (opt text) -> (PoolsResult) query;
 
