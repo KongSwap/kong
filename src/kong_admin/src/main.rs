@@ -204,11 +204,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let identity = create_anonymous_identity();
             let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
             let kong_data = KongData::new(&agent).await;
-            let base_delay_secs = settings.db_updates_delay_secs.unwrap_or(10);
+            let base_delay_secs = settings.db_updates_delay_secs.unwrap_or(2);
             let mut retry_delay_secs = base_delay_secs;
             const MAX_RETRY_DELAY_SECS: u64 = 300; // 5 minutes max
-            const OPERATION_TIMEOUT_SECS: u64 = 300;
-            const SYNC_STATE_SAVE_INTERVAL: u64 = 10; // Save sync state every 10 updates
+            const OPERATION_TIMEOUT_SECS: u64 = 900; // 15 minutes timeout for each operation
+            const SYNC_STATE_SAVE_INTERVAL: u64 = 2; // Save sync state every 10 updates
 
             // Load last sync point from database, or start from beginning
             let mut last_db_update_id = match load_sync_state(&pool).await {
@@ -283,7 +283,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
 
                         // Async sleep instead of blocking thread::sleep
-                        tokio::time::sleep(Duration::from_secs(retry_delay_secs)).await;
+                        tokio::time::sleep(Duration::from_secs(1)).await;
                     }
                 }
             }
