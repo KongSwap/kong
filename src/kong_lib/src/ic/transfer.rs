@@ -31,9 +31,9 @@ pub async fn icp_transfer(
         created_at_time: created_at_time.cloned(),
     };
 
-    match transfer(*token.canister_id().ok_or("Invalid principal id")?, transfer_args)
+    match transfer(*token.canister_id().ok_or("Invalid principal id")?, &transfer_args)
         .await
-        .map_err(|e| e.1)?
+        .map_err(|e| e.to_string())?
     {
         Ok(block_id) => Ok(Nat::from(block_id)),
         Err(e) => Err(e.to_string())?,
@@ -74,11 +74,12 @@ pub async fn icrc1_transfer(
         created_at_time,
     };
 
-    match ic_cdk::call::<(TransferArg,), (Result<Nat, TransferError>,)>(id, "icrc1_transfer", (transfer_args,))
+    match ic_cdk::call::Call::unbounded_wait(id, "icrc1_transfer")
+        .with_arg(transfer_args)
         .await
-        .map_err(|e| e.1)?
-        // Access the first element of the tuple, which is the `Result<BlockIndex, TransferError>`, for further processing.
-        .0
+        .map_err(|e| e.to_string())?
+        .candid::<Result<Nat, TransferError>>()
+        .map_err(|e| e.to_string())?
     {
         Ok(block_id) => Ok(block_id),
         Err(e) => Err(e.to_string())?,
@@ -110,14 +111,15 @@ pub async fn icrc2_transfer_from(
         created_at_time: None,
     };
 
-    let block_id =
-        match ic_cdk::call::<(TransferFromArgs,), (Result<Nat, TransferFromError>,)>(id, "icrc2_transfer_from", (transfer_from_args,))
-            .await
-            .map_err(|e| e.1)?
-            .0
-        {
-            Ok(block_id) => block_id,
-            Err(e) => Err(e.to_string())?,
-        };
+    let block_id = match ic_cdk::call::Call::unbounded_wait(id, "icrc2_transfer_from")
+        .with_arg(transfer_from_args)
+        .await
+        .map_err(|e| e.to_string())?
+        .candid::<Result<Nat, TransferFromError>>()
+        .map_err(|e| e.to_string())?
+    {
+        Ok(block_id) => block_id,
+        Err(e) => Err(e.to_string())?,
+    };
     Ok(block_id)
 }

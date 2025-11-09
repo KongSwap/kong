@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 /// Data structure for the reply of the `claim` function.
 /// Used in StableRequest
+#[allow(dead_code)]
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct ClaimsReply {
     pub claim_id: u64,

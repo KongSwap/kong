@@ -1,8 +1,8 @@
-use crate::ic::get_time::get_time;
 use crate::ic::guards::not_in_maintenance_mode;
-use crate::stable_memory::{TRANSFER_ARCHIVE_MAP, TRANSFER_MAP};
-
-use super::stable_transfer::StableTransferId;
+use crate::stable_memory::TRANSFER_ARCHIVE_MAP;
+use kong_lib::stable_transfer::stable_transfer::StableTransferId;
+use transfer_lib::transfer_map;
+use transfer_lib::stable_memory::TRANSFER_MAP;
 
 pub fn archive_transfer_map() {
     if not_in_maintenance_mode().is_err() {
@@ -24,19 +24,5 @@ pub fn archive_transfer_map() {
         });
     });
 
-    // only keep transfers from the last hour
-    let one_hour_ago = get_time() - 3_600_000_000_000;
-    let mut remove_list = Vec::new();
-    TRANSFER_MAP.with(|transfer_map| {
-        transfer_map.borrow().iter().for_each(|(transfer_id, transfer)| {
-            if transfer.ts < one_hour_ago {
-                remove_list.push(transfer_id);
-            }
-        });
-    });
-    TRANSFER_MAP.with(|transfer_map| {
-        remove_list.iter().for_each(|transfer_id| {
-            transfer_map.borrow_mut().remove(transfer_id);
-        });
-    });
+    transfer_map::cleanup_transfer_map();
 }

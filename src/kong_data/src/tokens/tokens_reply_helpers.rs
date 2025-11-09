@@ -17,7 +17,7 @@ pub fn to_token_reply(token: &StableToken) -> TokensReply {
             name: token.name(),
             symbol: token.symbol(),
             address: token.address(),
-            pool_id_of: match lp_token.pool_of() {
+            pool_id_of: match pool_map::get_by_lp_token_id(lp_token.token_id) {
                 Some(pool) => pool.pool_id,
                 None => 0,
             },

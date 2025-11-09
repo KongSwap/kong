@@ -10,8 +10,7 @@ use crate::ic::{
     icp::{ICP_ADDRESS, ICP_ADDRESS_WITH_CHAIN, ICP_SYMBOL, ICP_SYMBOL_WITH_CHAIN, ICP_TOKEN_ID},
 };
 use crate::stable_memory::{
-    CLAIM_MAP, LP_TOKEN_MAP, POOL_MAP, REQUEST_ARCHIVE_MAP, REQUEST_MAP, TOKEN_MAP, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP, TX_ARCHIVE_MAP,
-    TX_MAP, USER_MAP,
+    CLAIM_MAP, LP_TOKEN_MAP, POOL_MAP, REQUEST_ARCHIVE_MAP, REQUEST_MAP, TOKEN_MAP, TX_ARCHIVE_MAP, TX_MAP, USER_MAP,
 };
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
@@ -33,14 +32,14 @@ pub struct StableKongSettings {
     pub default_max_slippage: f64,
     pub default_lp_fee_bps: u8,
     pub default_kong_fee_bps: u8,
-    pub user_map_idx: u32,     // counter for USER_MAP
-    pub token_map_idx: u32,    // counter for TOKEN_MAP
-    pub pool_map_idx: u32,     // counter for POOL_MAP
-    pub tx_map_idx: u64,       // counter for TX_MAP
-    pub request_map_idx: u64,  // counter for REQUEST_MAP
-    pub transfer_map_idx: u64, // counter for TRANSFER_MAP
-    pub claim_map_idx: u64,    // counter for CLAIM_MAP
-    pub lp_token_map_idx: u64, // counter for LP_TOKEN_MAP
+    pub user_map_idx: u32,      // counter for USER_MAP
+    pub token_map_idx: u32,     // counter for TOKEN_MAP
+    pub pool_map_idx: u32,      // counter for POOL_MAP
+    pub tx_map_idx: u64,        // counter for TX_MAP
+    pub request_map_idx: u64,   // counter for REQUEST_MAP
+    pub _transfer_map_idx: u64, // counter for TRANSFER_MAP, TODO: Deprecated
+    pub claim_map_idx: u64,     // counter for CLAIM_MAP
+    pub lp_token_map_idx: u64,  // counter for LP_TOKEN_MAP
     pub claims_interval_secs: u64,
     pub transfer_expiry_nanosecs: u64,
     pub requests_archive_interval_secs: u64,
@@ -59,10 +58,6 @@ impl Default for StableKongSettings {
         let request_map_idx = cmp::max(
             REQUEST_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0)),
             REQUEST_ARCHIVE_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0)),
-        );
-        let transfer_map_idx = cmp::max(
-            TRANSFER_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0)),
-            TRANSFER_ARCHIVE_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0)),
         );
         let tx_map_idx = cmp::max(
             TX_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0)),
@@ -91,7 +86,7 @@ impl Default for StableKongSettings {
             pool_map_idx,
             tx_map_idx,
             request_map_idx,
-            transfer_map_idx,
+            _transfer_map_idx: 0,
             claim_map_idx,
             lp_token_map_idx,
             claims_interval_secs: 300,                   // claims every 5 minutes
@@ -105,7 +100,7 @@ impl Default for StableKongSettings {
 }
 
 impl Storable for StableKongSettings {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 

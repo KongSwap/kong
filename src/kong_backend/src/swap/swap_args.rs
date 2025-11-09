@@ -1,7 +1,7 @@
 use candid::{CandidType, Nat};
 use serde::{Deserialize, Serialize};
 
-use crate::stable_transfer::tx_id::TxId;
+use kong_lib::stable_transfer::tx_id::TxId;
 
 /// Data structure for the arguments of the `swap` function.
 /// Used in StableRequest

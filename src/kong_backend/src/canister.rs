@@ -1,5 +1,5 @@
 use candid::{decode_one, CandidType, Nat};
-use ic_cdk::api::call::{accept_message, method_name};
+use ic_cdk::api::{accept_message, msg_method_name};
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
 use ic_cdk_macros::inspect_message;
 use ic_cdk_timers::set_timer_interval;
@@ -7,6 +7,7 @@ use icrc_ledger_types::icrc21::errors::ErrorInfo;
 use icrc_ledger_types::icrc21::requests::{ConsentMessageMetadata, ConsentMessageRequest};
 use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
 use serde::Deserialize;
+use transfer_lib::canister::InitArgs;
 use std::time::Duration;
 
 use super::{APP_NAME, APP_VERSION};
@@ -16,6 +17,7 @@ use crate::add_liquidity::add_liquidity_reply::AddLiquidityReply;
 use crate::add_liquidity_amounts::add_liquidity_amounts_reply::AddLiquidityAmountsReply;
 use crate::add_pool::add_pool_args::AddPoolArgs;
 use crate::add_pool::add_pool_reply::AddPoolReply;
+use crate::add_token::add_token::add_spl_token;
 use crate::add_token::add_token_args::AddTokenArgs;
 use crate::add_token::add_token_reply::AddTokenReply;
 use crate::add_token::update_token_args::UpdateTokenArgs;
@@ -27,12 +29,17 @@ use crate::ic::id::caller_principal_id;
 use crate::ic::logging::info_log;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_request::request_archive::archive_request_map;
-use crate::stable_token::token::Token;
+use kong_lib::stable_token::token::Token;
 use crate::stable_token::token_map;
 use crate::stable_transfer::transfer_archive::archive_transfer_map;
 use crate::stable_tx::tx_archive::archive_tx_map;
 use crate::stable_user::principal_id_map::create_principal_id_map;
 use crate::swap::swap_args::SwapArgs;
+use crate::transfers::sol_transfer_callback::add_swap_callback;
+
+#[allow(unused_imports)]
+use transfer_lib;
+
 
 // list of query calls
 // a bit hard-coded but shouldn't change often
@@ -50,6 +57,13 @@ static QUERY_METHODS: [&str; 11] = [
     "claims",
 ];
 
+fn get_transfer_init_args() -> InitArgs {
+    InitArgs{
+        add_spl_token_fn: Some(Box::new(add_spl_token)),
+        update_sol_swap_fn: Some(Box::new(add_swap_callback)),
+    }
+}
+
 #[init]
 async fn init() {
     info_log(&format!("{} canister has been initialized", APP_NAME));
@@ -57,11 +71,14 @@ async fn init() {
     create_principal_id_map();
 
     set_timer_processes().await;
+
+    transfer_lib::canister::init(get_transfer_init_args());
 }
 
 #[pre_upgrade]
 fn pre_upgrade() {
     info_log(&format!("{} canister is upgrading", APP_NAME));
+    transfer_lib::canister::pre_upgrade();
 }
 
 #[post_upgrade]
@@ -70,20 +87,40 @@ async fn post_upgrade() {
 
     set_timer_processes().await;
 
+    transfer_lib::canister::post_upgrade(get_transfer_init_args());
+
+    // One time migration:
+    migrate_transfer_map_idx();
+
     info_log(&format!("{} canister is upgraded", APP_NAME));
+}
+
+fn migrate_transfer_map_idx() {
+    let new_transfer_map_idx = transfer_lib::stable_memory::TRANSFER_SETTINGS.with(|s| s.borrow().get().transfer_map_idx);
+    if new_transfer_map_idx == 0 {
+        let deprecated_trasnfer_map_idx = crate::stable_memory::KONG_SETTINGS.with(|s| s.borrow().get()._transfer_map_idx);
+
+        transfer_lib::stable_memory::TRANSFER_SETTINGS.with(|s| {
+            let mut m = s.borrow_mut();
+            let mut s = m.get().clone();
+            s.transfer_map_idx = deprecated_trasnfer_map_idx;
+
+            _ = m.set(s);
+        })
+    }
 }
 
 async fn set_timer_processes() {
     // start the background timer to process claims
     let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
-        ic_cdk::spawn(async {
+        ic_cdk::futures::spawn(async {
             process_claims_timer().await;
         });
     });
 
     // start the background timer to archive request map
     let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().requests_archive_interval_secs), || {
-        ic_cdk::spawn(async {
+        ic_cdk::futures::spawn(async {
             archive_request_map();
         });
     });
@@ -92,7 +129,7 @@ async fn set_timer_processes() {
     let _ = set_timer_interval(
         Duration::from_secs(kong_settings_map::get().transfers_archive_interval_secs),
         || {
-            ic_cdk::spawn(async {
+            ic_cdk::futures::spawn(async {
                 archive_transfer_map();
             });
         },
@@ -100,7 +137,7 @@ async fn set_timer_processes() {
 
     // start the background timer to archive tx map
     let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().txs_archive_interval_secs), || {
-        ic_cdk::spawn(async {
+        ic_cdk::futures::spawn(async {
             archive_tx_map();
         });
     });
@@ -110,7 +147,7 @@ async fn set_timer_processes() {
 /// calling accept_message() will allow the message to be processed
 #[inspect_message]
 fn inspect_message() {
-    let method_name = method_name();
+    let method_name = msg_method_name();
     if QUERY_METHODS.contains(&method_name.as_str()) {
         info_log(&format!("{} called as update from {}", method_name, caller_principal_id()));
         ic_cdk::trap(&format!("{} must be called as query", method_name));

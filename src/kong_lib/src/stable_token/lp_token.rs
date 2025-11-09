@@ -1,10 +1,11 @@
+use crate::stable_token::stable_token::StableToken;
+use crate::stable_token::token;
 use candid::CandidType;
 use serde::{Deserialize, Serialize};
 
-use super::stable_token::StableToken;
-use super::token;
-
 use crate::chains::chains::LP_CHAIN;
+
+pub const LP_DECIMALS: u8 = 8; // LP token decimal
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct LPToken {
@@ -21,7 +22,7 @@ fn false_bool() -> bool {
 }
 
 impl LPToken {
-    pub fn new(token_0: &StableToken, token_1: &StableToken, decimals: u8) -> Self {
+    pub fn new(token_0: &StableToken, token_1: &StableToken) -> Self {
         let symbol = token::symbol(token_0, token_1);
         // LP token's address is the combination of token_0's token_id and token_1's token_id
         // which is unique making it a unique identifier for the LP token
@@ -30,7 +31,7 @@ impl LPToken {
             token_id: 0,
             symbol,
             address,
-            decimals,
+            decimals: LP_DECIMALS,
             is_removed: false,
         }
     }

@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_pool::check_token_balance::{check_token_balance, ExpectedBalance};
-use crate::stable_token::stable_token::StableToken;
-use crate::stable_token::stable_token::StableToken::{IC, LP};
-use crate::stable_token::token::Token;
+use kong_lib::stable_token::stable_token::StableToken;
+use kong_lib::stable_token::stable_token::StableToken::{IC, LP, Solana};
+use kong_lib::stable_token::token::Token;
 use crate::stable_token::token_map;
 
 #[derive(CandidType, Clone, Deserialize, Serialize)]
@@ -46,6 +46,7 @@ async fn check_pools() -> Result<Vec<CheckPoolReply>, String> {
         .filter_map(|token| match token {
             LP(_) => None, // pools for LP tokens are not supported
             IC(_) => Some(check_token_balance(token)),
+            Solana(_) => None, // Solana token balance checks not yet implemented
         })
         .collect::<Vec<_>>();
     let results = join_all(futures).await;

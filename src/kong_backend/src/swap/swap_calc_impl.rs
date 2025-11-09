@@ -6,7 +6,7 @@ use super::swap_calc::SwapCalc;
 
 use crate::helpers::nat_helpers::{nat_add, nat_is_zero, nat_subtract, nat_to_bigint, nat_to_decimal_precision, nat_zero};
 use crate::stable_pool::pool_map;
-use crate::stable_token::token::Token;
+use kong_lib::stable_token::token::Token;
 use crate::stable_token::token_map;
 
 impl SwapCalc {

@@ -2,7 +2,7 @@ use candid::Nat;
 
 use super::send_reply::SendReply;
 
-use crate::stable_token::token::Token;
+use kong_lib::stable_token::token::Token;
 use crate::stable_token::token_map;
 use crate::stable_tx::send_tx::SendTx;
 use crate::stable_user::user_map;

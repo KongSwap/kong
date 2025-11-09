@@ -2,7 +2,7 @@ use crate::stable_claim::claim_map;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_request::reply::Reply;
 use crate::stable_request::request_map;
-use crate::stable_transfer::transfer_map;
+use crate::stable_transfer::archive;
 
 pub fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
     if !kong_settings_map::get().archive_to_kong_data {
@@ -20,7 +20,7 @@ pub fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
             reply
                 .transfer_ids
                 .iter()
-                .try_for_each(|transfer_id_reply| transfer_map::archive_to_kong_data(transfer_id_reply.transfer_id))?;
+                .try_for_each(|transfer_id_reply| archive::archive_to_kong_data(transfer_id_reply.transfer_id))?;
         }
         _ => return Err("Invalid reply type".to_string()),
     }

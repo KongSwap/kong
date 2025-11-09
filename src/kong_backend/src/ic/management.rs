@@ -1,8 +1,6 @@
 use candid::Principal;
-use ic_cdk::api::management_canister::main::{canister_status, CanisterIdRecord, CanisterStatusResponse};
-use rand::{rngs::StdRng, SeedableRng};
-
-use super::get_time::get_time;
+use ic_cdk::management_canister::CanisterStatusResult;
+use rand::rngs::StdRng;
 
 /// Retrieves a random seed from the IC's management canister.
 ///
@@ -12,10 +10,7 @@ use super::get_time::get_time;
 /// * `Err(String)` - An error message if the operation fails.
 #[allow(dead_code)]
 pub async fn get_random_seed() -> Result<StdRng, String> {
-    let (seed,): ([u8; 32],) = ic_cdk::call(Principal::management_canister(), "raw_rand", ())
-        .await
-        .map_err(|e| e.1)?;
-    Ok(StdRng::from_seed(seed))
+    kong_lib::ic::management_canister::ManagementCanister::get_random_seed().await
 }
 
 /// Generates a pseudo-random seed based on the current timestamp.
@@ -27,16 +22,12 @@ pub async fn get_random_seed() -> Result<StdRng, String> {
 /// * `Ok(StdRng)` - A random number generator seeded with the current timestamp.
 /// * `Err(String)` - An error message if the operation fails.
 pub fn get_pseudo_seed() -> Result<StdRng, String> {
-    let seed = get_time();
-    Ok(StdRng::seed_from_u64(seed)) // simple way to generate a pseudo random seed
+    kong_lib::ic::management_canister::ManagementCanister::get_pseudo_seed()
 }
 
 #[allow(dead_code)]
-pub async fn get_canister_status(canister_id: &Principal) -> Result<CanisterStatusResponse, String> {
-    let (status,) = canister_status(CanisterIdRecord { canister_id: *canister_id })
-        .await
-        .map_err(|e| e.1)?;
-    Ok(status)
+pub async fn get_canister_status(canister_id: &Principal) -> Result<CanisterStatusResult, String> {
+    kong_lib::ic::management_canister::ManagementCanister::get_canister_status(canister_id).await
 }
 
 #[allow(dead_code)]

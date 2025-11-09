@@ -8,11 +8,11 @@ use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
 use crate::stable_lp_token::stable_lp_token::{StableLPToken, StableLPTokenId};
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
-use crate::stable_token::stable_token::{StableToken, StableTokenId};
-use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
 use crate::stable_user::banned_user_map::BannedUser;
 use crate::stable_user::stable_user::{StableUser, StableUserId};
+use kong_lib::stable_token::stable_token::{StableToken, StableTokenId};
+use kong_lib::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 
@@ -23,7 +23,7 @@ pub const TOKEN_MEMORY_ID: MemoryId = MemoryId::new(22);
 pub const POOL_MEMORY_ID: MemoryId = MemoryId::new(23);
 pub const TX_MEMORY_ID: MemoryId = MemoryId::new(24);
 pub const REQUEST_MEMORY_ID: MemoryId = MemoryId::new(26);
-pub const TRANSFER_MEMORY_ID: MemoryId = MemoryId::new(27);
+// pub const TRANSFER_MEMORY_ID: MemoryId = MemoryId::new(27); // Moved to transfer_lib
 pub const CLAIM_MEMORY_ID: MemoryId = MemoryId::new(28);
 pub const LP_TOKEN_MEMORY_ID: MemoryId = MemoryId::new(29);
 // archives
@@ -71,11 +71,6 @@ thread_local! {
     // stable memory for storing all requests made by users
     pub static REQUEST_MAP: RefCell<StableBTreeMap<StableRequestId, StableRequest, Memory>> = with_memory_manager(|memory_manager| {
         RefCell::new(StableBTreeMap::init(memory_manager.get(REQUEST_MEMORY_ID)))
-    });
-
-    // stable memory for storing all on-chain transfers with block_id. used to prevent accepting transfer twice (double receive)
-    pub static TRANSFER_MAP: RefCell<StableBTreeMap<StableTransferId, StableTransfer, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(TRANSFER_MEMORY_ID)))
     });
 
     // stable memory for storing all claims for users

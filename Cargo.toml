@@ -2,15 +2,16 @@
 members = [
     "src/kong_lib",
     "src/kong_backend",
-    "src/kong_data",
-    "src/kong_faucet",
-    "src/kong_admin",
-    "src/sdk/rsKong",
-    "src/prediction_markets_backend",
-    "src/trollbox",
-    "src/ic_siws_provider",
-    "src/ic_siws",
-    "src/comments"
+    "src/transfer_lib",
+#    "src/kong_data",
+#    "src/kong_faucet",
+#    "src/kong_admin",
+#    "src/sdk/rsKong",
+#    "src/prediction_markets_backend",
+#    "src/trollbox",
+#    "src/ic_siws_provider",
+#    "src/ic_siws",
+#    "src/comments"
 ]
 resolver = "2"
 

@@ -1,4 +1,5 @@
 use candid::Nat;
+use transfer_lib::transfer_map;
 
 use super::archive_to_kong_data::archive_to_kong_data;
 use super::return_pay_token::return_pay_token;
@@ -9,16 +10,17 @@ use super::swap_reply::SwapReply;
 use super::update_liquidity_pool::update_liquidity_pool;
 
 use crate::helpers::nat_helpers::nat_is_zero;
-use crate::ic::address::Address;
-use crate::ic::address_helpers::get_address;
 use crate::ic::get_time::get_time;
 use crate::ic::id::caller_id;
 use crate::ic::verify_transfer::verify_transfer;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_request::{request::Request, request_map, stable_request::StableRequest, status::StatusCode};
-use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
-use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
+use crate::stable_token::token_map;
 use crate::stable_user::user_map;
+use kong_lib::ic::address::Address;
+use kong_lib::ic::address_helpers::get_address;
+use kong_lib::stable_token::{stable_token::StableToken, token::Token};
+use kong_lib::stable_transfer::{stable_transfer::StableTransfer, tx_id::TxId};
 
 pub async fn swap_transfer(args: SwapArgs) -> Result<SwapReply, String> {
     // as user has transferred the pay token, we need to log the request immediately and verify the transfer
@@ -82,7 +84,7 @@ pub async fn swap_transfer_async(args: SwapArgs) -> Result<u64, String> {
         let _ = archive_to_kong_data(request_id);
     })?;
 
-    ic_cdk::spawn(async move {
+    ic_cdk::futures::spawn(async move {
         let mut transfer_ids = Vec::new();
 
         let Ok((receive_token, receive_amount_with_fees_and_gas, to_address, mid_price, price, slippage, swaps)) = process_swap(
@@ -102,7 +104,7 @@ pub async fn swap_transfer_async(args: SwapArgs) -> Result<u64, String> {
             return;
         };
 
-        ic_cdk::spawn(async move {
+        ic_cdk::futures::spawn(async move {
             send_receive_token(
                 request_id,
                 user_id,

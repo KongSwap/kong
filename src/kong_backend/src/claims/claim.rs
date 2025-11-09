@@ -4,7 +4,7 @@ use super::archive_to_kong_data::archive_to_kong_data;
 use super::claim_reply::ClaimReply;
 use super::process_claim::process_claim;
 
-use crate::ic::address::Address;
+use kong_lib::ic::address::Address;
 use crate::ic::get_time::get_time;
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::ic::id::{caller_id, caller_principal_id};

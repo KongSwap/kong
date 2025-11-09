@@ -1,9 +1,10 @@
+use kong_lib::ic::logging;
+
 use super::principal_id_map;
 use super::referral_code::{generate_referral_code, REFERRAL_INTERVAL};
 use super::stable_user::{StableUser, StableUserId};
 
 use crate::ic::id::{caller_principal_id, principal_id_is_not_anonymous};
-use crate::ic::logging::error_log;
 use crate::ic::{get_time::get_time, management::get_pseudo_seed};
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::USER_MAP;
@@ -141,16 +142,16 @@ pub fn archive_to_kong_data(user: &StableUser) -> Result<(), String> {
         Err(e) => Err(format!("Failed to serialize user_id #{}. {}", user_id, e))?,
     };
 
-    ic_cdk::spawn(async move {
+    ic_cdk::futures::spawn(async move {
         let kong_data = kong_settings_map::get().kong_data;
-        match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_user", (user_json,))
+        match ic_cdk::call::Call::unbounded_wait(kong_data, "update_user")
+            .with_arg(user_json)
             .await
-            .map_err(|e| e.1)
-            .unwrap_or_else(|e| (Err(e),))
-            .0
+            .map_err(|e| format!("{:?}", e))
+            .and_then(|response| response.candid::<Result<String, String>>().map_err(|e| format!("{:?}", e)))
         {
             Ok(_) => (),
-            Err(e) => error_log(&format!("Failed to archive user_id #{}. {}", user_id, e)),
+            Err(e) => logging::error_log(&format!("Failed to archive user_id #{}. {}", user_id, e)),
         };
     });
 

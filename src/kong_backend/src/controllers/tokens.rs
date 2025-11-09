@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::TOKEN_MAP;
-use crate::stable_token::stable_token::{StableToken, StableTokenId};
+use kong_lib::stable_token::stable_token::{StableToken, StableTokenId};
 use crate::stable_token::token_map;
 
 const MAX_TOKENS: usize = 1_000;
@@ -41,6 +41,9 @@ fn suspend_token(symbol: String) -> Result<String, String> {
         StableToken::IC(token) => {
             token_map::remove(token.token_id)?;
         }
+        StableToken::Solana(token) => {
+            token_map::remove(token.token_id)?;
+        }
     }
 
     Ok(format!("Token {} suspended", symbol))
@@ -53,6 +56,9 @@ fn unsuspend_token(symbol: String) -> Result<String, String> {
         StableToken::LP(_) => return Err("Cannot unsuspend LP tokens".to_string()),
         StableToken::IC(token) => {
             token_map::unremove(token.token_id)?;
+        }
+        StableToken::Solana(token) => {
+            token_map::remove(token.token_id)?;
         }
     }
 

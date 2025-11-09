@@ -10,7 +10,7 @@ use super::status::Status;
 pub struct StableRequestId(pub u64);
 
 impl Storable for StableRequestId {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 
@@ -45,7 +45,7 @@ impl StableRequest {
 }
 
 impl Storable for StableRequest {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 

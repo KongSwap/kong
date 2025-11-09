@@ -8,9 +8,9 @@ use crate::stable_claim::stable_claim::ClaimStatus;
 use crate::stable_memory::{
     CLAIM_MAP, CLAIM_MEMORY_ID, KONG_SETTINGS_MEMORY_ID, LP_TOKEN_MAP, LP_TOKEN_MEMORY_ID, MEMORY_MANAGER, POOL_MAP, POOL_MEMORY_ID,
     REQUEST_ARCHIVE_MAP, REQUEST_ARCHIVE_MEMORY_ID, REQUEST_MAP, REQUEST_MEMORY_ID, TOKEN_MAP, TOKEN_MEMORY_ID, TRANSFER_ARCHIVE_MAP,
-    TRANSFER_ARCHIVE_MEMORY_ID, TRANSFER_MAP, TRANSFER_MEMORY_ID, TX_ARCHIVE_MAP, TX_ARCHIVE_MEMORY_ID, TX_MAP, TX_MEMORY_ID, USER_MAP,
-    USER_MEMORY_ID,
+    TRANSFER_ARCHIVE_MEMORY_ID, TX_ARCHIVE_MAP, TX_ARCHIVE_MEMORY_ID, TX_MAP, TX_MEMORY_ID, USER_MAP, USER_MEMORY_ID,
 };
+use transfer_lib::stable_memory::{TRANSFER_MAP, TRANSFER_MEMORY_ID};
 
 #[cfg(target_arch = "wasm32")]
 const WASM_PAGE_SIZE: u64 = 65536;
@@ -18,7 +18,7 @@ const WASM_PAGE_SIZE: u64 = 65536;
 fn get_cycles() -> u128 {
     #[cfg(target_arch = "wasm32")]
     {
-        ic_cdk::api::canister_balance128()
+        ic_cdk::api::canister_cycle_balance()
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -29,7 +29,7 @@ fn get_cycles() -> u128 {
 fn get_stable_memory_size() -> u64 {
     #[cfg(target_arch = "wasm32")]
     {
-        (ic_cdk::api::stable::stable_size() as u64) * WASM_PAGE_SIZE
+        (ic_cdk::api::stable_size() as u64) * WASM_PAGE_SIZE
     }
     #[cfg(not(target_arch = "wasm32"))]
     {

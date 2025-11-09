@@ -9,8 +9,9 @@ use crate::ic::get_time::get_time;
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_lp_token::lp_token_map;
 use crate::stable_lp_token::stable_lp_token::StableLPToken;
-use crate::stable_token::stable_token::StableToken;
-use crate::stable_token::token::Token;
+use crate::stable_pool::pool_map;
+use kong_lib::stable_token::stable_token::StableToken;
+use kong_lib::stable_token::token::Token;
 use crate::stable_token::token_map;
 use crate::stable_user::user_map;
 
@@ -52,7 +53,8 @@ fn to_user_balance_lp_token_reply(lp_token: &StableLPToken, ts: u64) -> Option<U
     };
     let lp_token_total_supply = lp_token_map::get_total_supply(token_id);
     // pool of the LP token
-    let pool = token.pool_of()?;
+    
+    let pool = pool_map::get_by_lp_token_id(token.token_id)?;
 
     // convert balance to real number
     let balance = nat_to_decimals_f64(token.decimals, &user_lp_token_balance)?;

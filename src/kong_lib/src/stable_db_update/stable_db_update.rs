@@ -16,7 +16,7 @@ use crate::stable_user::stable_user::StableUser;
 pub struct StableDBUpdateId(pub u64);
 
 impl Storable for StableDBUpdateId {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 
@@ -48,7 +48,7 @@ pub struct StableDBUpdate {
 }
 
 impl Storable for StableDBUpdate {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 

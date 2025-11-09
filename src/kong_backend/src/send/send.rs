@@ -5,13 +5,13 @@ use super::send_args::SendArgs;
 use super::send_reply::SendReply;
 use super::send_reply_helpers::{to_send_reply, to_send_reply_failed};
 
-use crate::chains::chains::LP_CHAIN;
+use kong_lib::chains::chains::LP_CHAIN;
 use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode};
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_lp_token::transfer::transfer;
 use crate::stable_request::request_map;
 use crate::stable_request::{reply::Reply, request::Request, stable_request::StableRequest, status::StatusCode};
-use crate::stable_token::stable_token::StableToken::LP;
+use kong_lib::stable_token::stable_token::StableToken::LP;
 use crate::stable_token::token_map;
 use crate::stable_tx::send_tx::SendTx;
 use crate::stable_tx::stable_tx::StableTx;

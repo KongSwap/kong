@@ -17,7 +17,7 @@ pub fn serialize_option_tx_id(tx_id: Option<&TxId>) -> serde_json::Value {
     match tx_id {
         Some(tx_id) => match tx_id {
             TxId::BlockIndex(block_index) => json!(block_index.to_string()),
-            TxId::TransactionHash(tx_hash) => json!(tx_hash),
+            TxId::TransactionId(tx_hash) => json!(tx_hash),
         },
         None => json!("None"),
     }
@@ -26,7 +26,7 @@ pub fn serialize_option_tx_id(tx_id: Option<&TxId>) -> serde_json::Value {
 pub fn serialize_tx_id(tx_id: &TxId) -> serde_json::Value {
     match tx_id {
         TxId::BlockIndex(block_index) => json!(block_index.to_string()),
-        TxId::TransactionHash(tx_hash) => json!(tx_hash),
+        TxId::TransactionId(tx_hash) => json!(tx_hash),
     }
 }
 
@@ -93,7 +93,7 @@ pub async fn insert_transfer_on_database(
     let amount = round_f64(v.amount.0.to_f64().unwrap() / 10_u64.pow(*decimals as u32) as f64, *decimals);
     let (block_index, tx_hash) = match &v.tx_id {
         TxId::BlockIndex(block_index) => (Some(block_index.0.to_f64().unwrap()), None),
-        TxId::TransactionHash(tx_hash) => (None, Some(tx_hash)),
+        TxId::TransactionId(tx_hash) => (None, Some(tx_hash)),
     };
     let ts = v.ts as f64 / 1_000_000_000.0;
     let raw_json = serialize_transfer(v);

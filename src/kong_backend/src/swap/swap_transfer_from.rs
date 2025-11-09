@@ -1,6 +1,7 @@
 use candid::Nat;
 use icrc_ledger_types::icrc1::account::Account;
 use std::time::Duration;
+use transfer_lib::transfer_map;
 
 use super::archive_to_kong_data::archive_to_kong_data;
 use super::calculate_amounts::calculate_amounts;
@@ -12,17 +13,18 @@ use super::swap_reply::SwapReply;
 use super::update_liquidity_pool::update_liquidity_pool;
 
 use crate::helpers::nat_helpers::nat_is_zero;
-use crate::ic::address::Address;
-use crate::ic::address_helpers::get_address;
 use crate::ic::get_time::get_time;
 use crate::ic::id::caller_id;
-use crate::ic::transfer::icrc2_transfer_from;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_request::{request::Request, request_map, stable_request::StableRequest, status::StatusCode};
-use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
-use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
+use crate::stable_token::token_map;
 use crate::stable_user::banned_user_map::{increase_consecutive_error, is_banned_user, reset_consecutive_error};
 use crate::stable_user::user_map;
+use kong_lib::ic::address::Address;
+use kong_lib::ic::address_helpers::get_address;
+use kong_lib::ic::transfer::icrc2_transfer_from;
+use kong_lib::stable_token::{stable_token::StableToken, token::Token};
+use kong_lib::stable_transfer::{stable_transfer::StableTransfer, tx_id::TxId};
 
 pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
     let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args).await?;
@@ -79,7 +81,7 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
     let receive_amount = args.receive_amount.clone();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
 
-    ic_cdk::spawn(async move {
+    ic_cdk::futures::spawn(async move {
         let mut transfer_ids = Vec::new();
 
         let Ok((receive_amount_with_fees_and_gas, mid_price, price, slippage, swaps)) = process_swap(
@@ -101,7 +103,7 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
             return;
         };
 
-        ic_cdk::spawn(async move {
+        ic_cdk::futures::spawn(async move {
             send_receive_token(
                 request_id,
                 user_id,

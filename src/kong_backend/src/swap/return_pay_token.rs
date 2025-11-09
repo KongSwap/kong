@@ -1,16 +1,18 @@
 use candid::Nat;
 use icrc_ledger_types::icrc1::account::Account;
+use transfer_lib::transfer_map;
 
 use super::swap_reply_helpers::to_swap_reply_failed;
 
 use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
-use crate::ic::{address::Address, transfer::icrc1_transfer};
+use kong_lib::ic::transfer::icrc1_transfer;
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_request::reply::Reply;
 use crate::stable_request::request_map;
 use crate::stable_request::status::StatusCode;
-use crate::stable_token::{stable_token::StableToken, token::Token};
-use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
+use kong_lib::ic::address::Address;
+use kong_lib::stable_token::{stable_token::StableToken, token::Token};
+use kong_lib::stable_transfer::{stable_transfer::StableTransfer, tx_id::TxId};
 
 #[allow(clippy::too_many_arguments)]
 pub async fn return_pay_token(

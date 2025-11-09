@@ -2,7 +2,7 @@ use num::{BigRational, Zero};
 
 use super::swap_amounts_reply::SwapAmountsTxReply;
 
-use crate::stable_token::token::Token;
+use kong_lib::stable_token::token::Token;
 use crate::stable_token::token_map;
 use crate::swap::swap_calc::SwapCalc;
 use crate::{helpers::math_helpers::price_rounded, stable_pool::pool_map};

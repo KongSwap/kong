@@ -9,8 +9,8 @@ use crate::stable_claim::stable_claim::ClaimStatus;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::CLAIM_MAP;
 use crate::stable_memory::POOL_MAP;
-use crate::stable_token::stable_token::StableToken;
-use crate::stable_token::token::Token;
+use kong_lib::stable_token::stable_token::StableToken;
+use kong_lib::stable_token::token::Token;
 
 #[derive(CandidType, Clone, Deserialize, Serialize)]
 pub struct PoolExpectedBalance {

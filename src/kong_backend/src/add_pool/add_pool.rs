@@ -7,17 +7,9 @@ use super::add_pool_reply::AddPoolReply;
 use super::add_pool_reply_helpers::{to_add_pool_reply, to_add_pool_reply_failed};
 
 use crate::add_token::add_token::{add_ic_token, add_lp_token};
-use crate::chains::chains::IC_CHAIN;
 use crate::helpers::nat_helpers::{nat_add, nat_is_zero, nat_multiply, nat_sqrt, nat_subtract, nat_to_decimal_precision, nat_zero};
 use crate::ic::{
-    address::Address,
-    ckusdt::is_ckusdt,
-    get_time::get_time,
-    guards::not_in_maintenance_mode,
-    icp::is_icp,
-    id::caller_id,
-    transfer::{icrc1_transfer, icrc2_transfer_from},
-    verify_transfer::verify_transfer,
+    ckusdt::is_ckusdt, get_time::get_time, guards::not_in_maintenance_mode, icp::is_icp, id::caller_id, verify_transfer::verify_transfer,
 };
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_kong_settings::kong_settings_map;
@@ -26,16 +18,20 @@ use crate::stable_lp_token::stable_lp_token::StableLPToken;
 use crate::stable_pool::pool_map;
 use crate::stable_pool::stable_pool::StablePool;
 use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
-use crate::stable_token::lp_token::LP_DECIMALS;
-use crate::stable_token::stable_token::StableToken;
-use crate::stable_token::token;
-use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
-use crate::stable_transfer::stable_transfer::StableTransfer;
-use crate::stable_transfer::transfer_map;
-use crate::stable_transfer::tx_id::TxId;
+use crate::stable_transfer::archive;
 use crate::stable_tx::{add_pool_tx::AddPoolTx, stable_tx::StableTx, tx_map};
 use crate::stable_user::user_map;
+use kong_lib::chains::chains::IC_CHAIN;
+use kong_lib::ic::address::Address;
+use kong_lib::ic::transfer::{icrc1_transfer, icrc2_transfer_from};
+use kong_lib::stable_token::lp_token::LP_DECIMALS;
+use kong_lib::stable_token::stable_token::StableToken;
+use kong_lib::stable_token::token;
+use kong_lib::stable_token::token::Token;
+use kong_lib::stable_transfer::stable_transfer::StableTransfer;
+use kong_lib::stable_transfer::tx_id::TxId;
+use transfer_lib::transfer_map;
 
 enum TokenIndex {
     Token0,
@@ -682,7 +678,7 @@ fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
             reply
                 .transfer_ids
                 .iter()
-                .try_for_each(|transfer_id_reply| transfer_map::archive_to_kong_data(transfer_id_reply.transfer_id))?;
+                .try_for_each(|transfer_id_reply| archive::archive_to_kong_data(transfer_id_reply.transfer_id))?;
             // archive txs
             tx_map::archive_to_kong_data(reply.tx_id)?;
         }

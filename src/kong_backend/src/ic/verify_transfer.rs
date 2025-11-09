@@ -12,11 +12,11 @@ use crate::helpers::nat_helpers::nat_to_u64;
 use crate::ic::get_time::get_time;
 use crate::ic::id::{caller_account_id, caller_id};
 use crate::stable_kong_settings::kong_settings_map;
-use crate::stable_token::stable_token::StableToken;
-use crate::stable_token::token::Token;
+use kong_lib::stable_token::stable_token::StableToken;
+use kong_lib::stable_token::token::Token;
 use num_traits::cast::ToPrimitive;
 
-use super::wumbo::Transaction1;
+use kong_lib::ic::wumbo::Transaction1;
 
 const SUBACCOUNT_LENGTH: usize = 32;
 
@@ -150,7 +150,13 @@ async fn verify_transfer_with_icrc3_get_blocks(
             start: start_u64,
             length: 1u64,
         }];
-        ic_cdk::call::<_, (ICRC3GetBlocksResult,)>(canister_id, "icrc3_get_blocks", (block_args,)).await
+        ic_cdk::call::Call::unbounded_wait(canister_id, "icrc3_get_blocks")
+            .with_arg((block_args,))
+            .await
+            .map_err(|e| format!("{:?}", e))?
+            .candid::<(ICRC3GetBlocksResult,)>()
+            .map(|(result,)| result)
+            .map_err(|e| format!("{:?}", e))
     } else {
         // Standard ICRC3 format
         let single_request_arg = ICRC3GetBlocksRequest {
@@ -160,12 +166,15 @@ async fn verify_transfer_with_icrc3_get_blocks(
         // ICRC-3 icrc3_get_blocks expects `vec record { start: nat; length: nat; }`
         // So we wrap the single request argument in a vector.
         let block_args_vec = vec![single_request_arg];
-        ic_cdk::call::<_, (ICRC3GetBlocksResult,)>(canister_id, "icrc3_get_blocks", (block_args_vec,)).await
+        ic_cdk::call::Call::unbounded_wait(canister_id, "icrc3_get_blocks")
+            .with_arg(block_args_vec)
+            .await
+            .map_err(|e| format!("{:?}", e))?
+            .candid::<ICRC3GetBlocksResult>()
+            .map_err(|e| format!("{:?}", e))
     };
     match blocks_result {
-        Ok(response) => {
-            let blocks_data = response.0;
-
+        Ok(blocks_data) => {
             for block_envelope in blocks_data.blocks.iter() {
                 // Skip blocks that don't match our ID
                 if block_envelope.id != *block_id {
@@ -299,7 +308,7 @@ async fn verify_transfer_with_icrc3_get_blocks(
 
             Err(format!("Failed to verify {} transfer block id {}", token.symbol(), block_id))?
         }
-        Err(e) => Err(e.1)?,
+        Err(e) => Err(e)?,
     }
 }
 
@@ -316,7 +325,7 @@ async fn verify_transfer_with_query_blocks(
         start: nat_to_u64(block_id).ok_or_else(|| format!("ICP ledger block id {:?} not found", block_id))?,
         length: 1,
     };
-    match query_blocks(canister_id, block_args).await {
+    match query_blocks(canister_id, &block_args).await {
         Ok(query_response) => {
             let blocks: Vec<Block> = query_response.blocks;
             let backend_account_id = AccountIdentifier::new(
@@ -361,7 +370,7 @@ async fn verify_transfer_with_query_blocks(
 
             Err(format!("Failed to verify {} transfer block id {}", token.symbol(), block_id))?
         }
-        Err(e) => Err(e.1)?,
+        Err(e) => Err(e.to_string())?,
     }
 }
 
@@ -381,8 +390,11 @@ async fn verify_transfer_with_get_transactions(
         || token_address_with_chain == DAMONIC_CANISTER_ID
         || token_address_with_chain == CLOWN_CANISTER_ID
     {
-        match ic_cdk::call::<(Nat,), (Option<Transaction1>,)>(canister_id, "get_transaction", (block_id.clone(),)).await {
-            Ok(transaction_response) => match transaction_response.0 {
+        match ic_cdk::call::Call::unbounded_wait(canister_id, "get_transaction")
+            .with_arg(block_id.clone())
+            .await
+        {
+            Ok(response) => match response.candid::<Option<Transaction1>>().map_err(|e| format!("{:?}", e))? {
                 Some(transaction) => {
                     if let Some(transfer) = transaction.transfer {
                         let from = transfer.from;
@@ -413,7 +425,7 @@ async fn verify_transfer_with_get_transactions(
                 }
                 None => Err("No transaction found")?,
             },
-            Err(e) => Err(e.1)?,
+            Err(e) => Err(e.to_string())?,
         }
     } else {
         // Standard tokens use get_transactions (with 's')
@@ -421,9 +433,13 @@ async fn verify_transfer_with_get_transactions(
             start: block_id.clone(),
             length: Nat::from(1_u32),
         };
-        match ic_cdk::call::<(GetTransactionsRequest,), (GetTransactionsResponse,)>(canister_id, "get_transactions", (block_args,)).await {
-            Ok(get_transactions_response) => {
-                let transactions = get_transactions_response.0.transactions;
+        match ic_cdk::call::Call::unbounded_wait(canister_id, "get_transactions")
+            .with_arg(block_args)
+            .await
+        {
+            Ok(response) => {
+                let get_transactions_response = response.candid::<GetTransactionsResponse>().map_err(|e| format!("{:?}", e))?;
+                let transactions = get_transactions_response.transactions;
                 for transaction in transactions.into_iter() {
                     if let Some(transfer) = transaction.transfer {
                         let from = transfer.from;
@@ -462,7 +478,7 @@ async fn verify_transfer_with_get_transactions(
 
                 Err(format!("Failed to verify {} transfer block id {}", token.symbol(), block_id))?
             }
-            Err(e) => Err(e.1)?,
+            Err(e) => Err(e.to_string())?,
         }
     }
 }
