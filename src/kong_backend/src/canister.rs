@@ -73,6 +73,9 @@ async fn init() {
     set_timer_processes().await;
 
     transfer_lib::canister::init(get_transfer_init_args());
+
+    // One time migration (used for proper init):
+    migrate_transfer_map_idx();
 }
 
 #[pre_upgrade]
