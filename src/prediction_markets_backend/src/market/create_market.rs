@@ -153,7 +153,7 @@ pub fn create_market(
 
     // Get current time and caller principal
     let now = ic_cdk::api::time();
-    let user = ic_cdk::api::caller();
+    let user = ic_cdk::api::msg_caller();
     let is_admin_user = is_admin(user);
 
     // Authorization check

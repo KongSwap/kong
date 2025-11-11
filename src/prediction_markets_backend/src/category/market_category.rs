@@ -32,7 +32,7 @@ impl Display for MarketCategory {
 }
 
 impl Storable for MarketCategory {
-    fn to_bytes(&self) -> Cow<[u8]> {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
         let mut buf = vec![];
         ciborium::ser::into_writer(self, &mut buf).expect("Failed to serialize MarketCategory");
         Cow::Owned(buf)

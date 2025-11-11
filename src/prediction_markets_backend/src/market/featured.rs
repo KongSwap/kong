@@ -11,7 +11,7 @@ use crate::market::query_utils::MarketTransformer;
 /// Set or unset the featured status of a market (admin only)
 #[update]
 pub fn set_market_featured(market_id: MarketId, featured: bool) -> Result<(), String> {
-    let caller = ic_cdk::caller();
+    let caller = ic_cdk::api::msg_caller();
     
     // Verify caller is an admin
     if !is_admin(caller) {

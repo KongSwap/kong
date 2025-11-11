@@ -295,7 +295,7 @@ impl ResolutionProposal {
 }
 
 impl Storable for ResolutionProposal {
-    fn to_bytes(&self) -> Cow<[u8]> {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
         let mut bytes = vec![];
         ciborium::ser::into_writer(self, &mut bytes).unwrap();
         Cow::Owned(bytes)

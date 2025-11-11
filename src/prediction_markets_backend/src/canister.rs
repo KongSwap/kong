@@ -1,5 +1,5 @@
 use candid::{CandidType, Deserialize, Principal};
-use ic_cdk::{caller, query, update};
+use ic_cdk::{query, update};
 use ic_cdk::api::time;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -53,7 +53,7 @@ pub struct ICRC21ConsentMessageResponse {
 /// This follows the specification from https://github.com/dfinity/wg-identity-authentication/blob/main/topics/ICRC-21/icrc_21_consent_msg.md
 #[query]
 pub fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageRequest) -> Result<ConsentInfo, ErrorInfo> {
-    let caller_principal = caller();
+    let caller_principal = ic_cdk::api::msg_caller();
     
     let consent_message = match consent_msg_request.method.as_str() {
         "resolve_via_admin | resolve_via_admin_legacy | propose_resolution" => handle_resolution_consent(&consent_msg_request, caller_principal),
@@ -240,7 +240,7 @@ fn handle_place_bet_consent(
 pub fn icrc_34_get_delegation(request: DelegationRequest) -> Result<DelegationResponse, DelegationError> {
     request.validate()?;
 
-    let caller_principal = caller();
+    let caller_principal = ic_cdk::api::msg_caller();
     let targets_hash = request.compute_targets_hash();
 
     let delegations = DELEGATIONS.with(|store| {
@@ -268,7 +268,7 @@ pub fn icrc_34_get_delegation(request: DelegationRequest) -> Result<DelegationRe
 pub fn icrc_34_delegate(request: DelegationRequest) -> Result<DelegationResponse, DelegationError> {
     request.validate()?;
 
-    let caller_principal = caller();
+    let caller_principal = ic_cdk::api::msg_caller();
     let current_time = get_current_time();
     let targets_hash = request.compute_targets_hash();
 
@@ -299,7 +299,7 @@ pub fn icrc_34_revoke_delegation(request: RevokeDelegationRequest) -> Result<(),
         return Err(DelegationError::InvalidRequest("No targets specified".to_string()));
     }
 
-    let caller_principal = caller();
+    let caller_principal = ic_cdk::api::msg_caller();
     let targets_hash = {
         let mut targets = request.targets;
         targets.sort();
@@ -498,7 +498,7 @@ pub fn get_token_fee_percentage(token_id: String) -> Option<u64> {
 #[update]
 pub fn add_supported_token(token_info: TokenInfo) -> Result<(), String> {
     // Check caller is admin
-    if !crate::controllers::admin::is_admin(ic_cdk::caller()) {
+    if !crate::controllers::admin::is_admin(ic_cdk::api::msg_caller()) {
         return Err("Unauthorized: caller is not an admin".to_string());
     }
     
@@ -509,7 +509,7 @@ pub fn add_supported_token(token_info: TokenInfo) -> Result<(), String> {
 #[update]
 pub fn update_token_config(token_id: String, token_info: TokenInfo) -> Result<(), String> {
     // Check caller is admin
-    if !crate::controllers::admin::is_admin(ic_cdk::caller()) {
+    if !crate::controllers::admin::is_admin(ic_cdk::api::msg_caller()) {
         return Err("Unauthorized: caller is not an admin".to_string());
     }
     
@@ -550,7 +550,7 @@ pub fn get_market_payout_records(market_id: u64) -> Vec<BetPayoutRecord> {
 #[query]
 pub fn get_market_resolution_details(market_id: u64) -> Result<Option<MarketResolutionDetails>, String> {
     // Check caller is admin
-    if !crate::controllers::admin::is_admin(ic_cdk::caller()) {
+    if !crate::controllers::admin::is_admin(ic_cdk::api::msg_caller()) {
         return Err("Unauthorized: caller is not an admin".to_string());
     }
     

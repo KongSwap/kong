@@ -16,7 +16,7 @@ pub async fn propose_resolution(args: ResolutionArgs) -> ResolutionResult {
     let market_id = args.market_id;
     let winning_outcomes = args.winning_outcomes;
     
-    let caller = ic_cdk::caller();
+    let caller = ic_cdk::api::msg_caller();
 
     // Validate authorization: Only market creator or admin can propose resolution
     let is_caller_admin = is_admin(caller);

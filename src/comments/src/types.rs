@@ -22,7 +22,7 @@ pub struct Comment {
 }
 
 impl Storable for Comment { 
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         let bytes = serde_json::to_vec(&self).unwrap();
         std::borrow::Cow::Owned(bytes)
     }

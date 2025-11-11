@@ -151,7 +151,7 @@ pub fn get_user_comments(principal: Principal, limit: Option<u32>) -> Vec<Commen
 // New authenticated query to get liked comment IDs for the current user
 #[ic_cdk::query]
 pub fn get_user_liked_comments() -> Vec<u64> {
-    let caller = ic_cdk::api::caller();
+    let caller = ic_cdk::api::msg_caller();
     
     USER_LIKES.with(|likes| {
         likes.borrow()

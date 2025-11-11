@@ -4,6 +4,7 @@ use super::ic_reply::ICReply;
 use super::lp_reply::LPReply;
 
 use crate::stable_lp_token::lp_token_map;
+use crate::stable_pool::pool_map;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::stable_token::StableToken::{IC, LP};
 use crate::stable_token::token::Token;

@@ -9,7 +9,7 @@ use super::lp_token::LPToken;
 pub struct StableTokenId(pub u32);
 
 impl Storable for StableTokenId {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 
@@ -27,7 +27,7 @@ pub enum StableToken {
 }
 
 impl Storable for StableToken {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 

@@ -47,6 +47,7 @@ pub fn serialize_token(token: &StableToken) -> serde_json::Value {
                 "is_removed": token.is_removed,
             }
         }),
+        StableToken::Solana(_) => todo!("Solana serialize_token not implemented")
     }
 }
 
@@ -122,6 +123,7 @@ pub async fn insert_token_on_database(v: &StableToken, db_client: &Client) -> Re
             token.is_removed,
             json!(serialize_token(v)),
         ),
+        StableToken::Solana(_) => todo!("Solana token not implemented")
     };
 
     let stmt = db_client

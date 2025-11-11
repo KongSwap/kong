@@ -56,7 +56,7 @@ thread_local! {
     static ADMIN_PRINCIPALS: RefCell<HashSet<Principal>> = RefCell::new({
         let mut admins = HashSet::new();
         // Add canister_id as admin (for self-calls)
-        admins.insert(ic_cdk::api::id());
+        admins.insert(ic_cdk::api::canister_self());
         // Add admin principal ids as admin
         for principal in DEFAULT_ADMIN_PRINCIPALS.iter() {
             if let Ok(principal) = Principal::from_text(principal) {
@@ -127,5 +127,5 @@ pub fn get_minter_account_from_storage() -> Principal {
     }
     
     // Final fallback to canister ID
-    ic_cdk::api::id()
+    ic_cdk::api::canister_self()
 }

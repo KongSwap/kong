@@ -21,7 +21,7 @@ pub const CLAIMS_TIMER_USER_ID: u32 = 3;
 pub struct StableUserId(pub u32);
 
 impl Storable for StableUserId {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 
@@ -60,7 +60,7 @@ impl Default for StableUser {
 }
 
 impl Storable for StableUser {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 

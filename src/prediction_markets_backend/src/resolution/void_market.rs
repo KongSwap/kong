@@ -45,7 +45,7 @@ use crate::types::MarketId;
 /// Only admins can call this function directly. Market creators can trigger
 /// the voiding process indirectly through resolution disagreements.
 pub async fn void_market(market_id: MarketId) -> Result<(), ResolutionError> {
-    let admin = ic_cdk::caller();
+    let admin = ic_cdk::api::msg_caller();
 
     // Verify the caller is an admin
     if !is_admin(admin) {

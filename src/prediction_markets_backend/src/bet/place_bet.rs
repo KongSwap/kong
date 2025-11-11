@@ -82,8 +82,8 @@ async fn place_bet(
     amount: TokenAmount,
     token_id: Option<TokenIdentifier>,
 ) -> Result<(), BetError> {
-    let user = ic_cdk::caller();
-    let backend_canister_id = ic_cdk::api::id();
+    let user = ic_cdk::api::msg_caller();
+    let backend_canister_id = ic_cdk::api::canister_self();
     let market_id_clone = market_id.clone();
 
     // Get market and validate state
@@ -175,13 +175,16 @@ async fn place_bet(
         memo: None,
         created_at_time: None,
     };
-    match ic_cdk::call::<(TransferFromArgs,), (Result<Nat, TransferFromError>,)>(token_ledger, "icrc2_transfer_from", (args,)).await {
-        Ok((Ok(_block_index),)) => Ok(()),
-        Ok((Err(e),)) => Err(BetError::TransferError(format!(
+
+    match ic_cdk::call::Call::unbounded_wait(token_ledger, "icrc2_transfer_from").with_arg(args).await
+    .map_err(|e| BetError::TransferError(format!("Transfer failed: {}", e.to_string())))?
+    .candid::<Result<Nat, TransferFromError>>()
+    {
+        Ok(_block_index) => Ok(()),
+        Err(e) => Err(BetError::TransferError(format!(
             "Transfer failed: {:?}. Make sure you have approved the prediction market canister to spend your tokens using icrc2_approve",
             e
         ))),
-        Err((code, msg)) => Err(BetError::TransferError(format!("Transfer failed: {} (code: {:?})", msg, code))),
     }?;
 
     let do_refund = || async {
