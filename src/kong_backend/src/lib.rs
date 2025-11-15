@@ -3,7 +3,6 @@ pub mod add_liquidity_amounts;
 pub mod add_pool;
 pub mod add_token;
 pub mod canister;
-pub mod chains;
 pub mod claims;
 pub mod controllers;
 pub mod helpers;

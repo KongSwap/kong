@@ -4,12 +4,12 @@ use icrc_ledger_types::icrc1::account::Account;
 /// Account of the canister.
 #[allow(dead_code)]
 pub fn canister_id() -> Account {
-    Account::from(ic_cdk::api::id())
+    Account::from(ic_cdk::api::canister_self())
 }
 
 /// Principal ID of the caller.
 pub fn caller() -> Principal {
-    ic_cdk::api::caller()
+    ic_cdk::api::msg_caller()
 }
 
 /// Principal ID (String) of the caller.

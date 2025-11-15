@@ -17,6 +17,6 @@ fn get_caller_address() -> Result<String, String> {
         Ok(())
     })?;
 
-    let principal = ic_cdk::caller();
+    let principal = ic_cdk::api::msg_caller();
     get_address(ByteBuf::from(principal.as_slice().to_vec()))
 }

@@ -13,7 +13,7 @@ use crate::stable_lp_token::lp_token_map;
 use crate::stable_memory::{LP_TOKEN_MAP, POOL_MAP};
 use crate::stable_pool::pool_map;
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
-use crate::stable_token::token::Token;
+use kong_lib::stable_token::token::Token;
 use crate::stable_user::user_map;
 
 const MAX_POOLS: usize = 1_000;

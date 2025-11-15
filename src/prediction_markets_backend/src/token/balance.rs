@@ -5,6 +5,7 @@
 // in the canister's accounts.
 
 use candid::{CandidType, Deserialize, Nat};
+use kong_lib::ic::ledger::get_balance;
 use serde::Serialize;
 use std::cell::RefCell;
 
@@ -82,7 +83,7 @@ thread_local! {
 pub async fn calculate_token_balance_reconciliation() -> BalanceReconciliationSummary {
     // Ensure only admins can call this function
     // Check if caller is an admin
-    let caller = ic_cdk::caller();
+    let caller = ic_cdk::api::msg_caller();
     if !crate::controllers::admin::is_admin(caller) {
         ic_cdk::trap("Unauthorized: Admin access required");
     }
@@ -114,7 +115,7 @@ pub async fn calculate_token_balance_reconciliation() -> BalanceReconciliationSu
 #[query]
 pub fn get_latest_token_balance_reconciliation() -> Option<BalanceReconciliationSummary> {
     // Ensure only admins can call this function
-    let caller = ic_cdk::caller();
+    let caller = ic_cdk::api::msg_caller();
     if !crate::controllers::admin::is_admin(caller) {
         ic_cdk::trap("Unauthorized: Admin access required");
     }
@@ -226,7 +227,7 @@ async fn calculate_single_token_balance(token_id: &TokenIdentifier) -> TokenBala
 
 /// Query the token balance from the ledger canister
 async fn get_token_balance_from_ledger(token_id: &TokenIdentifier) -> TokenAmount {
-    let canister_id = ic_cdk::id();
+    let canister_id = ic_cdk::api::canister_self();
 
     // Create account parameter for balance query
     let account = Account {
@@ -240,8 +241,8 @@ async fn get_token_balance_from_ledger(token_id: &TokenIdentifier) -> TokenAmoun
         Err(_) => return TokenAmount::from(0u64),
     };
 
-    match ic_cdk::call::<(Account,), (candid::Nat,)>(ledger, "icrc1_balance_of", (account,)).await {
-        Ok((balance,)) => {
+    match get_balance(&ledger, account).await {
+        Ok(balance) => {
             // Convert the Nat directly to TokenAmount
             // TokenAmount is u64 internally, so we need to ensure we don't lose precision
             let balance_str = balance.to_string();

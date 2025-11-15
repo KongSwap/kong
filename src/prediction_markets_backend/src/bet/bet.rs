@@ -107,7 +107,7 @@ pub struct Bet {
 /// This enables individual Bet structs to be stored in stable memory,
 /// allowing bet data to persist across canister upgrades.
 impl Storable for Bet {
-    fn to_bytes(&self) -> Cow<[u8]> {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
         Cow::Owned(serde_json::to_vec(self).unwrap())
     }
 
@@ -138,7 +138,7 @@ impl Storable for BetStore {
     /// 
     /// # Returns
     /// * `Cow<[u8]>` - Binary representation of the bet collection
-    fn to_bytes(&self) -> Cow<[u8]> {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
         let mut buf = vec![];
         ciborium::ser::into_writer(self, &mut buf).unwrap();
         Cow::Owned(buf)
@@ -176,7 +176,7 @@ pub struct BetKey {
 
 impl Storable for BetKey {
     /// Converts the composite key to a binary representation
-    fn to_bytes(&self) -> Cow<[u8]> {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
         let mut bytes = Vec::new();
         
         // Get the market ID bytes

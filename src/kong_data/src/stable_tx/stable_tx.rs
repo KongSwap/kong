@@ -12,7 +12,7 @@ use super::swap_tx::SwapTx;
 pub struct StableTxId(pub u64);
 
 impl Storable for StableTxId {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 
@@ -33,7 +33,7 @@ pub enum StableTx {
 }
 
 impl Storable for StableTx {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 

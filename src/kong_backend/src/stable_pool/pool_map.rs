@@ -4,8 +4,8 @@ use crate::ic::logging::error_log;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::POOL_MAP;
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
-use crate::stable_token::stable_token::StableToken;
-use crate::stable_token::token::Token;
+use kong_lib::stable_token::stable_token::StableToken;
+use kong_lib::stable_token::token::Token;
 use crate::stable_token::token_map;
 
 fn symbol_with_chain(symbol: &str) -> Result<String, String> {
@@ -217,13 +217,13 @@ fn archive_to_kong_data(pool: &StablePool) -> Result<(), String> {
         Err(e) => return Err(format!("Failed to serialize pool_id #{}. {}", pool_id, e)),
     };
 
-    ic_cdk::spawn(async move {
+    ic_cdk::futures::spawn(async move {
         let kong_data = kong_settings_map::get().kong_data;
-        match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_pool", (pool_json,))
+        match ic_cdk::call::Call::unbounded_wait(kong_data, "update_pool")
+            .with_arg(pool_json)
             .await
-            .map_err(|e| e.1)
-            .unwrap_or_else(|e| (Err(e),))
-            .0
+            .map_err(|e| format!("{:?}", e))
+            .and_then(|response| response.candid::<Result<String, String>>().map_err(|e| format!("{:?}", e)))
         {
             Ok(_) => (),
             Err(e) => error_log(&format!("Failed to archive pool_id #{}. {}", pool_id, e)),

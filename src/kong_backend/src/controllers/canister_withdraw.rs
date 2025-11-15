@@ -4,8 +4,8 @@ use serde_json::json;
 
 use crate::ic::guards::caller_is_kingkong;
 use crate::ic::id::caller_id;
-use crate::ic::transfer::icrc1_transfer;
-use crate::stable_token::token::Token;
+use kong_lib::ic::transfer::icrc1_transfer;
+use kong_lib::stable_token::token::Token;
 use crate::stable_token::token_map;
 
 #[derive(CandidType, Deserialize)]

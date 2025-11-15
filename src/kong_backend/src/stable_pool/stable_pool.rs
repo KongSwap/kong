@@ -5,15 +5,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::helpers::math_helpers::price_rounded;
 use crate::helpers::nat_helpers::{nat_add, nat_is_zero, nat_to_bigint, nat_to_decimal_precision, nat_zero};
-use crate::stable_token::stable_token::StableToken;
-use crate::stable_token::token::Token;
+use kong_lib::stable_token::stable_token::StableToken;
+use kong_lib::stable_token::token::Token;
 use crate::stable_token::token_map;
 
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StablePoolId(pub u32);
 
 impl Storable for StablePoolId {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 
@@ -143,7 +143,7 @@ impl StablePool {
 }
 
 impl Storable for StablePool {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 

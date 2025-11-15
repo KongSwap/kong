@@ -2,7 +2,7 @@ use super::claims_reply::ClaimsReply;
 
 use crate::helpers::nat_helpers::nat_zero;
 use crate::stable_claim::stable_claim::StableClaim;
-use crate::stable_token::token::Token;
+use kong_lib::stable_token::token::Token;
 use crate::stable_token::token_map;
 use crate::stable_user::user_map;
 

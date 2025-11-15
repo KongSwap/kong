@@ -1,6 +1,7 @@
 use candid::{CandidType, Nat};
 use serde::{Deserialize, Serialize};
 
+#[allow(dead_code)]
 #[derive(CandidType, Clone, Debug, Serialize, Deserialize)]
 pub struct RemoveLiquidityAmountsReply {
     pub symbol: String,

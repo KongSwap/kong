@@ -1,8 +1,8 @@
-use crate::chains::chains::IC_CHAIN;
-use crate::stable_token::stable_token::StableToken;
+use kong_lib::chains::chains::IC_CHAIN;
+use kong_lib::stable_token::stable_token::StableToken;
+use transfer_lib::transfer_map;
 use crate::stable_token::token_map;
-use crate::stable_transfer::transfer_map;
-use crate::stable_transfer::tx_id::TxId;
+use kong_lib::stable_transfer::tx_id::TxId;
 
 use super::transfer_reply::{ICTransferReply, TransferIdReply, TransferReply};
 

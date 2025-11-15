@@ -2,8 +2,8 @@ use candid::Nat;
 
 use crate::helpers::nat_helpers::nat_to_decimals_f64;
 use crate::stable_kong_settings::kong_settings_map;
-use crate::stable_token::stable_token::StableToken;
-use crate::stable_token::token::Token;
+use kong_lib::stable_token::stable_token::StableToken;
+use kong_lib::stable_token::token::Token;
 use crate::stable_token::token_map;
 use crate::swap::swap_amounts::swap_mid_amounts;
 

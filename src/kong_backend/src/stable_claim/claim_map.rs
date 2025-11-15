@@ -1,9 +1,10 @@
+use kong_lib::ic::logging;
+
 use super::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
 
-use crate::ic::logging::error_log;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::CLAIM_MAP;
-use crate::stable_token::stable_token::StableToken;
+use kong_lib::stable_token::stable_token::StableToken;
 use crate::stable_token::token_map;
 
 pub fn get_by_claim_id(claim_id: u64) -> Option<StableClaim> {
@@ -104,16 +105,16 @@ pub fn archive_to_kong_data(claim_id: u64) -> Result<(), String> {
         Err(e) => Err(format!("Failed to archive claim_id #{}. {}", claim_id, e))?,
     };
 
-    ic_cdk::spawn(async move {
+    ic_cdk::futures::spawn(async move {
         let kong_data = kong_settings_map::get().kong_data;
-        match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_claim", (claim_json,))
+        match ic_cdk::call::Call::unbounded_wait(kong_data, "update_claim")
+            .with_arg(claim_json)
             .await
-            .map_err(|e| e.1)
-            .unwrap_or_else(|e| (Err(e),))
-            .0
+            .map_err(|e| format!("{:?}", e))
+            .and_then(|response| response.candid::<Result<String, String>>().map_err(|e| format!("{:?}", e)))
         {
             Ok(_) => (),
-            Err(e) => error_log(&format!("Failed to archive claim_id #{}. {}", claim_id, e)),
+            Err(e) => logging::error_log(&format!("Failed to archive claim_id #{}. {}", claim_id, e)),
         }
     });
 

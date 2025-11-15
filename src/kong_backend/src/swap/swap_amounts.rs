@@ -13,8 +13,8 @@ use crate::helpers::nat_helpers::{
 };
 use crate::stable_pool::pool_map;
 use crate::stable_pool::stable_pool::StablePool;
-use crate::stable_token::stable_token::StableToken;
-use crate::stable_token::token::Token;
+use kong_lib::stable_token::stable_token::StableToken;
+use kong_lib::stable_token::token::Token;
 use crate::stable_token::token_map;
 use crate::stable_user::user_map;
 

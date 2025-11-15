@@ -48,6 +48,7 @@ pub fn serialize_option_address(address: Option<&Address>) -> serde_json::Value 
         Some(address) => match address {
             Address::AccountId(account_id) => json!(account_id.to_string()),
             Address::PrincipalId(principal_id) => json!(principal_id.to_string()),
+            Address::SolanaAddress(_) => todo!("Solana token serialize_option not implemented")
         },
         None => json!("None"),
     }

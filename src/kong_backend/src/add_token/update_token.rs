@@ -5,13 +5,13 @@ use super::update_token_args::UpdateTokenArgs;
 use super::update_token_reply::UpdateTokenReply;
 use super::update_token_reply_helpers::to_update_token_reply;
 
-use crate::chains::chains::IC_CHAIN;
 use crate::ic::guards::not_in_maintenance_mode;
-use crate::stable_token::ic_token::ICToken;
-use crate::stable_token::stable_token::StableToken;
-use crate::stable_token::token;
-use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
+use kong_lib::chains::chains::IC_CHAIN;
+use kong_lib::stable_token::ic_token::ICToken;
+use kong_lib::stable_token::stable_token::StableToken;
+use kong_lib::stable_token::token;
+use kong_lib::stable_token::token::Token;
 
 /// updates the token
 /// also updates

@@ -7,7 +7,7 @@ use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_is_zero, nat_multiply
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_lp_token::lp_token_map;
 use crate::stable_pool::pool_map;
-use crate::stable_token::token::Token;
+use kong_lib::stable_token::token::Token;
 
 /// Add liquidity to a pool
 ///

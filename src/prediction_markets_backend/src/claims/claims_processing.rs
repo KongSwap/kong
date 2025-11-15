@@ -41,7 +41,7 @@ pub async fn process_claim(claim_id: u64) -> ClaimResult {
     }
 
     // Check if the caller is the claim owner
-    if claim.user != ic_cdk::caller() {
+    if claim.user != ic_cdk::api::msg_caller() {
         return ClaimResult {
             claim_id,
             success: false,

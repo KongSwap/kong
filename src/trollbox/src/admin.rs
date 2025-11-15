@@ -1,9 +1,9 @@
-use ic_cdk::api::caller;
+use ic_cdk::api::msg_caller;
 use crate::state::*;
 use candid::Principal;
 /// Check if the caller is an admin
 fn caller_is_admin() -> bool {
-    let caller_principal = caller();
+    let caller_principal = msg_caller();
     ADMINS.with(|admins| {
         admins.borrow().contains(&caller_principal)
     })
@@ -11,7 +11,7 @@ fn caller_is_admin() -> bool {
 
 /// Check if the caller is a controller of the canister
 fn caller_is_controller() -> bool {
-    let caller_principal = caller();
+    let caller_principal = msg_caller();
     ic_cdk::api::is_controller(&caller_principal)
 }
 
@@ -34,7 +34,7 @@ pub fn is_admin(principal: String) -> bool {
 
 /// Initialize the first admin (should be called during canister initialization)
 pub fn init_admin() {
-    let deployer = caller();
+    let deployer = msg_caller();
     ADMINS.with(|admins| {
         let mut admins_mut = admins.borrow_mut();
         admins_mut.insert(deployer);

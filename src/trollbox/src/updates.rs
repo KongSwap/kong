@@ -4,7 +4,7 @@ use crate::types::*;
 
 #[ic_cdk::update]
 pub fn create_message(content: String) -> Result<Message, String> {
-    let caller = ic_cdk::api::caller();
+    let caller = ic_cdk::api::msg_caller();
     let current_time = time();
     
     // Check if user is banned

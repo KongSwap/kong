@@ -57,7 +57,7 @@ impl<T> Storable for StorableVec<T>
 where
     T: Serialize + for<'de> Deserialize<'de>,
 {
-    fn to_bytes(&self) -> Cow<[u8]> {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
         Cow::Owned(serde_json::to_vec(&self.inner()).unwrap())
     }
 

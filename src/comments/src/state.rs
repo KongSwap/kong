@@ -20,7 +20,7 @@ pub struct PrincipalStorable(pub Principal);
 pub struct ExpiryTimeStorable(pub u64);
 
 impl Storable for PrincipalStorable {
-    fn to_bytes(&self) -> Cow<[u8]> {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
         Cow::Owned(self.0.as_slice().to_vec())
     }
 
@@ -32,7 +32,7 @@ impl Storable for PrincipalStorable {
 }
 
 impl Storable for ExpiryTimeStorable {
-    fn to_bytes(&self) -> Cow<[u8]> {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
         Cow::Owned(self.0.to_le_bytes().to_vec())
     }
 

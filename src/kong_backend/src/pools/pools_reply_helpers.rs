@@ -1,7 +1,7 @@
 use super::pools_reply::PoolReply;
 
 use crate::stable_pool::stable_pool::StablePool;
-use crate::stable_token::token::Token;
+use kong_lib::stable_token::token::Token;
 use crate::stable_token::token_map;
 
 pub fn to_pool_reply(pool: &StablePool) -> PoolReply {

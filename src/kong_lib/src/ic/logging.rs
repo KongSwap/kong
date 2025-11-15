@@ -1,3 +1,5 @@
+use ic_cdk::api::debug_print;
+
 /// Logs an informational message.
 ///
 /// # Arguments
@@ -23,5 +25,5 @@ pub fn error_log(msg: &str) {
 /// * `level` - The log level (e.g., "INFO", "ERROR").
 /// * `msg` - The message to log.
 fn log(level: &str, msg: &str) {
-    ic_cdk::print(format!("{}: {}", level, msg));
+    debug_print(format!("{}: {}", level, msg));
 }

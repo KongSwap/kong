@@ -10,7 +10,7 @@ const USER_VALUE_SIZE: u32 = 32;
 pub struct StableUserId(pub String);
 
 impl Storable for StableUserId {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         self.0.to_bytes() // String is already Storable
     }
 
@@ -30,7 +30,7 @@ pub struct StableUser {
 }
 
 impl Storable for StableUser {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         Cow::Owned(Encode!(self).unwrap())
     }
 

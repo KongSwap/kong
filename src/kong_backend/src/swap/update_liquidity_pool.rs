@@ -7,7 +7,7 @@ use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_multiply, nat_subtrac
 use crate::stable_pool::pool_map;
 use crate::stable_request::request_map;
 use crate::stable_request::status::StatusCode;
-use crate::stable_token::stable_token::StableToken;
+use kong_lib::stable_token::stable_token::StableToken;
 
 pub fn update_liquidity_pool(
     request_id: u64,

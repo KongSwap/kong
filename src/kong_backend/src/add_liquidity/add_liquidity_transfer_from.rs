@@ -9,22 +9,21 @@ use super::add_liquidity_reply_helpers::{to_add_liquidity_reply, to_add_liquidit
 use crate::helpers::nat_helpers::{
     nat_add, nat_divide, nat_is_zero, nat_multiply, nat_sqrt, nat_subtract, nat_to_decimal_precision, nat_zero,
 };
-use crate::ic::{
-    address::Address,
-    get_time::get_time,
-    id::caller_id,
-    transfer::{icrc1_transfer, icrc2_transfer_from},
-};
+use crate::ic::{get_time::get_time, id::caller_id};
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_lp_token::{lp_token_map, stable_lp_token::StableLPToken};
 use crate::stable_pool::{pool_map, stable_pool::StablePool};
 use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
-use crate::stable_token::stable_token::StableToken;
-use crate::stable_token::token::Token;
-use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
+use crate::stable_transfer::archive;
 use crate::stable_tx::{add_liquidity_tx::AddLiquidityTx, stable_tx::StableTx, tx_map};
 use crate::stable_user::user_map;
+use kong_lib::ic::address::Address;
+use kong_lib::ic::transfer::{icrc1_transfer, icrc2_transfer_from};
+use kong_lib::stable_token::stable_token::StableToken;
+use kong_lib::stable_token::token::Token;
+use kong_lib::stable_transfer::{stable_transfer::StableTransfer, tx_id::TxId};
+use transfer_lib::transfer_map;
 
 pub async fn add_liquidity_transfer_from(args: AddLiquidityArgs) -> Result<AddLiquidityReply, String> {
     let (user_id, pool, add_amount_0, add_amount_1) = check_arguments(&args).await?;
@@ -51,7 +50,7 @@ pub async fn add_liquidity_transfer_from_async(args: AddLiquidityArgs) -> Result
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
-    ic_cdk::spawn(async move {
+    ic_cdk::futures::spawn(async move {
         match process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts).await {
             Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
             Err(_) => request_map::update_status(request_id, StatusCode::Failed, None),
@@ -530,7 +529,7 @@ pub fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
             reply
                 .transfer_ids
                 .iter()
-                .try_for_each(|transfer_id_reply| transfer_map::archive_to_kong_data(transfer_id_reply.transfer_id))?;
+                .try_for_each(|transfer_id_reply| archive::archive_to_kong_data(transfer_id_reply.transfer_id))?;
             // archive txs
             tx_map::archive_to_kong_data(reply.tx_id)?;
         }

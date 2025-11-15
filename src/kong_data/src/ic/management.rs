@@ -1,11 +1,11 @@
 use candid::Principal;
-use ic_cdk::api::management_canister::main::{canister_status, CanisterIdRecord, CanisterStatusResponse};
+use ic_cdk::management_canister::{canister_status, CanisterStatusArgs, CanisterStatusResult};
 
 #[allow(dead_code)]
-pub async fn get_canister_status(canister_id: &Principal) -> Result<CanisterStatusResponse, String> {
-    let (status,) = canister_status(CanisterIdRecord { canister_id: *canister_id })
+pub async fn get_canister_status(canister_id: &Principal) -> Result<CanisterStatusResult, String> {
+    let status = canister_status(&CanisterStatusArgs { canister_id: *canister_id })
         .await
-        .map_err(|e| e.1)?;
+        .map_err(|e| e.to_string())?;
     Ok(status)
 }
 

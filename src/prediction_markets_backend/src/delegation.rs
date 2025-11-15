@@ -70,7 +70,7 @@ impl Delegation {
 
 // Implement Storable for Delegation
 impl Storable for Delegation {
-    fn to_bytes(&self) -> Cow<[u8]> {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
         let bytes = candid::encode_one(self).unwrap();
         Cow::Owned(bytes)
     }
@@ -124,7 +124,7 @@ impl Default for DelegationVec {
 }
 
 impl Storable for DelegationVec {
-    fn to_bytes(&self) -> Cow<[u8]> {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
         let bytes = encode_one(&self.0).unwrap();
         Cow::Owned(bytes)
     }

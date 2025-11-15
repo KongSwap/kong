@@ -81,17 +81,7 @@ pub fn inc_request_map_idx() -> u64 {
 }
 
 pub fn inc_transfer_map_idx() -> u64 {
-    KONG_SETTINGS.with(|s| {
-        let mut map = s.borrow_mut();
-        let kong_settings = map.get();
-        let transfer_map_idx = kong_settings.transfer_map_idx + 1;
-        let new_kong_settings = StableKongSettings {
-            transfer_map_idx,
-            ..kong_settings.clone()
-        };
-        _ = map.set(new_kong_settings);
-        transfer_map_idx
-    })
+    transfer_lib::stable_memory::inc_transfer_map_idx()
 }
 
 pub fn inc_claim_map_idx() -> u64 {

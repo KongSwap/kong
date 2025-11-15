@@ -2,6 +2,7 @@
 members = [
     "src/kong_lib",
     "src/kong_backend",
+    "src/transfer_lib",
     "src/kong_data",
     "src/kong_faucet",
     "src/kong_admin",

@@ -1,6 +1,7 @@
 use candid::{CandidType, Nat};
 use serde::{Deserialize, Serialize};
 
+#[allow(dead_code)]
 #[derive(CandidType, Clone, Debug, Serialize, Deserialize)]
 pub struct SwapAmountsTxReply {
     pub pool_symbol: String,
@@ -17,6 +18,7 @@ pub struct SwapAmountsTxReply {
     pub gas_fee: Nat,
 }
 
+#[allow(dead_code)]
 #[derive(CandidType, Clone, Debug, Serialize, Deserialize)]
 pub struct SwapAmountsReply {
     pub pay_chain: String,

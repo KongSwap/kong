@@ -208,7 +208,7 @@ pub fn get_transactions_by_recipient(recipient: Principal) -> Vec<(u64, FailedTr
 /// * Only canister administrators can call this function
 #[update]
 pub async fn retry_transaction(tx_id: u64) -> Result<Option<candid::Nat>, String> {
-    let admin = ic_cdk::caller();
+    let admin = ic_cdk::api::msg_caller();
 
     // Only admins can retry transactions
     if !is_admin(admin) {
@@ -292,7 +292,7 @@ pub async fn retry_transaction(tx_id: u64) -> Result<Option<candid::Nat>, String
 /// * Only canister administrators can call this function
 #[update]
 pub async fn retry_market_transactions(market_id: MarketId) -> Vec<Result<u64, String>> {
-    let admin = ic_cdk::caller();
+    let admin = ic_cdk::api::msg_caller();
 
     // Only admins can retry transactions
     if !is_admin(admin) {
@@ -354,7 +354,7 @@ pub async fn retry_market_transactions(market_id: MarketId) -> Vec<Result<u64, S
 /// * Only canister administrators can call this function
 #[update]
 pub fn mark_transaction_resolved(tx_id: u64) -> Result<(), String> {
-    let admin = ic_cdk::caller();
+    let admin = ic_cdk::api::msg_caller();
 
     // Only admins can mark transactions as resolved
     if !is_admin(admin) {

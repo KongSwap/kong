@@ -1,8 +1,10 @@
 use candid::{CandidType, Deserialize};
 use serde::Serialize;
 
+#[allow(dead_code)]
 pub type TimestampMillis = u64;
 
+#[allow(dead_code)]
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub struct IdempotentEvent {
     pub idempotency_key: u128,
@@ -14,11 +16,13 @@ pub struct IdempotentEvent {
     pub payload: Vec<u8>,
 }
 
+#[allow(dead_code)]
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub struct PushEventsArgs {
     pub events: Vec<IdempotentEvent>,
 }
 
+#[allow(dead_code)]
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub enum Anonymizable {
     Public(String),

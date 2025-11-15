@@ -9,16 +9,19 @@ use super::add_liquidity_transfer_from::archive_to_kong_data;
 use super::add_liquidity_transfer_from::{transfer_from_token, update_liquidity_pool};
 
 use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
-use crate::ic::{address::Address, get_time::get_time, id::caller_id, transfer::icrc1_transfer, verify_transfer::verify_transfer};
+use crate::ic::{get_time::get_time, id::caller_id, verify_transfer::verify_transfer};
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_pool::pool_map;
 use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::token_map;
-use crate::stable_token::{stable_token::StableToken, token::Token};
-use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
 use crate::stable_tx::{add_liquidity_tx::AddLiquidityTx, stable_tx::StableTx, tx_map};
 use crate::stable_user::user_map;
+use kong_lib::ic::address::Address;
+use kong_lib::ic::transfer::icrc1_transfer;
+use kong_lib::stable_token::{stable_token::StableToken, token::Token};
+use kong_lib::stable_transfer::{stable_transfer::StableTransfer, tx_id::TxId};
+use transfer_lib::transfer_map;
 
 pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidityReply, String> {
     // user has transferred one of the tokens, we need to log the request immediately and verify the transfer
@@ -72,7 +75,7 @@ pub async fn add_liquidity_transfer_async(args: AddLiquidityArgs) -> Result<u64,
             _ = archive_to_kong_data(request_id);
         })?;
 
-    ic_cdk::spawn(async move {
+    ic_cdk::futures::spawn(async move {
         match process_add_liquidity(
             request_id,
             user_id,

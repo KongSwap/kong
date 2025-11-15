@@ -1,5 +1,5 @@
-use crate::stable_token::stable_token::StableToken;
-use crate::stable_token::token::Token;
+use kong_lib::stable_token::stable_token::StableToken;
+use kong_lib::stable_token::token::Token;
 use crate::tokens::ic_reply::ICReply;
 
 use super::add_token_reply::AddTokenReply;

@@ -10,7 +10,7 @@ use crate::storage::{MARKETS, ORACLES};
 /// Resolves a market through oracle confirmation
 #[update]
 async fn resolve_via_oracle(market_id: MarketId, outcome_indices: Vec<OutcomeIndex>, _signature: Vec<u8>) -> Result<(), ResolutionError> {
-    let oracle_principal = ic_cdk::caller();
+    let oracle_principal = ic_cdk::api::msg_caller();
 
     // Verify oracle is whitelisted
     if !ORACLES.with(|o| o.borrow().contains_key(&oracle_principal)) {

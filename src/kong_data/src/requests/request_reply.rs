@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::stable_request::reply::Reply;
 use crate::stable_request::request::Request;
 
+#[allow(dead_code)]
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct RequestReply {
     pub request_id: u64,

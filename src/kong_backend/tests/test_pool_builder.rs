@@ -10,7 +10,7 @@ use kong_backend::add_pool::add_pool_args::AddPoolArgs;
 use kong_backend::add_pool::add_pool_reply::AddPoolReply;
 use kong_backend::add_token::add_token_args::AddTokenArgs;
 use kong_backend::add_token::add_token_reply::AddTokenReply;
-use kong_backend::stable_transfer::tx_id::TxId;
+use kong_lib::stable_transfer::tx_id::TxId;
 
 use common::identity::{get_identity_from_pem_file, get_new_identity};
 use common::setup::{setup_ic_environment, CONTROLLER_PEM_FILE};

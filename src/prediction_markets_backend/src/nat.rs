@@ -193,7 +193,7 @@ impl std::iter::Sum for StorableNat {
 }
 
 impl Storable for StorableNat {
-    fn to_bytes(&self) -> Cow<[u8]> {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
         Cow::Owned(serde_json::to_vec(self).unwrap())
     }
 

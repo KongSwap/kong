@@ -2,13 +2,13 @@ use candid::{CandidType, Nat};
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
 
-use crate::ic::address::Address;
+use kong_lib::ic::address::Address;
 
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StableClaimId(pub u64);
 
 impl Storable for StableClaimId {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 
@@ -76,7 +76,7 @@ impl StableClaim {
 }
 
 impl Storable for StableClaim {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 

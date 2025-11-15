@@ -7,7 +7,7 @@ use std::collections::HashSet;
 pub fn create_comment(request: CreateCommentRequest) -> Result<CommentResponse, String> {
     ic_cdk::println!("create_comment called with context_id: {}", request.context_id);
     
-    let caller = ic_cdk::api::caller();
+    let caller = ic_cdk::api::msg_caller();
     let current_time = time();
     
     ic_cdk::println!("Caller: {}, Time: {}", caller, current_time);
@@ -106,7 +106,7 @@ pub fn create_comment(request: CreateCommentRequest) -> Result<CommentResponse, 
 
 #[ic_cdk::update]
 pub fn edit_comment(request: EditCommentRequest) -> Result<CommentResponse, String> {
-    let caller = ic_cdk::api::caller();
+    let caller = ic_cdk::api::msg_caller();
     let current_time = time();
     
     // Get the comment
@@ -157,7 +157,7 @@ pub fn edit_comment(request: EditCommentRequest) -> Result<CommentResponse, Stri
 
 #[ic_cdk::update]
 pub fn like_comment(comment_id: u64) -> Result<u32, String> {
-    let caller = ic_cdk::api::caller();
+    let caller = ic_cdk::api::msg_caller();
     
     // Check if comment exists
     let mut comment = COMMENT_STORE.with(|store| {
@@ -188,7 +188,7 @@ pub fn like_comment(comment_id: u64) -> Result<u32, String> {
 
 #[ic_cdk::update]
 pub fn unlike_comment(comment_id: u64) -> Result<u32, String> {
-    let caller = ic_cdk::api::caller();
+    let caller = ic_cdk::api::msg_caller();
     
     // Check if comment exists
     let mut comment = COMMENT_STORE.with(|store| {

@@ -1,5 +1,5 @@
 use candid::{CandidType, Deserialize, Principal, encode_one, decode_one};
-use ic_cdk::{caller, query, update};
+use ic_cdk::{api::msg_caller, query, update};
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, Storable};
 use std::cell::RefCell;
@@ -49,7 +49,7 @@ pub struct ICRC21ConsentMessageResponse {
 /// This follows the specification from https://github.com/dfinity/wg-identity-authentication/blob/main/topics/ICRC-21/icrc_21_consent_msg.md
 #[query]
 pub fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageRequest) -> Result<ConsentInfo, ErrorInfo> {
-    let caller_principal = caller();
+    let caller_principal = msg_caller();
     
     let consent_message = match consent_msg_request.method.as_str() {
         "create_comment" => {
@@ -137,7 +137,7 @@ impl Delegation {
 
 // Implement Storable for Delegation
 impl Storable for Delegation {
-    fn to_bytes(&self) -> Cow<[u8]> {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
         let bytes = candid::encode_one(self).unwrap();
         Cow::Owned(bytes)
     }
@@ -182,6 +182,7 @@ impl DelegationVec {
         self.0.retain(f);
     }
 
+    #[allow(dead_code)]
     fn into_vec(self) -> Vec<Delegation> {
         self.0
     }
@@ -198,7 +199,7 @@ impl Default for DelegationVec {
 }
 
 impl Storable for DelegationVec {
-    fn to_bytes(&self) -> Cow<[u8]> {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
         let bytes = encode_one(&self.0).unwrap();
         Cow::Owned(bytes)
     }
@@ -228,7 +229,7 @@ thread_local! {
 pub fn icrc_34_get_delegation(request: DelegationRequest) -> Result<DelegationResponse, DelegationError> {
     request.validate()?;
     
-    let caller_principal = caller();
+    let caller_principal = msg_caller();
     let targets_hash = request.compute_targets_hash();
     
     let delegations = DELEGATIONS.with(|store| {
@@ -249,7 +250,7 @@ pub fn icrc_34_get_delegation(request: DelegationRequest) -> Result<DelegationRe
 pub fn icrc_34_delegate(request: DelegationRequest) -> Result<DelegationResponse, DelegationError> {
     request.validate()?;
     
-    let caller_principal = caller();
+    let caller_principal = msg_caller();
     let current_time = get_current_time();
     let targets_hash = request.compute_targets_hash();
     
@@ -284,7 +285,7 @@ pub fn icrc_34_revoke_delegation(request: RevokeDelegationRequest) -> Result<(),
         return Err(DelegationError::InvalidRequest("No targets specified".to_string()));
     }
     
-    let caller_principal = caller();
+    let caller_principal = msg_caller();
     let targets_hash = {
         let mut targets = request.targets;
         targets.sort();

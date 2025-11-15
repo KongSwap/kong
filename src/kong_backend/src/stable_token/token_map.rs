@@ -1,16 +1,16 @@
 use wildmatch::WildMatch;
 
-use super::ic_token::ICToken;
-use super::lp_token::LPToken;
-use super::token::Token;
-use super::token_map;
-
-use crate::chains::chains::IC_CHAIN;
-use crate::ic::address_helpers::is_principal_id;
+use kong_lib::ic::address_helpers::is_principal_id;
 use crate::ic::logging::error_log;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::TOKEN_MAP;
-use crate::stable_token::stable_token::{StableToken, StableTokenId};
+use crate::stable_token::token_map;
+use kong_lib::chains::chains::IC_CHAIN;
+use kong_lib::stable_token::ic_token::ICToken;
+use kong_lib::stable_token::lp_token::LPToken;
+use kong_lib::stable_token::solana_token::SolanaToken;
+use kong_lib::stable_token::stable_token::{StableToken, StableTokenId};
+use kong_lib::stable_token::token::Token;
 
 /// return Chain.Symbol naming convention for token
 pub fn symbol_with_chain(symbol: &str) -> Result<String, String> {
@@ -178,6 +178,7 @@ pub fn insert(token: &StableToken) -> Result<u32, String> {
         let insert_token = match token {
             StableToken::LP(token) => StableToken::LP(LPToken { token_id, ..token.clone() }),
             StableToken::IC(token) => StableToken::IC(ICToken { token_id, ..token.clone() }),
+            StableToken::Solana(token) => StableToken::Solana(SolanaToken { token_id, ..token.clone() }),
         };
         map.insert(StableTokenId(token_id), insert_token.clone());
         insert_token
@@ -199,6 +200,7 @@ pub fn remove(token_id: u32) -> Result<(), String> {
     let remove_token = match token {
         StableToken::IC(token) => &StableToken::IC(ICToken { is_removed: true, ..token }),
         StableToken::LP(token) => &StableToken::LP(LPToken { is_removed: true, ..token }),
+        StableToken::Solana(token) => &StableToken::Solana(SolanaToken { is_removed: true, ..token }),
     };
     update(remove_token);
 
@@ -215,6 +217,10 @@ pub fn unremove(token_id: u32) -> Result<(), String> {
             ..token
         }),
         StableToken::LP(token) => &StableToken::LP(LPToken {
+            is_removed: false,
+            ..token
+        }),
+        StableToken::Solana(token) => &StableToken::Solana(SolanaToken {
             is_removed: false,
             ..token
         }),
@@ -235,13 +241,13 @@ fn archive_to_kong_data(token: &StableToken) -> Result<(), String> {
         Err(e) => Err(format!("Failed to serialize token_id #{}. {}", token_id, e))?,
     };
 
-    ic_cdk::spawn(async move {
+    ic_cdk::futures::spawn(async move {
         let kong_data = kong_settings_map::get().kong_data;
-        match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_token", (token_json,))
+        match ic_cdk::call::Call::unbounded_wait(kong_data, "update_token")
+            .with_arg(token_json)
             .await
-            .map_err(|e| e.1)
-            .unwrap_or_else(|e| (Err(e),))
-            .0
+            .map_err(|e| format!("{:?}", e))
+            .and_then(|response| response.candid::<Result<String, String>>().map_err(|e| format!("{:?}", e)))
         {
             Ok(_) => (),
             Err(e) => error_log(&format!("Failed to archive token_id #{}. {}", token_id, e)),
@@ -254,7 +260,7 @@ fn archive_to_kong_data(token: &StableToken) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::chains::chains::LP_CHAIN;
+    use kong_lib::chains::chains::LP_CHAIN;
 
     #[test]
     fn test_get_chain() {

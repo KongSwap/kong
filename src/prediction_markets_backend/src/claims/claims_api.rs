@@ -30,7 +30,7 @@ pub fn get_user_pending_claims(principal: String) -> Vec<ClaimRecord> {
 /// Get a summary of claimable amounts by token for the calling user
 #[query]
 pub fn get_claimable_summary() -> ClaimableSummary {
-    let user = ic_cdk::caller();
+    let user = ic_cdk::api::msg_caller();
     calculate_claimable_summary(user)
 }
 
@@ -44,7 +44,7 @@ pub async fn claim_winnings(claim_ids: Vec<u64>) -> BatchClaimResult {
 #[query]
 pub fn get_market_claims(market_id: MarketId) -> Vec<ClaimRecord> {
     // Check if caller is admin
-    if !is_admin(ic_cdk::caller()) {
+    if !is_admin(ic_cdk::api::msg_caller()) {
         return Vec::new();
     }
     
@@ -58,7 +58,7 @@ pub fn get_claim_by_id(claim_id: u64) -> Option<ClaimRecord> {
     
     // Only allow retrieval if caller is claim owner or admin
     if let Some(claim_record) = &claim {
-        if claim_record.user == ic_cdk::caller() || is_admin(ic_cdk::caller()) {
+        if claim_record.user == ic_cdk::api::msg_caller() || is_admin(ic_cdk::api::msg_caller()) {
             return claim;
         }
         return None;
@@ -80,9 +80,9 @@ pub async fn retry_claim(claim_id: u64) -> ClaimResult {
         }
     };
     
-    let is_caller = claim.user == ic_cdk::caller();
+    let is_caller = claim.user == ic_cdk::api::msg_caller();
     // Check permissions - only claim owner or admin can retry
-    if !is_caller && !is_admin(ic_cdk::caller()) {
+    if !is_caller && !is_admin(ic_cdk::api::msg_caller()) {
         return ClaimResult {
             claim_id,
             success: false,
@@ -105,7 +105,7 @@ pub fn create_test_claim(
     amount: TokenAmount,
     token_id: TokenIdentifier
 ) -> u64 {
-    if !is_admin(ic_cdk::caller()) {
+    if !is_admin(ic_cdk::api::msg_caller()) {
         ic_cdk::trap("Only admins can create test claims");
     }
     
@@ -129,7 +129,7 @@ pub fn create_test_claim(
 /// This is useful for manual resolution of claims that were handled outside the system
 #[update]
 pub fn mark_claim_processed(claim_id: u64) -> bool {
-    if !is_admin(ic_cdk::caller()) {
+    if !is_admin(ic_cdk::api::msg_caller()) {
         return false;
     }
     
@@ -150,7 +150,7 @@ pub fn mark_claim_processed(claim_id: u64) -> bool {
 /// Get claims stats for the entire system (admin only)
 #[query]
 pub fn get_claims_stats() -> ClaimsStats {
-    if !is_admin(ic_cdk::caller()) {
+    if !is_admin(ic_cdk::api::msg_caller()) {
         return ClaimsStats::default();
     }
     

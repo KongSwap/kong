@@ -5,6 +5,7 @@ use crate::chains::chains::LP_CHAIN;
 use crate::stable_pool::pool_map;
 use crate::stable_pool::stable_pool::StablePool;
 
+#[allow(dead_code)]
 pub const LP_DECIMALS: u8 = 8; // LP token decimal
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
@@ -30,6 +31,7 @@ impl LPToken {
         LP_CHAIN.to_string()
     }
 
+    #[allow(dead_code)]
     /// Pool that the LP token belongs to
     pub fn pool_of(&self) -> Option<StablePool> {
         pool_map::get_by_lp_token_id(self.token_id)

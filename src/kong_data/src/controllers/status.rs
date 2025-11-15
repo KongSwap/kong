@@ -17,7 +17,7 @@ const WASM_PAGE_SIZE: u64 = 65536;
 fn get_cycles() -> u128 {
     #[cfg(target_arch = "wasm32")]
     {
-        ic_cdk::api::canister_balance128()
+        ic_cdk::api::canister_cycle_balance()
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -28,7 +28,7 @@ fn get_cycles() -> u128 {
 fn get_stable_memory_size() -> u64 {
     #[cfg(target_arch = "wasm32")]
     {
-        (ic_cdk::api::stable::stable_size() as u64) * WASM_PAGE_SIZE
+        (ic_cdk::api::stable_size() as u64) * WASM_PAGE_SIZE
     }
     #[cfg(not(target_arch = "wasm32"))]
     {

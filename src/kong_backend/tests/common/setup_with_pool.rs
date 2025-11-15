@@ -11,7 +11,7 @@ use super::setup::{setup_ic_environment, CONTROLLER_PEM_FILE};
 use kong_backend::add_pool::add_pool_args::AddPoolArgs;
 use kong_backend::add_pool::add_pool_reply::AddPoolReply;
 use kong_backend::pools::pools_reply::PoolReply;
-use kong_backend::stable_transfer::tx_id::TxId;
+use kong_lib::stable_transfer::tx_id::TxId;
 
 // Use the token constants from the default setup
 use kong_backend::ic::ckusdt::CKUSDT_SYMBOL;

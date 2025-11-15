@@ -18,7 +18,7 @@ use common::setup_with_pool::{
 };
 
 // Import kong_backend types needed for tests
-use kong_backend::stable_transfer::tx_id::TxId;
+use kong_lib::stable_transfer::tx_id::TxId;
 use kong_backend::swap::swap_args::SwapArgs;
 use kong_backend::swap::swap_reply::SwapReply;
 

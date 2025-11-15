@@ -2,7 +2,7 @@ use super::add_pool_reply::AddPoolReply;
 
 use crate::helpers::nat_helpers::nat_zero;
 use crate::stable_pool::pool_map;
-use crate::stable_token::token::Token;
+use kong_lib::stable_token::token::Token;
 use crate::stable_tx::add_pool_tx::AddPoolTx;
 use crate::stable_tx::status_tx::StatusTx;
 use crate::transfers::transfer_reply_helpers::to_transfer_ids;

@@ -83,7 +83,7 @@ pub async fn force_resolve_market(
         return ResolutionResult::Error(ResolutionError::InvalidOutcome);
     }
     
-    let admin = ic_cdk::caller();
+    let admin = ic_cdk::api::msg_caller();
     
     // Verify the caller is an admin
     if !is_admin(admin) {
@@ -140,7 +140,7 @@ pub async fn force_resolve_market(
 pub async fn void_market(
     market_id: MarketId
 ) -> ResolutionResult {
-    let caller = ic_cdk::caller();
+    let caller = ic_cdk::api::msg_caller();
     
     // Verify caller is an admin
     if !is_admin(caller) {

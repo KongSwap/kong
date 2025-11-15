@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 pub struct StableLPTokenId(pub u64);
 
 impl Storable for StableLPTokenId {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 
@@ -39,7 +39,7 @@ impl StableLPToken {
 }
 
 impl Storable for StableLPToken {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 

@@ -4,6 +4,7 @@ use super::ic_reply::ICReply;
 use super::lp_reply::LPReply;
 
 use crate::stable_lp_token::lp_token_map;
+use crate::stable_pool::pool_map;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::stable_token::StableToken::{IC, LP};
 use crate::stable_token::token::Token;
@@ -17,7 +18,7 @@ pub fn to_token_reply(token: &StableToken) -> TokensReply {
             name: token.name(),
             symbol: token.symbol(),
             address: token.address(),
-            pool_id_of: match lp_token.pool_of() {
+            pool_id_of: match pool_map::get_by_lp_token_id(lp_token.token_id) {
                 Some(pool) => pool.pool_id,
                 None => 0,
             },

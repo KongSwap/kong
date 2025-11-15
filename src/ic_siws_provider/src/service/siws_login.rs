@@ -42,7 +42,7 @@ fn siws_login(
             &pubkey,
             session_key,
             &mut *signature_map,
-            &ic_cdk::api::id(),
+            &ic_cdk::api::canister_self(),
         )
         .map_err(|e| e.to_string())?;
 

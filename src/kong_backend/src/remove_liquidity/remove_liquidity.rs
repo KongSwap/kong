@@ -7,16 +7,20 @@ use super::remove_liquidity_reply::RemoveLiquidityReply;
 use super::remove_liquidity_reply_helpers::{to_remove_liquidity_reply, to_remove_liquidity_reply_failed};
 
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_is_zero, nat_multiply, nat_subtract, nat_zero};
-use crate::ic::{address::Address, get_time::get_time, guards::not_in_maintenance_mode, id::caller_id, transfer::icrc1_transfer};
+use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode, id::caller_id};
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_lp_token::{lp_token_map, stable_lp_token::StableLPToken};
 use crate::stable_pool::{pool_map, stable_pool::StablePool};
 use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
-use crate::stable_token::{stable_token::StableToken, token::Token};
-use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
+use crate::stable_transfer::archive;
 use crate::stable_tx::{remove_liquidity_tx::RemoveLiquidityTx, stable_tx::StableTx, tx_map};
 use crate::stable_user::user_map;
+use kong_lib::ic::address::Address;
+use kong_lib::ic::transfer::icrc1_transfer;
+use kong_lib::stable_token::{stable_token::StableToken, token::Token};
+use kong_lib::stable_transfer::{stable_transfer::StableTransfer, tx_id::TxId};
+use transfer_lib::transfer_map;
 
 enum TokenIndex {
     Token0,
@@ -115,7 +119,7 @@ pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, St
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
     let caller_id = caller_id();
 
-    ic_cdk::spawn(async move {
+    ic_cdk::futures::spawn(async move {
         match process_remove_liquidity(
             request_id,
             user_id,
@@ -525,7 +529,7 @@ fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
             }
             // archive transfers
             for transfer_id_reply in reply.transfer_ids.iter() {
-                transfer_map::archive_to_kong_data(transfer_id_reply.transfer_id)?;
+                archive::archive_to_kong_data(transfer_id_reply.transfer_id)?;
             }
             // archive txs
             tx_map::archive_to_kong_data(reply.tx_id)?;

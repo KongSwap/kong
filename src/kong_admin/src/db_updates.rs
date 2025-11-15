@@ -6,9 +6,9 @@ use tokio_postgres::Client;
 
 use crate::claims::insert_claim_on_database;
 use crate::lp_tokens::insert_lp_token_on_database;
-use crate::pools::{insert_pool_on_database, load_pools_from_database, query_pool_token_ids};
+use crate::pools::{insert_pool_on_database, query_pool_token_ids};
 use crate::requests::insert_request_on_database;
-use crate::tokens::{insert_token_on_database, load_tokens_from_database, query_token_decimals};
+use crate::tokens::{insert_token_on_database, query_token_decimals};
 use crate::transfers::insert_transfer_on_database;
 use crate::txs::insert_tx_on_database;
 use crate::users::insert_user_on_database;

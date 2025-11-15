@@ -127,10 +127,10 @@ async fn get_fees(token_id: &TokenIdentifier) -> Result<TokenAmount, TokenTransf
     let token_canister =
         Principal::from_text(token_id).map_err(|e| TokenTransferError::InternalError(format!("Invalid token principal: {}", e)))?;
 
-    match ic_cdk::call::<(), (candid::Nat,)>(token_canister, "icrc1_fee", ()).await {
-        Ok(fee) => Ok(fee.0.into()),
-        Err(e) => return Err(TokenTransferError::FeeError(e.1)),
-    }
+    kong_lib::ic::ledger::get_fee(&token_canister)
+        .await
+        .map(|v| v.into())
+        .map_err(|e| TokenTransferError::FeeError(e.to_string()))
 }
 
 pub async fn transfer_token_fees_included(

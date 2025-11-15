@@ -1,6 +1,8 @@
 use candid::{CandidType, Nat};
 use serde::{Deserialize, Serialize};
 
+
+#[allow(dead_code)]
 /// Data structure for the reply of the `claim` function.
 /// Used in StableRequest
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]

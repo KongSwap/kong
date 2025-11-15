@@ -11,6 +11,7 @@ pub trait Token {
     fn chain(&self) -> String;
     fn address(&self) -> String;
     fn address_with_chain(&self) -> String;
+    #[allow(dead_code)]
     fn canister_id(&self) -> Option<&Principal>;
     fn symbol(&self) -> String;
     fn symbol_with_chain(&self) -> String;
@@ -18,6 +19,7 @@ pub trait Token {
     fn fee(&self) -> Nat;
     #[allow(dead_code)]
     fn is_icrc1(&self) -> bool;
+    #[allow(dead_code)]
     fn is_icrc2(&self) -> bool;
     #[allow(dead_code)]
     fn is_icrc3(&self) -> bool;
@@ -119,10 +121,12 @@ impl Token for StableToken {
     }
 }
 
+#[allow(dead_code)]
 pub fn symbol(token_0: &StableToken, token_1: &StableToken) -> String {
     format!("{}_{}", token_0.symbol(), token_1.symbol())
 }
 
+#[allow(dead_code)]
 pub fn address(token_0: &StableToken, token_1: &StableToken) -> String {
     format!("{}_{}", token_0.token_id(), token_1.token_id())
 }

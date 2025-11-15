@@ -1,5 +1,5 @@
 use candid::CandidType;
-use ic_cdk::api::call::{accept_message, method_name};
+use ic_cdk::api::{accept_message, msg_method_name};
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
 use ic_cdk_macros::inspect_message;
 use serde::Deserialize;
@@ -40,7 +40,7 @@ fn post_upgrade() {
 /// calling accept_message() will allow the message to be processed
 #[inspect_message]
 fn inspect_message() {
-    let method_name = method_name();
+    let method_name = msg_method_name();
     if QUERY_METHODS.contains(&method_name.as_str()) {
         info_log(&format!("{} called as update from {}", method_name, caller_principal_id()));
         ic_cdk::trap(&format!("{} must be called as query", method_name));

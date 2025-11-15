@@ -4,9 +4,10 @@ use std::collections::BTreeMap;
 
 use crate::ic::get_time::get_time;
 use crate::ic::guards::caller_is_kingkong;
-use crate::stable_memory::{TRANSFER_ARCHIVE_MAP, TRANSFER_MAP};
-use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
+use crate::stable_memory::TRANSFER_ARCHIVE_MAP;
 use crate::stable_transfer::transfer_archive::archive_transfer_map;
+use kong_lib::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
+use transfer_lib::stable_memory::TRANSFER_MAP;
 
 const MAX_TRANSFERS: usize = 1000;
 

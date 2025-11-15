@@ -13,7 +13,7 @@ use crate::stable_token::token_map;
 pub struct StablePoolId(pub u32);
 
 impl Storable for StablePoolId {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 
@@ -125,7 +125,7 @@ impl StablePool {
 }
 
 impl Storable for StablePool {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 

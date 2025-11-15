@@ -8,7 +8,7 @@ use super::tx_id::TxId;
 pub struct StableTransferId(pub u64);
 
 impl Storable for StableTransferId {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 
@@ -31,7 +31,7 @@ pub struct StableTransfer {
 }
 
 impl Storable for StableTransfer {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 
