@@ -403,7 +403,7 @@ async fn verify_transfer_token(
     match verify_transfer(token, tx_id, amount).await {
         Ok(_) => {
             // insert_transfer() will use the latest state of TRANSFER_MAP so no reentrancy issues after verify_transfer()
-            if transfer_map::contain(token_id, tx_id) {
+            if transfer_map::contains(token_id, &TxId::BlockIndex(tx_id.clone())) {
                 let e = format!("Duplicate block id: #{}", tx_id);
                 match token_index {
                     TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&e)),

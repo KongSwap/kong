@@ -1,3 +1,5 @@
+use std::fmt::{self, Display, Formatter};
+
 use candid::{CandidType, Nat};
 use serde::{Deserialize, Serialize};
 
@@ -5,4 +7,13 @@ use serde::{Deserialize, Serialize};
 pub enum TxId {
     BlockIndex(Nat),
     TransactionId(String),
+}
+
+impl Display for TxId {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            TxId::BlockIndex(nat) => write!(f, "{}", nat),
+            TxId::TransactionId(str) => write!(f, "{}", str),
+        }
+    }
 }

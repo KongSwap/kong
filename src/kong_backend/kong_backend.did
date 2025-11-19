@@ -387,6 +387,8 @@ type AddLiquidityArgs = record {
     token_1 : text;
     amount_1 : nat;
     tx_id_1 : opt TxId;
+    signature_0 : opt text;
+    signature_1 : opt text;
 };
 type AddLiquidityReply = record {
     tx_id : nat64;
@@ -494,6 +496,7 @@ type SwapArgs = record {
     receive_address : opt text;
     max_slippage : opt float64;
     referred_by : opt text;
+    pay_signature: opt text;
 };
 type SwapTxReply = record {
     pool_symbol : text;

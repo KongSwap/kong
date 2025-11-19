@@ -1,8 +1,13 @@
+use crate::transfer_map;
 use crate::{solana::verify_transfer::SolanaVerificationResult, verify_transfer};
 use candid::Nat;
 use kong_lib::ic::transfer::icrc2_transfer_from;
+use kong_lib::stable_token::token::Token;
+use kong_lib::stable_transfer::stable_transfer::StableTransfer;
 use kong_lib::{ic::address::Address, stable_token::stable_token::StableToken, stable_transfer::tx_id::TxId};
 
+
+#[derive(Clone, Debug)]
 pub struct ReceiveArgs {
     pub txid: Option<TxId>,
     pub sender_addr: Option<Address>,
@@ -50,6 +55,7 @@ impl ReceiveArgs {
 pub struct ReceiveResult {
     pub amount: Nat,
     pub tx_signature: String,
+    pub block_id: Option<Nat>,
 }
 
 impl ReceiveResult {
@@ -57,18 +63,43 @@ impl ReceiveResult {
         ReceiveResult {
             amount: sol_res.amount,
             tx_signature: sol_res.tx_signature,
+            block_id: None,
         }
     }
 
-    fn ic(amount: Nat) -> ReceiveResult {
+    fn ic(amount: Nat, block_id: Option<Nat>) -> ReceiveResult {
         ReceiveResult {
             amount: amount,
             tx_signature: String::new(),
+            block_id
         }
     }
 }
 
+pub fn is_receive_used(token: &StableToken, txid: &TxId) -> bool {
+    transfer_map::contains(token.token_id(), txid)
+}
+
+pub fn mark_receive_used(transfer: StableTransfer) -> u64 {
+    transfer_map::insert(&transfer)
+}
+
+pub fn create_stable_transfer(token_id: u32, amount: Nat, tx_id: TxId, request_id: u64, ts: u64) -> StableTransfer {
+    StableTransfer {
+        transfer_id: 0,
+        request_id,
+        is_send: true,
+        amount,
+        token_id,
+        tx_id,
+        ts,
+    }
+}
+
 pub async fn receive(token: &StableToken, args: ReceiveArgs) -> Result<ReceiveResult, String> {
+    if token.is_removed() {
+        return Err(format!("Can't receive token because {} it's removed", token.symbol_with_chain()));
+    }
     let txid = args.txid.clone();
     let res = match &txid {
         Some(txid) => match token {
@@ -78,7 +109,7 @@ pub async fn receive(token: &StableToken, args: ReceiveArgs) -> Result<ReceiveRe
                     .amount
                     .ok_or("ic tx, invalid input parameter: amount is required".to_string())?;
                 let receiver = args.receive_addr.ok_or("ic tx, reciever is required".to_string())?;
-                ReceiveResult::ic(receive_ic_tx(token, amount, &receiver, txid).await?)
+                ReceiveResult::ic(receive_ic_tx(token, amount, &receiver, txid).await?, None)
             }
             StableToken::Solana(_) => ReceiveResult::sol(receive_solana(token, args).await?),
         },
@@ -93,12 +124,33 @@ pub async fn receive(token: &StableToken, args: ReceiveArgs) -> Result<ReceiveRe
             let from_address = args
                 .sender_addr
                 .ok_or("icrc2, invalid input parameter: from_address is required".to_string())?;
-            let amount = receive_icrc2_approve(token, &amount, &from_address, &to_address).await?;
-            ReceiveResult::ic(amount)
+            let block_id = receive_icrc2_approve(token, &amount, &from_address, &to_address).await?;
+            ReceiveResult::ic(amount, Some(block_id))
         }
     };
 
     Ok(res)
+}
+
+pub async fn receive_not_used(token: &StableToken, args: ReceiveArgs, request_id: u64, ts: u64) -> Result<u64, String> {
+    let txid = args.txid.clone();
+    let res = receive(token, args.clone()).await?;
+    let _ = match txid {
+        Some(txid) => {
+            if is_receive_used(token, &txid) {
+                Err(format!("Transfer {} for token {} is already used", txid, token.symbol_with_chain()))
+            } else {
+                Ok(())
+            }
+        }
+        None => Ok(()),
+    }?;
+
+    let amount = args.amount.clone().ok_or("Can't receive token, amount is required".to_string())?;
+    let txid = args.txid.clone().or(res.block_id.map(|v| TxId::BlockIndex(v))).ok_or(format!("Receive, failed to extract txid, token_id={}, args={:?}", token.token_id(), args))?;
+
+    let transfer = create_stable_transfer(token.token_id(), amount, txid, request_id, ts);
+    Ok(mark_receive_used(transfer))
 }
 
 async fn receive_icrc2_approve(token: &StableToken, amount: &Nat, from_address: &Address, to_address: &Address) -> Result<Nat, String> {

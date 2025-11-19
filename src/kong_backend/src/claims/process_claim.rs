@@ -1,17 +1,15 @@
 use candid::Nat;
+use transfer_lib::solana::send_info::SendInfo;
 
 use super::claim_reply::ClaimReply;
 
 use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
-use kong_lib::ic::transfer::{icp_transfer, icrc1_transfer};
 use crate::stable_claim::claim_map;
 use crate::stable_claim::stable_claim::{ClaimStatus, StableClaim};
 use crate::stable_request::{reply::Reply, request_map, status::StatusCode};
-use transfer_lib::transfer_map;
 use crate::transfers::transfer_reply_helpers::to_transfer_ids;
-use kong_lib::ic::address::Address::{self, AccountId, PrincipalId};
+use kong_lib::ic::address::Address;
 use kong_lib::stable_token::{stable_token::StableToken, token::Token};
-use kong_lib::stable_transfer::{stable_transfer::StableTransfer, tx_id::TxId};
 
 pub async fn process_claim(
     request_id: u64,
@@ -82,25 +80,12 @@ async fn send_claim(
     request_map::update_status(request_id, StatusCode::ClaimToken, None);
 
     let amount_with_gas = nat_subtract(amount, &token.fee()).unwrap_or(nat_zero());
-    match match to_address {
-        AccountId(to_account_id) => icp_transfer(&amount_with_gas, to_account_id, token, None).await,
-        PrincipalId(to_principal_id) => icrc1_transfer(&amount_with_gas, to_principal_id, token, None).await,
-        Address::SolanaAddress(_) => todo!("TODO: Implemet me"),
-    } {
-        Ok(tx_id) => {
-            let transfer_id = transfer_map::insert(&StableTransfer {
-                transfer_id: 0,
-                request_id,
-                is_send: false,
-                amount: amount_with_gas,
-                token_id: token.token_id(),
-                tx_id: TxId::BlockIndex(tx_id),
-                ts,
-            });
-            transfer_ids.push(transfer_id);
+    match transfer_lib::send::send(token, to_address, &amount_with_gas, SendInfo{request_id, user_id: claim.user_id, ts: Some(ts)}).await {
+        Ok(stable_transfer) => {
+            transfer_ids.push(stable_transfer.transfer_id);
 
             // claim successful. update claim status
-            claim_map::update_claimed_status(claim.claim_id, request_id, transfer_id);
+            claim_map::update_claimed_status(claim.claim_id, request_id, stable_transfer.transfer_id);
 
             request_map::update_status(request_id, StatusCode::ClaimTokenSuccess, None);
 

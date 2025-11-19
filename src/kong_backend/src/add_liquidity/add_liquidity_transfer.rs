@@ -9,7 +9,7 @@ use super::add_liquidity_transfer_from::archive_to_kong_data;
 use super::add_liquidity_transfer_from::{transfer_from_token, update_liquidity_pool};
 
 use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
-use crate::ic::{get_time::get_time, id::caller_id, verify_transfer::verify_transfer};
+use crate::ic::{get_time::get_time, id::caller_id};
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_pool::pool_map;
@@ -17,6 +17,7 @@ use crate::stable_request::{reply::Reply, request::Request, request_map, stable_
 use crate::stable_token::token_map;
 use crate::stable_tx::{add_liquidity_tx::AddLiquidityTx, stable_tx::StableTx, tx_map};
 use crate::stable_user::user_map;
+use crate::transfers::receive_args_helpers::create_add_liquidity_receive_args;
 use kong_lib::ic::address::Address;
 use kong_lib::ic::transfer::icrc1_transfer;
 use kong_lib::stable_token::{stable_token::StableToken, token::Token};
@@ -157,31 +158,40 @@ async fn check_arguments(
         Err("Tx_id_0 or Tx_id_1 is required".to_string())?
     }
 
-    // transfer_id_0 is used to store if the transfer was successful
-    let transfer_id_0 = match &tx_id_0 {
-        Some(tx_id) if token_0.is_some() => {
-            let token = token_0.as_ref().unwrap();
-            if token.is_removed() {
-                Err("Token_0 is suspended or removed".to_string())?
+    request_map::update_status(request_id, StatusCode::VerifyToken0, None);
+    let transfer_id_0 = if let Some(token_0) = &token_0 {
+        match transfer_lib::receive::receive_not_used(token_0, create_add_liquidity_receive_args(token_0, args, true)?, request_id, ts)
+            .await
+        {
+            Ok(v) => {
+                request_map::update_status(request_id, StatusCode::VerifyToken0Success, None);
+                Ok(v)
             }
-            let amount = &args.amount_0;
-            let transfer_id = verify_transfer_token(request_id, &TokenIndex::Token0, token, tx_id, amount, ts).await?;
-            Ok(transfer_id)
+            Err(e) => {
+                request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&e));
+                Err(e)?
+            }
         }
-        _ => Err("Tx_id_0 not specified".to_string()),
+    } else {
+        Err("Invalid token 0".to_string())
     };
 
-    let transfer_id_1 = match &tx_id_1 {
-        Some(tx_id) if token_1.is_some() => {
-            let token = token_1.as_ref().unwrap();
-            if token.is_removed() {
-                Err("Token_1 is suspended or removed".to_string())?
+    request_map::update_status(request_id, StatusCode::VerifyToken1, None);
+    let transfer_id_1 = if let Some(token_1) = &token_1 {
+        match transfer_lib::receive::receive_not_used(token_1, create_add_liquidity_receive_args(token_1, args, false)?, request_id, ts)
+            .await
+        {
+            Ok(v) => {
+                request_map::update_status(request_id, StatusCode::VerifyToken1Success, None);
+                Ok(v)
             }
-            let amount = &args.amount_1;
-            let transfer_id = verify_transfer_token(request_id, &TokenIndex::Token1, token, tx_id, amount, ts).await?;
-            Ok(transfer_id)
+            Err(e) => {
+                request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(&e));
+                Err(e)?
+            }
         }
-        _ => Err("Tx_id_1 not specified".to_string()),
+    } else {
+        Err("Invalid token 1".to_string())
     };
 
     // one of the transfers must be successful
@@ -376,57 +386,6 @@ async fn process_add_liquidity(
     request_map::update_reply(request_id, Reply::AddLiquidity(reply.clone()));
 
     Ok(reply)
-}
-
-async fn verify_transfer_token(
-    request_id: u64,
-    token_index: &TokenIndex,
-    token: &StableToken,
-    tx_id: &Nat,
-    amount: &Nat,
-    ts: u64,
-) -> Result<u64, String> {
-    let token_id = token.token_id();
-
-    match token_index {
-        TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0, None),
-        TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1, None),
-    };
-
-    match verify_transfer(token, tx_id, amount).await {
-        Ok(_) => {
-            // contain() will use the latest state of TRANSFER_MAP to prevent reentrancy issues after verify_transfer()
-            if transfer_map::contain(token_id, tx_id) {
-                let e = format!("Duplicate block id #{}", tx_id);
-                match token_index {
-                    TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&e)),
-                    TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(&e)),
-                };
-                return Err(e);
-            }
-            let transfer_id = transfer_map::insert(&StableTransfer {
-                transfer_id: 0,
-                request_id,
-                is_send: true,
-                amount: amount.clone(),
-                token_id,
-                tx_id: TxId::BlockIndex(tx_id.clone()),
-                ts,
-            });
-            match token_index {
-                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Success, None),
-                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Success, None),
-            };
-            Ok(transfer_id)
-        }
-        Err(e) => {
-            match token_index {
-                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&e)),
-                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(&e)),
-            };
-            Err(e)
-        }
-    }
 }
 
 #[allow(clippy::too_many_arguments)]

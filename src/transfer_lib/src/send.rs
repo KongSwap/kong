@@ -14,7 +14,7 @@ use crate::{
     transfer_map,
 };
 
-pub async fn send(token: StableToken, dst_address: Address, amount: Nat, send_info: SendInfo) -> Result<StableTransfer, String> {
+pub async fn send(token: &StableToken, dst_address: &Address, amount: &Nat, send_info: SendInfo) -> Result<StableTransfer, String> {
     fn ok_transfer(transfer: StableTransfer) -> Result<StableTransfer, String> {
         let transfer_id = transfer_map::insert(&transfer);
         let transfer = transfer_map::get_by_transfer_id(transfer_id).unwrap_or(transfer);
@@ -22,16 +22,16 @@ pub async fn send(token: StableToken, dst_address: Address, amount: Nat, send_in
         return Ok(transfer);
     }
 
-    match &token {
+    match token {
         StableToken::LP(_) => Err("this metod does not support to send lp tokens")?,
         StableToken::IC(ic_token) => {
-            let tx_id = match &dst_address {
-                Address::AccountId(to_account_id) => icp_transfer(&amount, to_account_id, &token, None).await?,
-                Address::PrincipalId(to_principal_id) => icrc1_transfer(&amount, to_principal_id, &token, None).await?,
+            let tx_id = match dst_address {
+                Address::AccountId(to_account_id) => icp_transfer(amount, to_account_id, token, None).await?,
+                Address::PrincipalId(to_principal_id) => icrc1_transfer(amount, to_principal_id, token, None).await?,
                 Address::SolanaAddress(_) => return Err("IC token transfer with solana address not supported".to_string()),
             };
 
-            let now = get_time::get_time();
+            let now =  send_info.ts.unwrap_or(get_time::get_time());
 
             let transfer = StableTransfer {
                 transfer_id: 0,

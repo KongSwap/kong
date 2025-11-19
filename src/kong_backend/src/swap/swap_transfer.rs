@@ -1,5 +1,5 @@
 use candid::Nat;
-use transfer_lib::transfer_map;
+use transfer_lib::receive::receive_not_used;
 
 use super::archive_to_kong_data::archive_to_kong_data;
 use super::return_pay_token::return_pay_token;
@@ -12,15 +12,14 @@ use super::update_liquidity_pool::update_liquidity_pool;
 use crate::helpers::nat_helpers::nat_is_zero;
 use crate::ic::get_time::get_time;
 use crate::ic::id::caller_id;
-use crate::ic::verify_transfer::verify_transfer;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_request::{request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::token_map;
 use crate::stable_user::user_map;
+use crate::transfers::receive_args_helpers::create_swap_receive_args;
 use kong_lib::ic::address::Address;
 use kong_lib::ic::address_helpers::get_address;
 use kong_lib::stable_token::{stable_token::StableToken, token::Token};
-use kong_lib::stable_transfer::{stable_transfer::StableTransfer, tx_id::TxId};
 
 pub async fn swap_transfer(args: SwapArgs) -> Result<SwapReply, String> {
     // as user has transferred the pay token, we need to log the request immediately and verify the transfer
@@ -142,19 +141,16 @@ async fn check_arguments(args: &SwapArgs, request_id: u64, ts: u64) -> Result<(S
 
     let pay_amount = args.pay_amount.clone();
 
-    // check pay_tx_id is valid block index
-    let transfer_id = match &args.pay_tx_id {
-        Some(pay_tx_id) => match pay_tx_id {
-            TxId::BlockIndex(pay_tx_id) => verify_transfer_token(request_id, &pay_token, pay_tx_id, &pay_amount, ts).await?,
-            _ => {
-                request_map::update_status(request_id, StatusCode::PayTxIdNotSupported, None);
-                Err("Pay tx_id not supported".to_string())?
-            }
+    request_map::update_status(request_id, StatusCode::VerifyPayToken, None);
+    let transfer_id = match receive_not_used(&pay_token, create_swap_receive_args(&pay_token, args)?, request_id, ts).await {
+        Ok(v) => {
+            request_map::update_status(request_id, StatusCode::VerifyPayTokenSuccess, None);
+            v
         },
-        None => {
-            request_map::update_status(request_id, StatusCode::PayTxIdNotFound, None);
-            Err("Pay tx_id required".to_string())?
-        }
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::VerifyPayTokenFailed, Some(&e));
+            Err(e)?
+        },
     };
 
     Ok((pay_token, pay_amount, transfer_id))
@@ -281,36 +277,4 @@ async fn process_swap(
         slippage,
         swaps,
     ))
-}
-
-async fn verify_transfer_token(request_id: u64, token: &StableToken, tx_id: &Nat, amount: &Nat, ts: u64) -> Result<u64, String> {
-    let token_id = token.token_id();
-
-    request_map::update_status(request_id, StatusCode::VerifyPayToken, None);
-
-    match verify_transfer(token, tx_id, amount).await {
-        Ok(_) => {
-            // contain() will use the latest state of TRANSFER_MAP to prevent reentrancy issues after verify_transfer()
-            if transfer_map::contain(token_id, tx_id) {
-                let e = format!("Duplicate block id #{}", tx_id);
-                request_map::update_status(request_id, StatusCode::VerifyPayTokenFailed, Some(&e));
-                Err(e)?
-            }
-            let transfer_id = transfer_map::insert(&StableTransfer {
-                transfer_id: 0,
-                request_id,
-                is_send: true,
-                amount: amount.clone(),
-                token_id,
-                tx_id: TxId::BlockIndex(tx_id.clone()),
-                ts,
-            });
-            request_map::update_status(request_id, StatusCode::VerifyPayTokenSuccess, None);
-            Ok(transfer_id)
-        }
-        Err(e) => {
-            request_map::update_status(request_id, StatusCode::VerifyPayTokenFailed, Some(&e));
-            Err(e)
-        }
-    }
 }

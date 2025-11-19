@@ -1,6 +1,7 @@
 use candid::Nat;
 use ic_cdk::update;
 use icrc_ledger_types::icrc1::account::Account;
+use transfer_lib::solana::send_info::SendInfo;
 
 use super::remove_liquidity_args::RemoveLiquidityArgs;
 use super::remove_liquidity_reply::RemoveLiquidityReply;
@@ -17,10 +18,7 @@ use crate::stable_transfer::archive;
 use crate::stable_tx::{remove_liquidity_tx::RemoveLiquidityTx, stable_tx::StableTx, tx_map};
 use crate::stable_user::user_map;
 use kong_lib::ic::address::Address;
-use kong_lib::ic::transfer::icrc1_transfer;
 use kong_lib::stable_token::{stable_token::StableToken, token::Token};
-use kong_lib::stable_transfer::{stable_transfer::StableTransfer, tx_id::TxId};
-use transfer_lib::transfer_map;
 
 enum TokenIndex {
     Token0,
@@ -448,18 +446,9 @@ async fn transfer_token(
         TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1, None),
     };
 
-    match icrc1_transfer(&amount_with_gas, to_principal_id, token, None).await {
-        Ok(block_id) => {
-            let transfer_id = transfer_map::insert(&StableTransfer {
-                transfer_id: 0,
-                request_id,
-                is_send: false,
-                amount: amount_with_gas,
-                token_id,
-                tx_id: TxId::BlockIndex(block_id),
-                ts,
-            });
-            transfer_ids.push(transfer_id);
+    match transfer_lib::send::send(token, &Address::PrincipalId(to_principal_id.clone()), &amount_with_gas, SendInfo{request_id, user_id, ts: Some(ts)}).await {
+        Ok(stable_transfer) => {
+            transfer_ids.push(stable_transfer.transfer_id);
             match token_index {
                 TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReceiveToken0Success, None),
                 TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1Success, None),

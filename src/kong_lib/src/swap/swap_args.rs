@@ -15,4 +15,6 @@ pub struct SwapArgs {
     pub receive_address: Option<String>,
     pub max_slippage: Option<f64>,
     pub referred_by: Option<String>,
+    // Cross-chain fields
+    pub pay_signature: Option<String>,   // Ed25519 signature of canonical message for payment verification
 }

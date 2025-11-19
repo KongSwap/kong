@@ -242,7 +242,7 @@ pub fn verify_canonical_message(message: &str, public_key: &str, signature: &str
 
 /// Extract sender from a Solana transaction based on token type
 /// This is a compatibility wrapper that maintains the single metadata parsing goal
-pub async fn extract_solana_sender_from_transaction(tx_signature: &str, is_spl_token: bool) -> Result<String, String> {
+pub fn extract_solana_sender_from_transaction(tx_signature: &str, is_spl_token: bool) -> Result<String, String> {
     let transaction = get_solana_transaction(tx_signature).ok_or_else(|| {
         format!(
             "Solana transaction {} not found. Make sure kong_rpc has processed this transaction.",

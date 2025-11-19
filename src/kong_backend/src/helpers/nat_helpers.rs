@@ -2,6 +2,7 @@ use candid::Nat;
 use num::BigRational;
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::{pow, ToPrimitive, Zero};
+use serde::Serializer;
 use std::cmp::Ordering;
 
 use crate::helpers::math_helpers::round_f64;
@@ -118,6 +119,23 @@ pub fn nat_divide_as_f64(numerator: &Nat, denominator: &Nat) -> Option<f64> {
 
 pub fn nat_sqrt(n: &Nat) -> Nat {
     Nat::from(n.0.sqrt())
+}
+
+/// Custom serializer to convert Nat to string (matching frontend format)
+///
+/// This serializer is used to ensure that large numeric values are sent to the frontend
+/// as strings to avoid JavaScript precision issues and to match the exact format
+/// expected for signature verification.
+///
+/// The serializer also removes any underscores from the Nat string representation
+/// to ensure a clean numeric string output.
+pub fn serialize_amount_as_string<S>(amount: &Nat, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    // Remove underscores from Nat serialization to match frontend format
+    let amount_str = amount.to_string().replace('_', "");
+    serializer.serialize_str(&amount_str)
 }
 
 #[cfg(test)]

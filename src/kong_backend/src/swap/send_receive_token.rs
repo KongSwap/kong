@@ -1,16 +1,15 @@
 use candid::Nat;
-use transfer_lib::transfer_map;
+use transfer_lib::solana::send_info::SendInfo;
 
 use super::swap_calc::SwapCalc;
 use super::swap_reply::SwapReply;
 use super::swap_reply_helpers::{to_swap_reply, to_swap_reply_failed};
-use kong_lib::ic::transfer::{icp_transfer, icrc1_transfer};
-use crate::stable_claim::{claim_map, stable_claim::StableClaim};
+use crate::stable_claim::claim_map;
+use crate::stable_claim::stable_claim::StableClaim;
 use crate::stable_request::{reply::Reply, request_map, status::StatusCode};
 use crate::stable_tx::{stable_tx::StableTx, swap_tx::SwapTx, tx_map};
 use kong_lib::ic::address::Address;
 use kong_lib::stable_token::{stable_token::StableToken, token::Token};
-use kong_lib::stable_transfer::{stable_transfer::StableTransfer, tx_id::TxId};
 
 #[allow(clippy::too_many_arguments)]
 pub async fn send_receive_token(
@@ -35,24 +34,9 @@ pub async fn send_receive_token(
 
     request_map::update_status(request_id, StatusCode::SendReceiveToken, None);
 
-    // send ICP using icp_transfer or ICRC1 using icrc1_transfer
-    match match to_address {
-        Address::AccountId(to_account_id) => icp_transfer(receive_amount, to_account_id, receive_token, None).await,
-        Address::PrincipalId(to_principal_id) => icrc1_transfer(receive_amount, to_principal_id, receive_token, None).await,
-        Address::SolanaAddress(_) => todo!("TODO: implement me"),
-    } {
-        Ok(tx_id) => {
-            // insert_transfer() will use the latest state of DEPOSIT_MAP so no reentrancy issues after icp_transfer() or icrc1_transfer()
-            let transfer_id = transfer_map::insert(&StableTransfer {
-                transfer_id: 0,
-                request_id,
-                is_send: false,
-                token_id: receive_token_id,
-                amount: receive_amount.clone(),
-                tx_id: TxId::BlockIndex(tx_id),
-                ts,
-            });
-            transfer_ids.push(transfer_id);
+    let send_info = SendInfo { request_id, user_id, ts: Some(ts) };
+    match transfer_lib::send::send(receive_token, to_address, receive_amount, send_info).await {
+        Ok(_) => {
             request_map::update_status(request_id, StatusCode::SendReceiveTokenSuccess, None);
         }
         Err(e) => {
