@@ -17,7 +17,7 @@ use crate::add_liquidity::add_liquidity_reply::AddLiquidityReply;
 use crate::add_liquidity_amounts::add_liquidity_amounts_reply::AddLiquidityAmountsReply;
 use crate::add_pool::add_pool_args::AddPoolArgs;
 use crate::add_pool::add_pool_reply::AddPoolReply;
-use crate::add_token::add_token::add_spl_token;
+use crate::add_token::add_token::add_solana_token;
 use crate::add_token::add_token_args::AddTokenArgs;
 use crate::add_token::add_token_reply::AddTokenReply;
 use crate::add_token::update_token_args::UpdateTokenArgs;
@@ -59,7 +59,7 @@ static QUERY_METHODS: [&str; 11] = [
 
 fn get_transfer_init_args() -> InitArgs {
     InitArgs{
-        add_spl_token_fn: Some(Box::new(add_spl_token)),
+        add_solana_token_fn: Some(Box::new(add_solana_token)),
         update_sol_swap_fn: Some(Box::new(add_swap_callback)),
     }
 }

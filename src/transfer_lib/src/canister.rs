@@ -7,23 +7,23 @@ use kong_lib::ic::logging::{self, error_log, info_log};
 
 use crate::{
     solana::{
-        kong_rpc::{add_spl_token_args::AddSplTokenArgs, solana_reply::SolanaReply},
+        kong_rpc::{add_solana_token_args::AddSolanaTokenArgs, solana_reply::SolanaReply},
         stable_memory::{cleanup_old_notifications, get_cached_solana_address},
         swap_job_cleanup::cleanup_expired_swap_jobs,
     },
     LIB_NAME, LIB_VERSION,
 };
 
-type AddSplTokenFn = Box<dyn Fn(AddSplTokenArgs) -> Result<SolanaReply, String>>;
+type AddSplTokenFn = Box<dyn Fn(AddSolanaTokenArgs) -> Result<SolanaReply, String>>;
 type UpdateSolSwapCallback = Box<dyn Fn(SwapJob, String, Option<String>)>;
 
 pub struct InitArgs {
-    pub add_spl_token_fn: Option<AddSplTokenFn>,
+    pub add_solana_token_fn: Option<AddSplTokenFn>,
     pub update_sol_swap_fn: Option<UpdateSolSwapCallback>,
 }
 
 thread_local! {
-    static ADD_SPL_TOKEN_FN: RefCell<Option<AddSplTokenFn>> = RefCell::new(None);
+    static ADD_SOLANA_TOKEN_FN: RefCell<Option<AddSplTokenFn>> = RefCell::new(None);
     static UPDATE_SOL_SWAP_FN: RefCell<Option<UpdateSolSwapCallback>> = RefCell::new(None);
 }
 
@@ -38,9 +38,9 @@ pub fn update_sol_swap_callback(job: SwapJob, final_solana_tx_sig: String, error
     });
 }
 
-fn set_add_spl_token(init_args: InitArgs) {
-    ADD_SPL_TOKEN_FN.with(|add_token_fn| {
-        *add_token_fn.borrow_mut() = init_args.add_spl_token_fn;
+fn set_add_solana_token(init_args: InitArgs) {
+    ADD_SOLANA_TOKEN_FN.with(|add_token_fn| {
+        *add_token_fn.borrow_mut() = init_args.add_solana_token_fn;
     });
 
     UPDATE_SOL_SWAP_FN.with(|update_sol_swap_fn| {
@@ -51,7 +51,7 @@ fn set_add_spl_token(init_args: InitArgs) {
 pub fn init(init_args: InitArgs) {
     info_log(&format!("{} canister is being initialized, version={}", LIB_NAME, LIB_VERSION));
     set_timer_processes();
-    set_add_spl_token(init_args);
+    set_add_solana_token(init_args);
 }
 
 pub fn pre_upgrade() {
@@ -73,7 +73,7 @@ pub fn post_upgrade(init_args: InitArgs) {
     }
 
     set_timer_processes();
-    set_add_spl_token(init_args);
+    set_add_solana_token(init_args);
 }
 
 fn set_timer_processes() {
@@ -95,8 +95,8 @@ fn set_timer_processes() {
 }
 
 #[update(hidden = true, guard = "caller_is_kong_rpc")]
-async fn add_spl_token(args: AddSplTokenArgs) -> Result<SolanaReply, String> {
-    ADD_SPL_TOKEN_FN.with(|add_token_fn| {
+async fn add_solana_token(args: AddSolanaTokenArgs) -> Result<SolanaReply, String> {
+    ADD_SOLANA_TOKEN_FN.with(|add_token_fn| {
         let add_token_fn = add_token_fn.borrow();
 
         match &*add_token_fn {

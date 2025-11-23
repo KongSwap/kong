@@ -1,6 +1,6 @@
 use kong_lib::ic::logging;
 
-use super::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
+use kong_lib::stable_claim::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
 
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::CLAIM_MAP;

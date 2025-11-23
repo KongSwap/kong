@@ -1,6 +1,6 @@
 use candid::{Nat, Principal};
 use ic_cdk::update;
-use transfer_lib::solana::kong_rpc::add_spl_token_args::AddSplTokenArgs;
+use transfer_lib::solana::kong_rpc::add_solana_token_args::AddSolanaTokenArgs;
 use transfer_lib::solana::kong_rpc::solana_reply::SolanaReply;
 
 use super::add_token_args::AddTokenArgs;
@@ -112,7 +112,7 @@ fn solana_token_into_solana_reply(token: SolanaToken) -> SolanaReply {
 ///
 /// Only callable by the kong_rpc proxy via caller_is_kong_rpc guard.
 // #[update(hidden = true, guard = "caller_is_kong_rpc")]
-pub fn add_spl_token(args: AddSplTokenArgs) -> Result<SolanaReply, String> {
+pub fn add_solana_token(args: AddSolanaTokenArgs) -> Result<SolanaReply, String> {
     // Use get_by_address to check if token exists and get chain info
     match token_map::get_by_address(&args.token) {
         Ok(_existing_token) => {
@@ -133,7 +133,7 @@ pub fn add_spl_token(args: AddSplTokenArgs) -> Result<SolanaReply, String> {
 }
 
 /// Internal function to create a Solana token from SPL token args
-fn add_solana_token_internal(args: &AddSplTokenArgs) -> Result<SolanaToken, String> {
+fn add_solana_token_internal(args: &AddSolanaTokenArgs) -> Result<SolanaToken, String> {
     // Extract mint address from token string (format: SOL.MintAddress)
     let mint_address = token_map::get_address(&args.token).ok_or_else(|| format!("Invalid address {}", args.token))?;
 

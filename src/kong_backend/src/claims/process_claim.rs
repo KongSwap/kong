@@ -5,7 +5,7 @@ use super::claim_reply::ClaimReply;
 
 use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
 use crate::stable_claim::claim_map;
-use crate::stable_claim::stable_claim::{ClaimStatus, StableClaim};
+use kong_lib::stable_claim::stable_claim::{ClaimStatus, StableClaim};
 use crate::stable_request::{reply::Reply, request_map, status::StatusCode};
 use crate::transfers::transfer_reply_helpers::to_transfer_ids;
 use kong_lib::ic::address::Address;

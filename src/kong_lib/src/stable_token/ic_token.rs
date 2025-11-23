@@ -55,4 +55,8 @@ impl ICToken {
     pub fn chain(&self) -> String {
         IC_CHAIN.to_string()
     }
+
+    pub fn is_icp(&self) -> bool {
+        self.symbol == "ICP"
+    }
 }

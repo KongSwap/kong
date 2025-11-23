@@ -5,7 +5,7 @@ use super::swap_calc::SwapCalc;
 use super::swap_reply::SwapReply;
 use super::swap_reply_helpers::{to_swap_reply, to_swap_reply_failed};
 use crate::stable_claim::claim_map;
-use crate::stable_claim::stable_claim::StableClaim;
+use kong_lib::stable_claim::stable_claim::StableClaim;
 use crate::stable_request::{reply::Reply, request_map, status::StatusCode};
 use crate::stable_tx::{stable_tx::StableTx, swap_tx::SwapTx, tx_map};
 use kong_lib::ic::address::Address;

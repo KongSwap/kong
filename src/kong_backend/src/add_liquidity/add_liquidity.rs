@@ -3,7 +3,6 @@ use ic_cdk::update;
 use super::add_liquidity_args::AddLiquidityArgs;
 use super::add_liquidity_reply::AddLiquidityReply;
 use super::add_liquidity_transfer::{add_liquidity_transfer, add_liquidity_transfer_async};
-use super::add_liquidity_transfer_from::{add_liquidity_transfer_from, add_liquidity_transfer_from_async};
 
 use crate::ic::guards::not_in_maintenance_mode;
 
@@ -54,12 +53,7 @@ pub enum TokenIndex {
 /// 9. return_tokens() - otherwise if any errors occurred, return tokens
 #[update(guard = "not_in_maintenance_mode")]
 pub async fn add_liquidity(args: AddLiquidityArgs) -> Result<AddLiquidityReply, String> {
-    // determine if using icrc2_approve or irc1_transfer method
-    if args.tx_id_0.is_none() && args.tx_id_1.is_none() {
-        add_liquidity_transfer_from(args).await
-    } else {
-        add_liquidity_transfer(args).await
-    }
+    add_liquidity_transfer(args).await
 }
 
 /// add liquidity to a pool asynchronously. same as add_liquidity() but returns the request_id immediately
@@ -73,12 +67,7 @@ pub async fn add_liquidity(args: AddLiquidityArgs) -> Result<AddLiquidityReply, 
 /// Returns: u64 - request_id. poll requests(request_id) to return the current status of the request
 #[update(guard = "not_in_maintenance_mode")]
 pub async fn add_liquidity_async(args: AddLiquidityArgs) -> Result<u64, String> {
-    // determine if using icrc2_approve or irc1_transfer method
-    if args.tx_id_0.is_none() && args.tx_id_1.is_none() {
-        add_liquidity_transfer_from_async(args).await
-    } else {
-        add_liquidity_transfer_async(args).await
-    }
+    add_liquidity_transfer_async(args).await
 }
 
 /// api to validate add_liquidity for SNS proposals

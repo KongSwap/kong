@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 /// This is used internally by the kong_rpc proxy during ATA discovery.
 /// All metadata is fetched from Solana and provided by the proxy.
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
-pub struct AddSplTokenArgs {
+pub struct AddSolanaTokenArgs {
     /// SPL token address (format: SOL.MintAddress)
     pub token: String,
     /// Token name (from Solana metadata)

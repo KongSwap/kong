@@ -1,9 +1,10 @@
 use crate::stable_claim::claim_map;
-use crate::{stable_claim::stable_claim::StableClaim, stable_token::token_map};
+use crate::stable_token::token_map;
 use kong_lib::chains::chains::SOL_CHAIN;
 use kong_lib::ic::address::Address;
 use kong_lib::ic::logging;
 use kong_lib::ic::network::ICNetwork;
+use kong_lib::stable_claim::stable_claim::StableClaim;
 use kong_lib::stable_token::token::Token;
 use transfer_lib::solana::swap_job::SwapJob;
 

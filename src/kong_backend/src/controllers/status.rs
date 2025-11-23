@@ -4,7 +4,7 @@ use serde_json::json;
 
 use crate::helpers::math_helpers::{bytes_to_megabytes, to_trillions};
 use crate::ic::guards::caller_is_kingkong;
-use crate::stable_claim::stable_claim::ClaimStatus;
+use kong_lib::stable_claim::stable_claim::ClaimStatus;
 use crate::stable_memory::{
     CLAIM_MAP, CLAIM_MEMORY_ID, KONG_SETTINGS_MEMORY_ID, LP_TOKEN_MAP, LP_TOKEN_MEMORY_ID, MEMORY_MANAGER, POOL_MAP, POOL_MEMORY_ID,
     REQUEST_ARCHIVE_MAP, REQUEST_ARCHIVE_MEMORY_ID, REQUEST_MAP, REQUEST_MEMORY_ID, TOKEN_MAP, TOKEN_MEMORY_ID, TRANSFER_ARCHIVE_MAP,

@@ -4,7 +4,7 @@ use super::claims_reply::ClaimsReply;
 use super::claims_reply_helpers::to_claims_reply;
 
 use crate::ic::guards::not_in_maintenance_mode;
-use crate::stable_claim::stable_claim::ClaimStatus;
+use kong_lib::stable_claim::stable_claim::ClaimStatus;
 use crate::stable_memory::CLAIM_MAP;
 use crate::stable_user::user_map;
 

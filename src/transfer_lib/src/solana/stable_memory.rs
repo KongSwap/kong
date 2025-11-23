@@ -1,33 +1,18 @@
 use std::cell::RefCell;
 
-use ic_stable_structures::{
-    memory_manager::{MemoryId, MemoryManager, VirtualMemory},
-    DefaultMemoryImpl, StableBTreeMap, StableCell,
-};
+use ic_stable_structures::{StableBTreeMap, StableCell, memory_manager::MemoryId};
 
-use crate::solana::{
+use crate::{memory_manager::{Memory, with_memory_manager}, solana::{
     kong_rpc::transaction_notification::{TransactionNotification, TransactionNotificationId},
     swap_job::{SwapJob, SwapJobId},
-};
+}};
 use kong_lib::ic::network::ICNetwork;
-
-type Memory = VirtualMemory<DefaultMemoryImpl>;
 
 pub const CACHED_SOLANA_ADDRESS_ID: MemoryId = MemoryId::new(60);
 pub const SOLANA_BLOCKHASH_ID: MemoryId = MemoryId::new(61);
 pub const NEXT_SOLANA_SWAP_JOB_ID_ID: MemoryId = MemoryId::new(62);
 pub const SOLANA_SWAP_JOB_QUEUE_ID: MemoryId = MemoryId::new(63);
 pub const SOLANA_TX_NOTIFICATIONS_ID: MemoryId = MemoryId::new(64);
-
-thread_local! {
-    pub static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> =
-        RefCell::new(MemoryManager::init(DefaultMemoryImpl::default()));
-}
-
-/// A helper function to access the memory manager.
-pub fn with_memory_manager<R>(f: impl FnOnce(&MemoryManager<DefaultMemoryImpl>) -> R) -> R {
-    MEMORY_MANAGER.with(|cell| f(&cell.borrow()))
-}
 
 thread_local! {
         // Cached Solana address (persisted)

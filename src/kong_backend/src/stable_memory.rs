@@ -1,9 +1,10 @@
-use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
+use ic_stable_structures::memory_manager::{MemoryId, MemoryManager};
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableCell};
+use transfer_lib::memory_manager::{Memory, with_memory_manager};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
-use crate::stable_claim::stable_claim::{StableClaim, StableClaimId};
+use kong_lib::stable_claim::stable_claim::{StableClaim, StableClaimId};
 use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
 use crate::stable_lp_token::stable_lp_token::{StableLPToken, StableLPTokenId};
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
@@ -13,8 +14,6 @@ use crate::stable_user::banned_user_map::BannedUser;
 use crate::stable_user::stable_user::{StableUser, StableUserId};
 use kong_lib::stable_token::stable_token::{StableToken, StableTokenId};
 use kong_lib::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
-
-type Memory = VirtualMemory<DefaultMemoryImpl>;
 
 // stable memory
 pub const KONG_SETTINGS_MEMORY_ID: MemoryId = MemoryId::new(20);
@@ -101,9 +100,4 @@ thread_local! {
     pub static TRANSFER_ARCHIVE_MAP: RefCell<StableBTreeMap<StableTransferId, StableTransfer, Memory>> = with_memory_manager(|memory_manager| {
         RefCell::new(StableBTreeMap::init(memory_manager.get(TRANSFER_ARCHIVE_MEMORY_ID)))
     });
-}
-
-/// A helper function to access the memory manager.
-pub fn with_memory_manager<R>(f: impl FnOnce(&MemoryManager<DefaultMemoryImpl>) -> R) -> R {
-    MEMORY_MANAGER.with(|cell| f(&cell.borrow()))
 }

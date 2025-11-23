@@ -1,4 +1,6 @@
 pub mod canister;
+pub mod get_address;
+pub mod memory_manager;
 pub mod receive;
 pub mod send;
 pub mod solana;

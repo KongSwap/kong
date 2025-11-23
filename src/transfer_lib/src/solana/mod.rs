@@ -1,6 +1,7 @@
 pub mod controllers;
 pub mod create_job;
 pub mod error;
+pub mod get_address;
 pub mod guards;
 pub mod kong_rpc;
 pub mod network;

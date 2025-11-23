@@ -100,7 +100,7 @@ pub async fn verify_transfer(
 }
 
 /// Extract sender from parsed metadata based on token type
-fn extract_solana_sender_from_metadata(metadata: &serde_json::Value, is_spl_token: bool) -> Result<String, String> {
+pub fn extract_solana_sender_from_metadata(metadata: &serde_json::Value, is_spl_token: bool) -> Result<String, String> {
     // Extract sender based on token type
     let sender = if is_spl_token {
         // For SPL tokens: use "authority" or "sender_wallet" (the actual wallet that signed)

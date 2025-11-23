@@ -28,7 +28,7 @@ use kong_lib::ic::network::ICNetwork;
 // }
 
 #[update(hidden = true, guard = "caller_is_kong_rpc")]
-pub fn update_solana_swap(
+pub fn update_solana_outgoing_transfer(
     job_id: u64,
     final_solana_tx_sig: String,
     _was_successful: bool,

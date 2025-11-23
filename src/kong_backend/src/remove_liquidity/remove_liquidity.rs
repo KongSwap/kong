@@ -9,7 +9,7 @@ use super::remove_liquidity_reply_helpers::{to_remove_liquidity_reply, to_remove
 
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_is_zero, nat_multiply, nat_subtract, nat_zero};
 use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode, id::caller_id};
-use crate::stable_claim::{claim_map, stable_claim::StableClaim};
+use crate::stable_claim::claim_map;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_lp_token::{lp_token_map, stable_lp_token::StableLPToken};
 use crate::stable_pool::{pool_map, stable_pool::StablePool};
@@ -18,6 +18,7 @@ use crate::stable_transfer::archive;
 use crate::stable_tx::{remove_liquidity_tx::RemoveLiquidityTx, stable_tx::StableTx, tx_map};
 use crate::stable_user::user_map;
 use kong_lib::ic::address::Address;
+use kong_lib::stable_claim::stable_claim::StableClaim;
 use kong_lib::stable_token::{stable_token::StableToken, token::Token};
 
 enum TokenIndex {
@@ -446,7 +447,18 @@ async fn transfer_token(
         TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1, None),
     };
 
-    match transfer_lib::send::send(token, &Address::PrincipalId(to_principal_id.clone()), &amount_with_gas, SendInfo{request_id, user_id, ts: Some(ts)}).await {
+    match transfer_lib::send::send(
+        token,
+        &Address::PrincipalId(to_principal_id.clone()),
+        &amount_with_gas,
+        SendInfo {
+            request_id,
+            user_id,
+            ts: Some(ts),
+        },
+    )
+    .await
+    {
         Ok(stable_transfer) => {
             transfer_ids.push(stable_transfer.transfer_id);
             match token_index {

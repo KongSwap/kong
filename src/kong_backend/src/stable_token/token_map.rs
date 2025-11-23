@@ -1,11 +1,10 @@
 use wildmatch::WildMatch;
 
-use kong_lib::ic::address_helpers::is_principal_id;
 use crate::ic::logging::error_log;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::TOKEN_MAP;
 use crate::stable_token::token_map;
-use kong_lib::chains::chains::IC_CHAIN;
+use kong_lib::chains::chains::{IC_CHAIN, SOL_CHAIN};
 use kong_lib::stable_token::ic_token::ICToken;
 use kong_lib::stable_token::lp_token::LPToken;
 use kong_lib::stable_token::solana_token::SolanaToken;
@@ -58,20 +57,23 @@ pub fn address_with_chain(address: &str) -> Result<String, String> {
 pub fn get_chain(token: &str) -> Option<String> {
     match token.split_once('.') {
         Some((prefix, _)) if prefix == IC_CHAIN => Some(IC_CHAIN.to_string()),
+        Some((prefix, _)) if prefix == SOL_CHAIN => Some(SOL_CHAIN.to_string()),
         _ => None,
     }
 }
 
 /// extract the address from token string
 pub fn get_address(token: &str) -> Option<String> {
-    let address = match get_chain(token) {
-        Some(chain) => token.strip_prefix(&format!("{}.", chain))?,
-        None => token,
+    let (chain, address) = match token.split_once('.') {
+        Some((chain, addr)) => (Some(chain), addr),
+        None => (None, token),
     };
-    if is_principal_id(address) {
-        Some(address.to_string())
-    } else {
-        None
+
+    match chain {
+        Some(IC_CHAIN) => Some(address.to_string()), // TODO: here was also check for 'kong_lib::ic::address_helpers::is_principal_id'
+        Some(SOL_CHAIN) => Some(address.to_string()), // Solana addresses are base58 strings
+        None => Some(address.to_string()),
+        _ => None,
     }
 }
 

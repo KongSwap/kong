@@ -11,7 +11,7 @@ use crate::helpers::nat_helpers::{nat_add, nat_is_zero, nat_multiply, nat_sqrt, 
 use crate::ic::{
     ckusdt::is_ckusdt, get_time::get_time, guards::not_in_maintenance_mode, icp::is_icp, id::caller_id, verify_transfer::verify_transfer,
 };
-use crate::stable_claim::{claim_map, stable_claim::StableClaim};
+use crate::stable_claim::claim_map;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_lp_token::lp_token_map;
 use crate::stable_lp_token::stable_lp_token::StableLPToken;
@@ -25,6 +25,7 @@ use crate::stable_user::user_map;
 use kong_lib::chains::chains::IC_CHAIN;
 use kong_lib::ic::address::Address;
 use kong_lib::ic::transfer::{icrc1_transfer, icrc2_transfer_from};
+use kong_lib::stable_claim::stable_claim::StableClaim;
 use kong_lib::stable_token::lp_token::LP_DECIMALS;
 use kong_lib::stable_token::stable_token::StableToken;
 use kong_lib::stable_token::token;

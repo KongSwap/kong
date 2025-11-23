@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_claim::claim_map;
-use crate::stable_claim::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
+use kong_lib::stable_claim::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
 use crate::stable_memory::CLAIM_MAP;
 
 const MAX_CLAIMS: usize = 1_000;
