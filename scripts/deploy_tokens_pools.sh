@@ -28,7 +28,6 @@ CKUSDT_FEE=${CKUSDT_FEE//_/}
 
 dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_token --output json "(record {
     token = \"${CKUSDT_CHAIN}.${CKUSDT_LEDGER}\";
-    on_kong = opt true;
 })" | jq
 
 # 2. Add ICP/ckUSDT pool
@@ -65,12 +64,11 @@ dfx canister call ${NETWORK} ${IDENTITY} ${CKUSDT_LEDGER} icrc2_approve "(record
     };
 })"
 
-dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool --output json "(record {
+dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_liquidity --output json "(record {
     token_0 = \"${ICP_CHAIN}.${ICP_LEDGER}\";
     amount_0 = ${ICP_AMOUNT};
     token_1 = \"${CKUSDT_CHAIN}.${CKUSDT_LEDGER}\";
     amount_1 = ${CKUSDT_AMOUNT};
-    on_kong = opt true;
 })" | jq
 
 # 3. Add ckBTC/ckUSDT pool
@@ -105,12 +103,11 @@ dfx canister call ${NETWORK} ${IDENTITY} ${CKUSDT_LEDGER} icrc2_approve "(record
     };
 })"
 
-dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool --output json "(record {
+dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_liquidity --output json "(record {
     token_0 = \"${CKBTC_CHAIN}.${CKBTC_LEDGER}\";
     amount_0 = ${CKBTC_AMOUNT};
     token_1 = \"${CKUSDT_CHAIN}.${CKUSDT_LEDGER}\";
     amount_1 = ${CKUSDT_AMOUNT};
-    on_kong = opt true;
 })" | jq
 
 # 4. Add ckETH/ckUSDT pool
@@ -145,12 +142,11 @@ dfx canister call ${NETWORK} ${IDENTITY} ${CKUSDT_LEDGER} icrc2_approve "(record
     };
 })"
 
-dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool --output json "(record {
+dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_liquidity --output json "(record {
     token_0 = \"${CKETH_CHAIN}.${CKETH_LEDGER}\";
     amount_0 = ${CKETH_AMOUNT};
     token_1 = \"${CKUSDT_CHAIN}.${CKUSDT_LEDGER}\";
     amount_1 = ${CKUSDT_AMOUNT};
-    on_kong = opt true;
 })" | jq
 
 # 5. Add KONG/ckUSDT pool
@@ -185,12 +181,11 @@ dfx canister call ${NETWORK} ${IDENTITY} ${CKUSDT_LEDGER} icrc2_approve "(record
     };
 })"
 
-dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool --output json "(record {
+dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_liquidity --output json "(record {
     token_0 = \"${KONG_CHAIN}.${KONG_LEDGER}\";
     amount_0 = ${KONG_AMOUNT};
     token_1 = \"${CKUSDT_CHAIN}.${CKUSDT_LEDGER}\";
     amount_1 = ${CKUSDT_AMOUNT};
-    on_kong = opt true;
 })" | jq
 
 # 6. Add KONG/ICP pool
@@ -225,10 +220,9 @@ dfx canister call ${NETWORK} ${IDENTITY} ${ICP_LEDGER} icrc2_approve "(record {
     };
 })"
 
-dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool --output json "(record {
+dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_liquidity --output json "(record {
     token_0 = \"${KONG_CHAIN}.${KONG_LEDGER}\";
     amount_0 = ${KONG_AMOUNT};
     token_1 = \"${ICP_CHAIN}.${ICP_LEDGER}\";
     amount_1 = ${ICP_AMOUNT};
-    on_kong = opt true;
 })" | jq

@@ -22,7 +22,6 @@ use kong_lib::ic::address::Address;
 use kong_lib::stable_token::{stable_token::StableToken, token::Token};
 
 pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidityReply, String> {
-    ic_cdk::println!("add_liquidity_transfer args: {:?}", args);
     // user has transferred one of the tokens, we need to log the request immediately and verify the transfer
     // make sure user is registered, if not create a new user with referred_by if specified
     let user_id = user_map::insert(None)?;

@@ -15,8 +15,6 @@ use super::{APP_NAME, APP_VERSION};
 use crate::add_liquidity::add_liquidity_args::AddLiquidityArgs;
 use crate::add_liquidity::add_liquidity_reply::AddLiquidityReply;
 use crate::add_liquidity_amounts::add_liquidity_amounts_reply::AddLiquidityAmountsReply;
-use crate::add_pool::add_pool_args::AddPoolArgs;
-use crate::add_pool::add_pool_reply::AddPoolReply;
 use crate::add_token::add_token::add_solana_token;
 use crate::add_token::add_token_args::AddTokenArgs;
 use crate::add_token::add_token_reply::AddTokenReply;
@@ -270,41 +268,6 @@ fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageReque
 **Token 1:**
 {} {}",
                 amount_0, add_liquidity_args.token_0, amount_1, add_liquidity_args.token_1
-            ))
-        }
-        "add_pool" => {
-            let Ok(add_pool_args) = decode_one::<AddPoolArgs>(&consent_msg_request.arg) else {
-                Err(ErrorInfo {
-                    description: "Failed to decode AddPoolArgs".to_string(),
-                })?
-            };
-            let Ok(token_0) = token_map::get_by_token(add_pool_args.token_0.as_str()) else {
-                Err(ErrorInfo {
-                    description: "Failed to get token_0".to_string(),
-                })?
-            };
-            let decimals_0 = token_0.decimals();
-            let amount_0 = nat_to_decimals_f64(decimals_0, &add_pool_args.amount_0).ok_or_else(|| ErrorInfo {
-                description: "Failed to convert token_0 amount to f64".to_string(),
-            })?;
-            let Ok(token_1) = token_map::get_by_token(add_pool_args.token_1.as_str()) else {
-                Err(ErrorInfo {
-                    description: "Failed to get token_1".to_string(),
-                })?
-            };
-            let decimals_1 = token_1.decimals();
-            let amount_1 = nat_to_decimals_f64(decimals_1, &add_pool_args.amount_1).ok_or_else(|| ErrorInfo {
-                description: "Failed to convert token_1 amount to f64".to_string(),
-            })?;
-            ConsentMessage::GenericDisplayMessage(format!(
-                "# Approve KongSwap add pool
-
-**Token 0:**
-{} {}
-
-**Token 1:**
-{} {}",
-                amount_0, add_pool_args.token_0, amount_1, add_pool_args.token_1
             ))
         }
         _ => ConsentMessage::GenericDisplayMessage(format!("Approve KongSwap to execute {}", consent_msg_request.method)),

@@ -1,6 +1,5 @@
 pub mod add_liquidity;
 pub mod add_liquidity_amounts;
-pub mod add_pool;
 pub mod add_token;
 pub mod canister;
 pub mod claims;

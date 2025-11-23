@@ -281,7 +281,6 @@ type CheckPoolsReply = record {
 type CheckPoolsResult = variant { Ok : vec CheckPoolsReply; Err : text };
 
 type TxsReply = variant {
-    AddPool : AddPoolReply;
     AddLiquidity : AddLiquidityReply;
     RemoveLiquidity : RemoveLiquidityReply;
     Swap : SwapReply;
@@ -289,7 +288,6 @@ type TxsReply = variant {
 type TxsResult = variant { Ok : vec TxsReply; Err : text };
 
 type RequestRequest = variant {
-    AddPool : AddPoolArgs;
     AddLiquidity : AddLiquidityArgs;
     RemoveLiquidity : RemoveLiquidityArgs;
     Swap : SwapArgs;
@@ -297,7 +295,6 @@ type RequestRequest = variant {
 
 type RequestReply = variant {
     Pending;
-    AddPool : AddPoolReply;
     AddLiquidity : AddLiquidityReply;
     RemoveLiquidity : RemoveLiquidityReply;
     Swap : SwapReply;
@@ -329,40 +326,6 @@ type UpdateTokenReply = variant {
     IC : ICTokenReply;
 };
 type UpdateTokenResult = variant { Ok : UpdateTokenReply; Err : text };
-
-type AddPoolArgs = record {
-    token_0 : text;
-    amount_0 : nat;
-    tx_id_0 : opt TxId;
-    token_1 : text;
-    amount_1 : nat;
-    tx_id_1 : opt TxId;
-    lp_fee_bps : opt nat8;
-};
-type AddPoolReply = record {
-    tx_id : nat64;
-    pool_id : nat32;
-    request_id : nat64;
-    status : text;    
-    name : text;
-    symbol : text;
-    chain_0 : text;
-    address_0 : text;
-    symbol_0 : text;
-    amount_0 : nat;
-    chain_1 : text;
-    address_1 : text;
-    symbol_1 : text;
-    amount_1 : nat;
-    lp_fee_bps : nat8;
-    lp_token_symbol : text;
-    add_lp_token_amount : nat;
-    transfer_ids : vec TransferIdReply;
-    claim_ids : vec nat64;
-    is_removed : bool;
-    ts : nat64;
-};
-type AddPoolResult = variant { Ok : AddPoolReply; Err : text };
 
 type AddLiquidityAmountsReply = record {
     symbol : text;
@@ -604,8 +567,6 @@ service : {
     add_token : (AddTokenArgs) -> (AddTokenResult);
     // update token details
     update_token : (UpdateTokenArgs) -> (UpdateTokenResult);
-    // add a new liquidity pool and token
-    add_pool : (AddPoolArgs) -> (AddPoolResult);
 
     // add_liquidity_amounts(token_0, amount_0, token_1)
     // token_0, token_1 - format Symbol, Chain.Symbol, CanisterId or Chain.CanisterId ie. ckBTC, IC.ckBTC, or IC.ryjl3-tyaaa-aaaaa-aaaba-cai
