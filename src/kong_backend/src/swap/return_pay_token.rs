@@ -1,68 +1,48 @@
 use candid::Nat;
-use icrc_ledger_types::icrc1::account::Account;
-use transfer_lib::transfer_map;
 
 use super::swap_reply_helpers::to_swap_reply_failed;
 
-use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
-use crate::stable_claim::claim_map;
 use crate::stable_request::reply::Reply;
 use crate::stable_request::request_map;
 use crate::stable_request::status::StatusCode;
+use crate::transfers::send_token_or_claim::send_token_or_claim;
 use kong_lib::ic::address::Address;
-use kong_lib::ic::transfer::icrc1_transfer;
-use kong_lib::stable_claim::stable_claim::StableClaim;
-use kong_lib::stable_token::{stable_token::StableToken, token::Token};
-use kong_lib::stable_transfer::{stable_transfer::StableTransfer, tx_id::TxId};
+use kong_lib::stable_token::stable_token::StableToken;
 
 #[allow(clippy::too_many_arguments)]
 pub async fn return_pay_token(
     request_id: u64,
     user_id: u32,
-    to_principal_id: &Account,
+    address: Result<Address, String>,
     pay_token: &StableToken,
     pay_amount: &Nat,
     receive_token: Option<&StableToken>,
     transfer_ids: &mut Vec<u64>,
     ts: u64,
 ) {
-    let token_id = pay_token.token_id();
-    let fee = pay_token.fee();
+    let address = match &address {
+        Ok(address) => address,
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::ReturnPayTokenFailed, Some(&e));
+            return;
+        }
+    };
 
     let mut claim_ids = Vec::new();
 
     request_map::update_status(request_id, StatusCode::ReturnPayToken, None);
 
-    let pay_amount_with_gas = nat_subtract(pay_amount, &fee).unwrap_or(nat_zero());
-    match icrc1_transfer(&pay_amount_with_gas, to_principal_id, pay_token, None).await {
-        Ok(tx_id) => {
-            let transfer_id = transfer_map::insert(&StableTransfer {
-                transfer_id: 0,
-                request_id,
-                is_send: false,
-                amount: pay_amount_with_gas,
-                token_id,
-                tx_id: TxId::BlockIndex(tx_id),
-                ts,
-            });
+    match send_token_or_claim(request_id, user_id, address, pay_token, pay_amount, ts).await {
+        crate::transfers::send_token_or_claim::ReturnTokenResult::TransferId(transfer_id) => {
             transfer_ids.push(transfer_id);
             request_map::update_status(request_id, StatusCode::ReturnPayTokenSuccess, None);
         }
-        Err(e) => {
-            let claim = StableClaim::new(
-                user_id,
-                token_id,
-                pay_amount,
-                Some(request_id),
-                Some(Address::PrincipalId(*to_principal_id)),
-                ts,
-            );
-            let claim_id = claim_map::insert(&claim);
+        crate::transfers::send_token_or_claim::ReturnTokenResult::ClaimId(claim_id, err) => {
             claim_ids.push(claim_id);
             request_map::update_status(
                 request_id,
                 StatusCode::ReturnPayTokenFailed,
-                Some(&format!("Saved as claim #{}. {}", claim_id, e)),
+                Some(&format!("Saved as claim #{}. {}", claim_id, err)),
             );
         }
     };

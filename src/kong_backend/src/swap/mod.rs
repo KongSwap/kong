@@ -10,6 +10,5 @@ pub mod swap_calc_impl;
 pub mod swap_reply;
 pub mod swap_reply_helpers;
 pub mod swap_transfer;
-pub mod swap_transfer_from;
 pub mod update_liquidity_pool;
 pub mod archive_to_kong_data;

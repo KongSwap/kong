@@ -6,11 +6,11 @@
 use anyhow::Result;
 use std::collections::HashMap;
 
-use super::super::error::SolanaError;
-use super::super::sdk::compiled_instruction::CompiledInstruction;
-use super::super::sdk::instruction::Instruction;
-use super::super::stable_memory::with_solana_blockhash;
-use super::super::utils::base58;
+use crate::solana::sdk::compiled_instruction::CompiledInstruction;
+use crate::solana::sdk::instruction::Instruction;
+use crate::solana::stable_memory::with_solana_blockhash;
+use kong_lib::solana::base58;
+use kong_lib::solana::error::SolanaError;
 
 /// Message header for Solana transactions
 #[derive(Debug, Clone)]

@@ -36,7 +36,8 @@ pub async fn send_receive_token(
 
     let send_info = SendInfo { request_id, user_id, ts: Some(ts) };
     match transfer_lib::send::send(receive_token, to_address, receive_amount, send_info).await {
-        Ok(_) => {
+        Ok(stable_transfer) => {
+            transfer_ids.push(stable_transfer.transfer_id);
             request_map::update_status(request_id, StatusCode::SendReceiveTokenSuccess, None);
         }
         Err(e) => {

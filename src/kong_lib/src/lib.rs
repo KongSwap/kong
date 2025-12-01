@@ -10,6 +10,7 @@ pub mod remove_liquidity;
 mod remove_liquidity_amounts;
 pub mod requests;
 pub mod send;
+pub mod solana;
 pub mod stable_claim;
 pub mod stable_db_update;
 pub mod stable_kong_settings;

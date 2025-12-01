@@ -5,7 +5,7 @@
 use anyhow::Result;
 use kong_lib::ic::management_canister::ManagementCanister;
 
-use crate::solana::error::SolanaError;
+use kong_lib::solana::error::SolanaError;
 use crate::solana::sdk::instruction::Instruction;
 
 use super::serialize::serialize_message;

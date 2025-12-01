@@ -1,5 +1,4 @@
 pub mod address;
-pub mod address_helpers;
 pub mod canister_address;
 pub mod ckusdt;
 pub mod error;

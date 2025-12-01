@@ -6,10 +6,11 @@ use crate::helpers::math_helpers::{bytes_to_megabytes, to_trillions};
 use crate::ic::guards::caller_is_kingkong;
 use kong_lib::stable_claim::stable_claim::ClaimStatus;
 use crate::stable_memory::{
-    CLAIM_MAP, CLAIM_MEMORY_ID, KONG_SETTINGS_MEMORY_ID, LP_TOKEN_MAP, LP_TOKEN_MEMORY_ID, MEMORY_MANAGER, POOL_MAP, POOL_MEMORY_ID,
+    CLAIM_MAP, CLAIM_MEMORY_ID, KONG_SETTINGS_MEMORY_ID, LP_TOKEN_MAP, LP_TOKEN_MEMORY_ID, POOL_MAP, POOL_MEMORY_ID,
     REQUEST_ARCHIVE_MAP, REQUEST_ARCHIVE_MEMORY_ID, REQUEST_MAP, REQUEST_MEMORY_ID, TOKEN_MAP, TOKEN_MEMORY_ID, TRANSFER_ARCHIVE_MAP,
     TRANSFER_ARCHIVE_MEMORY_ID, TX_ARCHIVE_MAP, TX_ARCHIVE_MEMORY_ID, TX_MAP, TX_MEMORY_ID, USER_MAP, USER_MEMORY_ID,
 };
+use transfer_lib::memory_manager::MEMORY_MANAGER;
 use transfer_lib::stable_memory::{TRANSFER_MAP, TRANSFER_MEMORY_ID};
 
 #[cfg(target_arch = "wasm32")]

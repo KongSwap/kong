@@ -1,6 +1,6 @@
 use ic_cdk::update;
 
-use crate::solana::error::SolanaError;
+use kong_lib::solana::error::SolanaError;
 use crate::solana::network::SolanaNetwork;
 use kong_lib::ic::id::is_caller_controller;
 // use crate::kong_backend::KongBackend;

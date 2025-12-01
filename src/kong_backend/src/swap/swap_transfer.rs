@@ -1,4 +1,5 @@
 use candid::Nat;
+use transfer_lib::get_address::get_caller_address;
 use transfer_lib::receive::receive_not_used;
 
 use super::archive_to_kong_data::archive_to_kong_data;
@@ -18,7 +19,7 @@ use crate::stable_token::token_map;
 use crate::stable_user::user_map;
 use crate::transfers::receive_args_helpers::create_swap_receive_args;
 use kong_lib::ic::address::Address;
-use kong_lib::ic::address_helpers::get_address;
+use kong_lib::helpers::address_helpers::get_address;
 use kong_lib::stable_token::{stable_token::StableToken, token::Token};
 
 pub async fn swap_transfer(args: SwapArgs) -> Result<SwapReply, String> {
@@ -146,11 +147,11 @@ async fn check_arguments(args: &SwapArgs, request_id: u64, ts: u64) -> Result<(S
         Ok(v) => {
             request_map::update_status(request_id, StatusCode::VerifyPayTokenSuccess, None);
             v
-        },
+        }
         Err(e) => {
             request_map::update_status(request_id, StatusCode::VerifyPayTokenFailed, Some(&e));
             Err(e)?
-        },
+        }
     };
 
     Ok((pay_token, pay_amount, transfer_id))
@@ -167,6 +168,7 @@ async fn process_swap(
     transfer_ids: &mut Vec<u64>,
     ts: u64,
 ) -> Result<(StableToken, Nat, Address, f64, f64, f64, Vec<SwapCalc>), String> {
+    let address_arg = get_caller_address(pay_token, args.pay_tx_id.as_ref());
     let caller_id = caller_id();
 
     transfer_ids.push(pay_transfer_id);
@@ -179,7 +181,7 @@ async fn process_swap(
         return_pay_token(
             request_id,
             user_id,
-            &caller_id,
+            address_arg,
             pay_token,
             pay_amount,
             Some(&receive_token),
@@ -187,7 +189,7 @@ async fn process_swap(
             ts,
         )
         .await;
-        Err(format!("Req #{} failed. Receive token is suspended or removed", request_id))?
+        return Err(format!("Req #{} failed. Receive token is suspended or removed", request_id));
     }
     let receive_amount = args.receive_amount.as_ref();
 
@@ -196,7 +198,7 @@ async fn process_swap(
         return_pay_token(
             request_id,
             user_id,
-            &caller_id,
+            address_arg,
             pay_token,
             pay_amount,
             Some(&receive_token),
@@ -204,14 +206,14 @@ async fn process_swap(
             ts,
         )
         .await;
-        Err(format!("Req #{} failed. Pay token is suspended or removed", request_id))?
+        return Err(format!("Req #{} failed. Pay token is suspended or removed", request_id));
     }
     if nat_is_zero(pay_amount) {
         request_map::update_status(request_id, StatusCode::PayTokenAmountIsZero, None);
         return_pay_token(
             request_id,
             user_id,
-            &caller_id,
+            address_arg,
             pay_token,
             pay_amount,
             Some(&receive_token),
@@ -219,7 +221,7 @@ async fn process_swap(
             ts,
         )
         .await;
-        Err(format!("Req #{} failed. Pay amount is zero", request_id))?
+        return Err(format!("Req #{} failed. Pay amount is zero", request_id));
     }
 
     // use specified max slippage or use default
@@ -233,7 +235,7 @@ async fn process_swap(
                 return_pay_token(
                     request_id,
                     user_id,
-                    &caller_id,
+                    address_arg,
                     pay_token,
                     pay_amount,
                     Some(&receive_token),
@@ -241,7 +243,7 @@ async fn process_swap(
                     ts,
                 )
                 .await;
-                Err(format!("Req #{} failed. {}", request_id, e))?
+                return Err(format!("Req #{} failed. {}", request_id, e));
             }
         },
         None => Address::PrincipalId(caller_id),
@@ -254,7 +256,7 @@ async fn process_swap(
                 return_pay_token(
                     request_id,
                     user_id,
-                    &caller_id,
+                    address_arg,
                     pay_token,
                     pay_amount,
                     Some(&receive_token),

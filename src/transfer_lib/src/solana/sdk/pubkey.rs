@@ -3,8 +3,8 @@ use std::{
     str::FromStr,
 };
 
-use crate::solana::error::SolanaError;
-use crate::solana::utils::base58;
+use kong_lib::solana::error::SolanaError;
+use kong_lib::solana::base58;
 
 /// Number of bytes in a pubkey
 pub const PUBKEY_BYTES: usize = 32;

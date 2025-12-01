@@ -1,14 +1,14 @@
 use candid::Nat;
 use ic_cdk::update;
-use icrc_ledger_types::icrc1::account::Account;
-use transfer_lib::solana::send_info::SendInfo;
+use kong_lib::helpers::address_helpers::get_address_from_param;
+use transfer_lib::solana::verify_transfer::verify_canonical_message;
 
 use super::remove_liquidity_args::RemoveLiquidityArgs;
 use super::remove_liquidity_reply::RemoveLiquidityReply;
 use super::remove_liquidity_reply_helpers::{to_remove_liquidity_reply, to_remove_liquidity_reply_failed};
 
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_is_zero, nat_multiply, nat_subtract, nat_zero};
-use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode, id::caller_id};
+use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode};
 use crate::stable_claim::claim_map;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_lp_token::{lp_token_map, stable_lp_token::StableLPToken};
@@ -17,8 +17,9 @@ use crate::stable_request::{reply::Reply, request::Request, request_map, stable_
 use crate::stable_transfer::archive;
 use crate::stable_tx::{remove_liquidity_tx::RemoveLiquidityTx, stable_tx::StableTx, tx_map};
 use crate::stable_user::user_map;
+use crate::transfers::send_token_or_claim::send_token_or_claim;
+use crate::transfers::solana::canonical_remove_liquidity::CanonicalRemoveLiquidityMessage;
 use kong_lib::ic::address::Address;
-use kong_lib::stable_claim::stable_claim::StableClaim;
 use kong_lib::stable_token::{stable_token::StableToken, token::Token};
 
 enum TokenIndex {
@@ -36,22 +37,22 @@ enum TokenIndex {
 ///   - payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1 does not include gas fees
 #[update(guard = "not_in_maintenance_mode")]
 pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidityReply, String> {
-    let (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
+    let (user_id, pool, address_0, address_1, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
         check_arguments(&args).await?;
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
-    let caller_id = caller_id();
 
     let result = match process_remove_liquidity(
         request_id,
         user_id,
-        &caller_id,
         &pool,
         &remove_lp_token_amount,
         &payout_amount_0,
         &payout_lp_fee_0,
+        &address_0,
         &payout_amount_1,
         &payout_lp_fee_1,
+        &address_1,
         ts,
     )
     .await
@@ -74,10 +75,25 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
 pub async fn remove_liquidity_from_pool(
     args: RemoveLiquidityArgs,
     user_id: u32,
-    to_principal_id: &Account,
 ) -> Result<RemoveLiquidityReply, String> {
-    let (pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
-        check_arguments_with_user(&args, user_id).await?;
+    // We want to remove liquidity for someone else, caller addresses are unused
+    let (
+        pool,
+        _caller_address_0,
+        _caller_address_1,
+        remove_lp_token_amount,
+        payout_amount_0,
+        payout_lp_fee_0,
+        payout_amount_1,
+        payout_lp_fee_1,
+    ) = check_arguments_with_user(&args, user_id).await?;
+
+    // Make sure args are passed and check, that these are correct addresses
+    let address_0 = args.payout_address_0.clone().ok_or("Address 0 is required".to_string())?;
+    let address_1 = args.payout_address_1.clone().ok_or("Address 1 is required".to_string())?;
+    let address_0 = get_address_from_param(&pool.token_0(), &Some(address_0))?;
+    let address_1 = get_address_from_param(&pool.token_1(), &Some(address_1))?;
+
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
     request_map::update_status(request_id, StatusCode::RemoveLiquidityFromPool, None);
@@ -85,13 +101,14 @@ pub async fn remove_liquidity_from_pool(
     let result = match process_remove_liquidity(
         request_id,
         user_id,
-        to_principal_id,
         &pool,
         &remove_lp_token_amount,
         &payout_amount_0,
         &payout_lp_fee_0,
+        &address_0,
         &payout_amount_1,
         &payout_lp_fee_1,
+        &address_1,
         ts,
     )
     .await
@@ -112,23 +129,23 @@ pub async fn remove_liquidity_from_pool(
 
 #[update]
 pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, String> {
-    let (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
+    let (user_id, pool, address_0, address_1, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
         check_arguments(&args).await?;
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
-    let caller_id = caller_id();
 
     ic_cdk::futures::spawn(async move {
         match process_remove_liquidity(
             request_id,
             user_id,
-            &caller_id,
             &pool,
             &remove_lp_token_amount,
             &payout_amount_0,
             &payout_lp_fee_0,
+            &address_0,
             &payout_amount_1,
             &payout_lp_fee_1,
+            &address_1,
             ts,
         )
         .await
@@ -142,17 +159,19 @@ pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, St
     Ok(request_id)
 }
 
-/// returns (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1)
+/// returns (user_id, pool, address_0, address_1, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1)
 #[allow(clippy::type_complexity)]
-async fn check_arguments(args: &RemoveLiquidityArgs) -> Result<(u32, StablePool, Nat, Nat, Nat, Nat, Nat), String> {
+async fn check_arguments(args: &RemoveLiquidityArgs) -> Result<(u32, StablePool, Address, Address, Nat, Nat, Nat, Nat, Nat), String> {
     // make sure user is not anonymous and exists
     let user_id = user_map::get_by_caller()?.ok_or("Insufficient LP balance")?.user_id;
-    let (pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
+    let (pool, address_0, address_1, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
         check_arguments_with_user(args, user_id).await?;
 
     Ok((
         user_id,
         pool,
+        address_0,
+        address_1,
         remove_lp_token_amount,
         payout_amount_0,
         payout_lp_fee_0,
@@ -161,10 +180,50 @@ async fn check_arguments(args: &RemoveLiquidityArgs) -> Result<(u32, StablePool,
     ))
 }
 
+fn verify_canonical_message_args(args: &RemoveLiquidityArgs, token_0: &StableToken, token_1: &StableToken) -> Result<(), String> {
+    match (token_0, token_1) {
+        (StableToken::LP(_), StableToken::LP(_)) => return Ok(()),
+        (StableToken::LP(_), StableToken::IC(_)) => return Ok(()),
+        (StableToken::IC(_), StableToken::LP(_)) => return Ok(()),
+        (StableToken::IC(_), StableToken::IC(_)) => return Ok(()),
+        _ => (),
+    }
+
+    let (signature, payout_address) = if let Some(sig_0) = &args.signature_0 {
+        // Use signature_0 with payout_address_0
+        (sig_0, &args.payout_address_0)
+    } else if let Some(sig_1) = &args.signature_1 {
+        // Use signature_1 with payout_address_1
+        (sig_1, &args.payout_address_1)
+    } else {
+        return Err("Cross-chain remove liquidity requires signature and corresponding payout address".to_string());
+    };
+
+    let payout_address = payout_address
+        .as_ref()
+        .ok_or("Corresponding address is required for signature".to_string())?;
+
+    // Verify the canonical message signature
+    let canonical_message = CanonicalRemoveLiquidityMessage::from_remove_liquidity_args(args);
+    let message_str = canonical_message.to_signing_message();
+
+    verify_canonical_message(&message_str, payout_address, signature).map_err(|e| format!("Signature verification failed: {}", e))?;
+    Ok(())
+}
+
 #[allow(clippy::type_complexity)]
-async fn check_arguments_with_user(args: &RemoveLiquidityArgs, user_id: u32) -> Result<(StablePool, Nat, Nat, Nat, Nat, Nat), String> {
+async fn check_arguments_with_user(
+    args: &RemoveLiquidityArgs,
+    user_id: u32,
+) -> Result<(StablePool, Address, Address, Nat, Nat, Nat, Nat, Nat), String> {
     // Pool
     let pool = pool_map::get_by_tokens(&args.token_0, &args.token_1)?;
+    let token_0 = pool.token_0();
+    let token_1 = pool.token_1();
+    let address_0 = get_address_from_param(&token_0, &args.payout_address_0)?;
+    let address_1 = get_address_from_param(&token_1, &args.payout_address_1)?;
+    // Signature
+    verify_canonical_message_args(args, &pool.token_0(), &pool.token_1())?;
     // Token0
     let balance_0 = &pool.balance_0;
     // Token1
@@ -191,6 +250,8 @@ async fn check_arguments_with_user(args: &RemoveLiquidityArgs, user_id: u32) -> 
 
     Ok((
         pool,
+        address_0,
+        address_1,
         remove_lp_token_amount,
         payout_amount_0,
         payout_lp_fee_0,
@@ -235,13 +296,14 @@ pub fn calculate_amounts(pool: &StablePool, remove_lp_token_amount: &Nat) -> Res
 async fn process_remove_liquidity(
     request_id: u64,
     user_id: u32,
-    to_principal_id: &Account,
     pool: &StablePool,
     remove_lp_token_amount: &Nat,
     payout_amount_0: &Nat,
     payout_lp_fee_0: &Nat,
+    address_0: &Address,
     payout_amount_1: &Nat,
     payout_lp_fee_1: &Nat,
+    address_1: &Address,
     ts: u64,
 ) -> Result<RemoveLiquidityReply, String> {
     // LP token
@@ -263,12 +325,13 @@ async fn process_remove_liquidity(
     send_payout_tokens(
         request_id,
         user_id,
-        to_principal_id,
         pool,
         payout_amount_0,
         payout_lp_fee_0,
+        address_0,
         payout_amount_1,
         payout_lp_fee_1,
+        address_1,
         remove_lp_token_amount,
         ts,
     )
@@ -353,12 +416,13 @@ fn update_liquidity_pool(request_id: u64, pool: &StablePool, amount_0: &Nat, lp_
 async fn send_payout_tokens(
     request_id: u64,
     user_id: u32,
-    to_principal_id: &Account,
     pool: &StablePool,
     payout_amount_0: &Nat,
     payout_lp_fee_0: &Nat,
+    address_0: &Address,
     payout_amount_1: &Nat,
     payout_lp_fee_1: &Nat,
+    address_1: &Address,
     remove_lp_token_amount: &Nat,
     ts: u64,
 ) -> Result<RemoveLiquidityReply, String> {
@@ -374,7 +438,7 @@ async fn send_payout_tokens(
     transfer_token(
         request_id,
         user_id,
-        to_principal_id,
+        address_0,
         TokenIndex::Token0,
         &token_0,
         payout_amount_0,
@@ -389,7 +453,7 @@ async fn send_payout_tokens(
     transfer_token(
         request_id,
         user_id,
-        to_principal_id,
+        address_1,
         TokenIndex::Token1,
         &token_1,
         payout_amount_1,
@@ -427,7 +491,7 @@ async fn send_payout_tokens(
 async fn transfer_token(
     request_id: u64,
     user_id: u32,
-    to_principal_id: &Account,
+    to_address: &Address,
     token_index: TokenIndex,
     token: &StableToken,
     payout_amount: &Nat,
@@ -436,8 +500,6 @@ async fn transfer_token(
     claim_ids: &mut Vec<u64>,
     ts: u64,
 ) {
-    let token_id = token.token_id();
-
     // total payout = amount + lp_fee - gas fee
     let amount = nat_add(payout_amount, payout_lp_fee);
     let amount_with_gas = nat_subtract(&amount, &token.fee()).unwrap_or(nat_zero());
@@ -447,37 +509,17 @@ async fn transfer_token(
         TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1, None),
     };
 
-    match transfer_lib::send::send(
-        token,
-        &Address::PrincipalId(to_principal_id.clone()),
-        &amount_with_gas,
-        SendInfo {
-            request_id,
-            user_id,
-            ts: Some(ts),
-        },
-    )
-    .await
-    {
-        Ok(stable_transfer) => {
-            transfer_ids.push(stable_transfer.transfer_id);
+    match send_token_or_claim(request_id, user_id, to_address, token, &amount_with_gas, ts).await {
+        crate::transfers::send_token_or_claim::ReturnTokenResult::TransferId(transfer_id) => {
+            transfer_ids.push(transfer_id);
             match token_index {
                 TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReceiveToken0Success, None),
                 TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1Success, None),
             };
         }
-        Err(e) => {
-            let claim = StableClaim::new(
-                user_id,
-                token_id,
-                &amount,
-                Some(request_id),
-                Some(Address::PrincipalId(*to_principal_id)),
-                ts,
-            );
-            let claim_id = claim_map::insert(&claim);
+        crate::transfers::send_token_or_claim::ReturnTokenResult::ClaimId(claim_id, err) => {
             claim_ids.push(claim_id);
-            let message = format!("Saved as claim #{}. {}", claim_id, e);
+            let message = format!("Saved as claim #{}. {}", claim_id, err);
             match token_index {
                 TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReceiveToken0Failed, Some(&message)),
                 TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1Failed, Some(&message)),

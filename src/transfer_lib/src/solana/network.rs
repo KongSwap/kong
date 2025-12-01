@@ -2,8 +2,8 @@ use candid::Principal;
 
 use kong_lib::ic::management_canister::ManagementCanister;
 
-use super::error::SolanaError;
-use super::utils::base58;
+use kong_lib::solana::error::SolanaError;
+use kong_lib::solana::base58;
 
 // Known program IDs on Solana network
 pub const SYSTEM_PROGRAM_ID: &str = "11111111111111111111111111111111";

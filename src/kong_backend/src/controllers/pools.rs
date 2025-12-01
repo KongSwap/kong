@@ -13,8 +13,8 @@ use crate::stable_lp_token::lp_token_map;
 use crate::stable_memory::{LP_TOKEN_MAP, POOL_MAP};
 use crate::stable_pool::pool_map;
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
-use kong_lib::stable_token::token::Token;
 use crate::stable_user::user_map;
+use kong_lib::stable_token::token::Token;
 
 const MAX_POOLS: usize = 1_000;
 
@@ -114,15 +114,19 @@ async fn remove_lps_from_pool(symbol: String) -> Result<String, String> {
         if remove_lp_token_amount == nat_zero() {
             continue;
         }
-        let args = RemoveLiquidityArgs {
-            token_0: token_0.clone(),
-            token_1: token_1.clone(),
-            remove_lp_token_amount,
-        };
         match Principal::from_text(principal_id) {
             Ok(principal) => {
                 let to_principal_id = Account::from(principal);
-                match remove_liquidity_from_pool(args, user_id, &to_principal_id).await {
+                let args = RemoveLiquidityArgs {
+                    token_0: token_0.clone(),
+                    token_1: token_1.clone(),
+                    remove_lp_token_amount,
+                    payout_address_0: Some(to_principal_id.to_string()),
+                    payout_address_1: Some(to_principal_id.to_string()),
+                    signature_0: None,
+                    signature_1: None,
+                };
+                match remove_liquidity_from_pool(args, user_id).await {
                     Ok(_) => {
                         results.push(format!("Removed user_id {} LP position", user_id));
                     }

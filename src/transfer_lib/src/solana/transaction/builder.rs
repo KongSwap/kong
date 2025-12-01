@@ -6,14 +6,14 @@ use anyhow::Result;
 use curve25519_dalek::edwards::CompressedEdwardsY;
 use sha2::{Digest, Sha256};
 
-use crate::solana::error::SolanaError;
+use kong_lib::solana::error::SolanaError;
 use crate::solana::network::{
     ASSOCIATED_TOKEN_PROGRAM_ID, COMPUTE_BUDGET_PROGRAM_ID, MEMO_PROGRAM_ID, SYSTEM_PROGRAM_ID, SYSVAR_RENT_PROGRAM_ID, TOKEN_PROGRAM_ID,
 };
 use crate::solana::sdk::account_meta::AccountMeta;
 use crate::solana::sdk::instruction::Instruction;
-use crate::solana::utils::validation;
-use crate::solana::utils::base58;
+use kong_lib::solana::validation;
+use kong_lib::solana::base58;
 
 /// Transaction builder for creating Solana transactions
 pub struct TransactionBuilder;

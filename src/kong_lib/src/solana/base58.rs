@@ -1,6 +1,6 @@
 use bs58;
 
-use super::super::error::SolanaError;
+use super::error::SolanaError;
 
 /// Decode a base58-encoded public key into a 32-byte array
 pub fn decode_public_key(public_key: &str) -> Result<[u8; 32], SolanaError> {

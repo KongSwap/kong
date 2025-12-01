@@ -1,4 +1,4 @@
-use super::super::error::SolanaError;
+use super::error::SolanaError;
 use super::base58;
 
 /// Validate a Solana address is well-formed

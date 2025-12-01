@@ -114,7 +114,7 @@ fn solana_token_into_solana_reply(token: SolanaToken) -> SolanaReply {
 // #[update(hidden = true, guard = "caller_is_kong_rpc")]
 pub fn add_solana_token(args: AddSolanaTokenArgs) -> Result<SolanaReply, String> {
     // Use get_by_address to check if token exists and get chain info
-    match token_map::get_by_address(&args.token) {
+    let res = match token_map::get_by_address(&args.token) {
         Ok(_existing_token) => {
             // Token already exists
             Err(format!("Token {} already exists", args.token))?
@@ -129,7 +129,8 @@ pub fn add_solana_token(args: AddSolanaTokenArgs) -> Result<SolanaReply, String>
                 _ => Err("This endpoint is only for Solana tokens".to_string())?,
             }
         }
-    }
+    };
+    res
 }
 
 /// Internal function to create a Solana token from SPL token args

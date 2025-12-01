@@ -48,6 +48,10 @@ ICP_FEE=${ICP_FEE//_/}
 CKUSDT_AMOUNT=$(echo "scale=0; ${ICP_AMOUNT} * ${ICP_CKUSDT_PRICE} / ${ICP_CKUSDT_DECIMALS}" | bc -l)
 EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 60000000000" | bc)  # 60 seconds from now
 
+dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_token --output json "(record {
+    token = \"${ICP_CHAIN}.${ICP_LEDGER}\";
+})" | jq
+
 dfx canister call ${NETWORK} ${IDENTITY} ${ICP_LEDGER} icrc2_approve "(record {
     amount = $(echo "${ICP_AMOUNT} + ${ICP_FEE}" | bc);
     expires_at = opt ${EXPIRES_AT};
@@ -86,6 +90,10 @@ CKBTC_FEE=$(dfx canister call ${NETWORK} ${IDENTITY} ${CKBTC_LEDGER} icrc1_fee "
 CKBTC_FEE=${CKBTC_FEE//_/}
 CKUSDT_AMOUNT=$(echo "scale=0; ${CKBTC_AMOUNT} * ${CKBTC_CKUSDT_PRICE} / ${CKBTC_CKUSDT_DECIMALS}" | bc -l)
 EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 60000000000" | bc)  # 60 seconds from now
+
+dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_token --output json "(record {
+    token = \"${CKBTC_CHAIN}.${CKBTC_LEDGER}\";
+})" | jq
 
 dfx canister call ${NETWORK} ${IDENTITY} ${CKBTC_LEDGER} icrc2_approve "(record {
     amount = $(echo "${CKBTC_AMOUNT} + ${CKBTC_FEE}" | bc);
@@ -126,6 +134,10 @@ CKETH_FEE=${CKETH_FEE//_/}
 CKUSDT_AMOUNT=$(echo "scale=0; ${CKETH_AMOUNT} * ${CKETH_CKUSDT_PRICE} / ${CKETH_CKUSDT_DECIMALS}" | bc -l)
 EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 60000000000" | bc)  # 60 seconds from now
 
+dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_token --output json "(record {
+    token = \"${CKETH_CHAIN}.${CKETH_LEDGER}\";
+})" | jq
+
 dfx canister call ${NETWORK} ${IDENTITY} ${CKETH_LEDGER} icrc2_approve "(record {
     amount = $(echo "${CKETH_AMOUNT} + ${CKETH_FEE}" | bc);
     expires_at = opt ${EXPIRES_AT};
@@ -164,6 +176,10 @@ KONG_FEE=$(dfx canister call ${NETWORK} ${IDENTITY} ${KONG_LEDGER} icrc1_fee "()
 KONG_FEE=${KONG_FEE//_/}
 CKUSDT_AMOUNT=$(echo "scale=0; ${KONG_AMOUNT} * ${KONG_CKUSDT_PRICE} / ${KONG_CKUSDT_DECIMALS}" | bc -l)
 EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 60000000000" | bc)  # 60 seconds from now
+
+dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_token --output json "(record {
+    token = \"${KONG_CHAIN}.${KONG_LEDGER}\";
+})" | jq
 
 dfx canister call ${NETWORK} ${IDENTITY} ${KONG_LEDGER} icrc2_approve "(record {
     amount = $(echo "${KONG_AMOUNT} + ${KONG_FEE}" | bc);

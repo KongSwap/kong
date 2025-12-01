@@ -1,6 +1,5 @@
 pub mod controllers;
 pub mod create_job;
-pub mod error;
 pub mod get_address;
 pub mod guards;
 pub mod kong_rpc;
@@ -11,5 +10,4 @@ pub mod stable_memory;
 pub mod swap_job;
 pub mod swap_job_cleanup;
 pub mod transaction;
-pub mod utils;
 pub mod verify_transfer;

@@ -1,10 +1,9 @@
-use ic_stable_structures::memory_manager::{MemoryId, MemoryManager};
-use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableCell};
-use transfer_lib::memory_manager::{Memory, with_memory_manager};
+use ic_stable_structures::memory_manager::MemoryId;
+use ic_stable_structures::{StableBTreeMap, StableCell};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use transfer_lib::memory_manager::{with_memory_manager, Memory};
 
-use kong_lib::stable_claim::stable_claim::{StableClaim, StableClaimId};
 use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
 use crate::stable_lp_token::stable_lp_token::{StableLPToken, StableLPTokenId};
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
@@ -12,6 +11,7 @@ use crate::stable_request::stable_request::{StableRequest, StableRequestId};
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
 use crate::stable_user::banned_user_map::BannedUser;
 use crate::stable_user::stable_user::{StableUser, StableUserId};
+use kong_lib::stable_claim::stable_claim::{StableClaim, StableClaimId};
 use kong_lib::stable_token::stable_token::{StableToken, StableTokenId};
 use kong_lib::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 
@@ -36,11 +36,6 @@ thread_local! {
 
     // static variable to list of temporary banned users
     pub static BANNED_USERS: RefCell<BTreeMap<u32, BannedUser>> = RefCell::default();
-
-    // MEMORY_MANAGER is given management of the entire stable memory. Given a 'MemoryId', it can
-    // return a memory that can be used by stable structures
-    pub static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> =
-        RefCell::new(MemoryManager::init(DefaultMemoryImpl::default()));
 
     // stable memory for storing Kong settings
     pub static KONG_SETTINGS: RefCell<StableCell<StableKongSettings, Memory>> = with_memory_manager(|memory_manager| {

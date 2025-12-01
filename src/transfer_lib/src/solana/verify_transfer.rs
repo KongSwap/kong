@@ -11,7 +11,7 @@ use crate::solana::stable_memory::get_solana_transaction;
 use crate::solana::kong_rpc::transaction_notification::{TransactionNotification, TransactionNotificationStatus};
 use crate::solana::stable_memory::get_cached_solana_address;
 use kong_lib::stable_token::stable_token::StableToken;
-use super::error::SolanaError;
+use kong_lib::solana::error::SolanaError;
 use super::network::{SYSTEM_PROGRAM_ID, TOKEN_PROGRAM_ID as SPL_TOKEN_PROGRAM_ID};
 use super::sdk::offchain_message::OffchainMessage;
 use super::sdk::pubkey::Pubkey;
