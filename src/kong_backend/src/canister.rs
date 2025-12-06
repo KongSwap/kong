@@ -7,13 +7,11 @@ use icrc_ledger_types::icrc21::errors::ErrorInfo;
 use icrc_ledger_types::icrc21::requests::{ConsentMessageMetadata, ConsentMessageRequest};
 use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
 use serde::Deserialize;
-use transfer_lib::canister::InitArgs;
 use std::time::Duration;
+use transfer_lib::canister::InitArgs;
 
 use super::{APP_NAME, APP_VERSION};
 
-use crate::add_liquidity::add_liquidity_args::AddLiquidityArgs;
-use crate::add_liquidity::add_liquidity_reply::AddLiquidityReply;
 use crate::add_liquidity_amounts::add_liquidity_amounts_reply::AddLiquidityAmountsReply;
 use crate::add_token::add_token::add_solana_token;
 use crate::add_token::add_token_args::AddTokenArgs;
@@ -27,17 +25,18 @@ use crate::ic::id::caller_principal_id;
 use crate::ic::logging::info_log;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_request::request_archive::archive_request_map;
-use kong_lib::stable_token::token::Token;
 use crate::stable_token::token_map;
 use crate::stable_transfer::transfer_archive::archive_transfer_map;
 use crate::stable_tx::tx_archive::archive_tx_map;
 use crate::stable_user::principal_id_map::create_principal_id_map;
-use crate::swap::swap_args::SwapArgs;
+use kong_lib::swap::swap_args::SwapArgs;
 use crate::transfers::sol_transfer_callback::add_swap_callback;
+use kong_lib::add_liquidity::add_liquidity_args::AddLiquidityArgs;
+use kong_lib::add_liquidity::add_liquidity_reply::AddLiquidityReply;
+use kong_lib::stable_token::token::Token;
 
 #[allow(unused_imports)]
 use transfer_lib;
-
 
 // list of query calls
 // a bit hard-coded but shouldn't change often
@@ -56,7 +55,7 @@ static QUERY_METHODS: [&str; 11] = [
 ];
 
 fn get_transfer_init_args() -> InitArgs {
-    InitArgs{
+    InitArgs {
         add_solana_token_fn: Some(Box::new(add_solana_token)),
         update_sol_swap_fn: Some(Box::new(add_swap_callback)),
     }

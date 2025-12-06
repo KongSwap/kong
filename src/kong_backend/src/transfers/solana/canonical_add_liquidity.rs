@@ -2,7 +2,7 @@ use candid::Nat;
 use serde::{Deserialize, Serialize};
 
 use crate::helpers::nat_helpers::serialize_amount_as_string;
-use crate::add_liquidity::add_liquidity_args::AddLiquidityArgs;
+use kong_lib::add_liquidity::add_liquidity_args::AddLiquidityArgs;
 
 /// A structure representing the canonical message format for signing liquidity additions
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

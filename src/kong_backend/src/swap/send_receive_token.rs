@@ -2,14 +2,15 @@ use candid::Nat;
 use transfer_lib::solana::send_info::SendInfo;
 
 use super::swap_calc::SwapCalc;
-use super::swap_reply::SwapReply;
 use super::swap_reply_helpers::{to_swap_reply, to_swap_reply_failed};
 use crate::stable_claim::claim_map;
-use kong_lib::stable_claim::stable_claim::StableClaim;
-use crate::stable_request::{reply::Reply, request_map, status::StatusCode};
+use crate::stable_request::request_map;
 use crate::stable_tx::{stable_tx::StableTx, swap_tx::SwapTx, tx_map};
 use kong_lib::ic::address::Address;
+use kong_lib::stable_claim::stable_claim::StableClaim;
+use kong_lib::stable_request::{reply::Reply, status::StatusCode};
 use kong_lib::stable_token::{stable_token::StableToken, token::Token};
+use kong_lib::swap::swap_reply::SwapReply;
 
 #[allow(clippy::too_many_arguments)]
 pub async fn send_receive_token(
@@ -34,7 +35,11 @@ pub async fn send_receive_token(
 
     request_map::update_status(request_id, StatusCode::SendReceiveToken, None);
 
-    let send_info = SendInfo { request_id, user_id, ts: Some(ts) };
+    let send_info = SendInfo {
+        request_id,
+        user_id,
+        ts: Some(ts),
+    };
     match transfer_lib::send::send(receive_token, to_address, receive_amount, send_info).await {
         Ok(stable_transfer) => {
             transfer_ids.push(stable_transfer.transfer_id);

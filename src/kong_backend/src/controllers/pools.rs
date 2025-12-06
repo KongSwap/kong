@@ -8,7 +8,7 @@ use crate::helpers::json_helpers;
 use crate::helpers::nat_helpers::{nat_add, nat_subtract, nat_zero};
 use crate::ic::guards::caller_is_kingkong;
 use crate::remove_liquidity::remove_liquidity::remove_liquidity_from_pool;
-use crate::remove_liquidity::remove_liquidity_args::RemoveLiquidityArgs;
+use kong_lib::remove_liquidity::remove_liquidity_args::RemoveLiquidityArgs;
 use crate::stable_lp_token::lp_token_map;
 use crate::stable_memory::{LP_TOKEN_MAP, POOL_MAP};
 use crate::stable_pool::pool_map;

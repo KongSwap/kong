@@ -2,9 +2,9 @@ use candid::Nat;
 
 use super::swap_reply_helpers::to_swap_reply_failed;
 
-use crate::stable_request::reply::Reply;
+use kong_lib::stable_request::reply::Reply;
 use crate::stable_request::request_map;
-use crate::stable_request::status::StatusCode;
+use kong_lib::stable_request::status::StatusCode;
 use crate::transfers::send_token_or_claim::send_token_or_claim;
 use kong_lib::ic::address::Address;
 use kong_lib::stable_token::stable_token::StableToken;

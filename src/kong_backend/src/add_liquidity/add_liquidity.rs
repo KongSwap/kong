@@ -1,7 +1,7 @@
 use ic_cdk::update;
 
-use super::add_liquidity_args::AddLiquidityArgs;
-use super::add_liquidity_reply::AddLiquidityReply;
+use kong_lib::add_liquidity::add_liquidity_args::AddLiquidityArgs;
+use kong_lib::add_liquidity::add_liquidity_reply::AddLiquidityReply;
 use super::add_liquidity_transfer::{add_liquidity_transfer, add_liquidity_transfer_async};
 
 use crate::ic::guards::not_in_maintenance_mode;

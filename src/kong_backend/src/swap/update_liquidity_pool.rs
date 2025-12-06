@@ -6,7 +6,7 @@ use super::swap_calc::SwapCalc;
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_multiply, nat_subtract, nat_zero};
 use crate::stable_pool::pool_map;
 use crate::stable_request::request_map;
-use crate::stable_request::status::StatusCode;
+use kong_lib::stable_request::status::StatusCode;
 use kong_lib::stable_token::stable_token::StableToken;
 
 pub fn update_liquidity_pool(

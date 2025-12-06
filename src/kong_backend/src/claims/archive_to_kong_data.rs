@@ -1,6 +1,6 @@
 use crate::stable_claim::claim_map;
 use crate::stable_kong_settings::kong_settings_map;
-use crate::stable_request::reply::Reply;
+use kong_lib::stable_request::reply::Reply;
 use crate::stable_request::request_map;
 use crate::stable_transfer::archive;
 

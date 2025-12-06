@@ -19,8 +19,8 @@ use common::setup_with_pool::{
 
 // Import kong_backend types needed for tests
 use kong_lib::stable_transfer::tx_id::TxId;
-use kong_backend::swap::swap_args::SwapArgs;
-use kong_backend::swap::swap_reply::SwapReply;
+use kong_lib::swap::swap_args::SwapArgs;
+use kong_lib::swap::swap_reply::SwapReply;
 
 // --- Balance Check Helper (used by multiple tests) ---
 // This function works for both ICRC1 tokens and ICP ledger (which implements ICRC1 interface)

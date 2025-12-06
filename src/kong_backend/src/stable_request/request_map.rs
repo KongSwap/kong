@@ -1,6 +1,6 @@
-use super::reply::Reply;
-use super::stable_request::{StableRequest, StableRequestId};
-use super::status::{Status, StatusCode};
+use kong_lib::stable_request::reply::Reply;
+use kong_lib::stable_request::stable_request::{StableRequest, StableRequestId};
+use kong_lib::stable_request::status::{Status, StatusCode};
 
 use crate::ic::logging::error_log;
 use crate::stable_kong_settings::kong_settings_map;

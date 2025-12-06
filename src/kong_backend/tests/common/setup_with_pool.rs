@@ -8,9 +8,9 @@ use super::identity::{get_identity_from_pem_file, get_new_identity};
 use super::setup::{setup_ic_environment, CONTROLLER_PEM_FILE};
 
 // Import kong_backend types needed for setup
-use kong_backend::add_pool::add_pool_args::AddPoolArgs;
-use kong_backend::add_pool::add_pool_reply::AddPoolReply;
 use kong_backend::pools::pools_reply::PoolReply;
+use kong_lib::add_liquidity::add_liquidity_args::AddLiquidityArgs;
+use kong_lib::add_liquidity::add_liquidity_reply::AddLiquidityReply;
 use kong_lib::stable_transfer::tx_id::TxId;
 
 // Use the token constants from the default setup
@@ -26,7 +26,6 @@ pub const TOKEN_A_FEE: u64 = 10_000;
 pub const TOKEN_A_DECIMALS: u8 = 8;
 pub const TOKEN_B_FEE_ICP: u64 = 10_000;
 pub const TOKEN_B_DECIMALS_ICP: u8 = 8;
-
 
 // --- Test Setup Struct ---
 // Cannot derive Debug because pocket_ic::PocketIc doesn't implement Debug
@@ -99,8 +98,8 @@ pub fn setup_swap_test_environment() -> Result<SwapTestSetup> {
 
     // Calculate total amounts needed for all tests (accounting for fees)
     let token_a_fee_nat = Nat::from(TOKEN_A_FEE);
-    let total_a_needed = Nat::from(base_liquidity_a + base_approve_swap_a + base_transfer_swap_a)
-        + token_a_fee_nat.clone() * Nat::from(4u64); // 4 transfers: liquidity + approve + swap + transfer swap
+    let total_a_needed =
+        Nat::from(base_liquidity_a + base_approve_swap_a + base_transfer_swap_a) + token_a_fee_nat.clone() * Nat::from(4u64); // 4 transfers: liquidity + approve + swap + transfer swap
 
     // Mint Token A to user
     let mint_a_args = TransferArg {
@@ -158,7 +157,8 @@ pub fn setup_swap_test_environment() -> Result<SwapTestSetup> {
         .update_call(token_a_ledger_id, user_principal, "icrc1_transfer", liquidity_a_payload)
         .map_err(anyhow::Error::msg)
         .context("Failed to transfer Token A for liquidity")?;
-    let liquidity_a_result = decode_one::<Result<Nat, TransferError>>(&liquidity_a_response).expect("Failed to decode liquidity_a response");
+    let liquidity_a_result =
+        decode_one::<Result<Nat, TransferError>>(&liquidity_a_response).expect("Failed to decode liquidity_a response");
     let token_a_tx_id = liquidity_a_result.expect("Failed to transfer Token A for liquidity");
 
     let liquidity_b_args = TransferArg {
@@ -177,51 +177,64 @@ pub fn setup_swap_test_environment() -> Result<SwapTestSetup> {
         .update_call(token_b_ledger_id, user_principal, "icrc1_transfer", liquidity_b_payload)
         .map_err(anyhow::Error::msg)
         .context("Failed to transfer Token B for liquidity")?;
-    let liquidity_b_result = decode_one::<Result<Nat, TransferError>>(&liquidity_b_response).expect("Failed to decode liquidity_b response");
+    let liquidity_b_result =
+        decode_one::<Result<Nat, TransferError>>(&liquidity_b_response).expect("Failed to decode liquidity_b response");
     let token_b_tx_id = liquidity_b_result.expect("Failed to transfer Token B for liquidity");
 
     // Add the pool with the transferred liquidity
-    let add_pool_args = AddPoolArgs {
+    let add_liquidity_args = AddLiquidityArgs {
         token_0: token_a_str.clone(),
         amount_0: Nat::from(base_liquidity_a),
         tx_id_0: Some(TxId::BlockIndex(token_a_tx_id)),
         token_1: token_b_str.clone(),
         amount_1: Nat::from(base_liquidity_b),
         tx_id_1: Some(TxId::BlockIndex(token_b_tx_id)),
-        lp_fee_bps: Some(30),
+        signature_0: None,
+        signature_1: None,
+        // lp_fee_bps: Some(30),
     };
-    let add_pool_payload = encode_one(&add_pool_args).expect("Failed to encode add_pool args");
-    let add_pool_response = ic
-        .update_call(kong_backend, user_principal, "add_pool", add_pool_payload)
+    let add_liquidity_payload = encode_one(&add_liquidity_args).expect("Failed to encode add_liquidity args");
+    let add_liquidity_response = ic
+        .update_call(kong_backend, user_principal, "add_liquidity", add_liquidity_payload)
         .map_err(anyhow::Error::msg)
         .context("Failed to add pool")?;
-    let add_pool_result = decode_one::<Result<AddPoolReply, String>>(&add_pool_response).expect("Failed to decode add_pool response");
-    let add_pool_reply = add_pool_result.expect("Failed to add pool");
+    let add_liquidity_result =
+        decode_one::<Result<AddLiquidityReply, String>>(&add_liquidity_response).expect("Failed to decode add_liquidity response");
+    let add_liquidity_reply = add_liquidity_result.expect("Failed to add pool");
 
     // Assert the pool was created successfully
-    assert!(add_pool_reply.amount_0 > Nat::from(0u64), "Pool amount_0 should be greater than 0");
-    assert!(add_pool_reply.amount_1 > Nat::from(0u64), "Pool amount_1 should be greater than 0");
-    assert!(add_pool_reply.add_lp_token_amount > Nat::from(0u64), "LP tokens should be greater than 0");
+    assert!(
+        add_liquidity_reply.amount_0 > Nat::from(0u64),
+        "Pool amount_0 should be greater than 0"
+    );
+    assert!(
+        add_liquidity_reply.amount_1 > Nat::from(0u64),
+        "Pool amount_1 should be greater than 0"
+    );
+    assert!(
+        add_liquidity_reply.add_lp_token_amount > Nat::from(0u64),
+        "LP tokens should be greater than 0"
+    );
 
     // Convert AddPoolReply to PoolReply for test compatibility
     let added_pool_reply = PoolReply {
-        pool_id: add_pool_reply.pool_id,
-        name: add_pool_reply.name.clone(),
-        symbol: add_pool_reply.symbol.clone(),
-        chain_0: add_pool_reply.chain_0.clone(),
-        symbol_0: add_pool_reply.symbol_0.clone(),
-        address_0: add_pool_reply.address_0.clone(),
-        balance_0: add_pool_reply.balance_0.clone(),
+        pool_id: todo!(),    //add_liquidity_reply.pool_id,
+        name: String::new(), //add_liquidity_reply.name.clone(),
+        symbol: add_liquidity_reply.symbol.clone(),
+        chain_0: add_liquidity_reply.chain_0.clone(),
+        symbol_0: add_liquidity_reply.symbol_0.clone(),
+        address_0: add_liquidity_reply.address_0.clone(),
+        balance_0: Nat::default(), // add_liquidity_reply.balance_0.clone(),
         lp_fee_0: Nat::from(0u64), // not provided in AddPoolReply
-        chain_1: add_pool_reply.chain_1.clone(),
-        symbol_1: add_pool_reply.symbol_1.clone(),
-        address_1: add_pool_reply.address_1.clone(),
-        balance_1: add_pool_reply.balance_1.clone(),
-        lp_fee_1: Nat::from(0u64), // not provided in AddPoolReply
-        price: 0.0, // not provided in AddPoolReply
-        lp_fee_bps: add_pool_reply.lp_fee_bps,
-        lp_token_symbol: add_pool_reply.lp_token_symbol.clone(),
-        is_removed: add_pool_reply.is_removed,
+        chain_1: add_liquidity_reply.chain_1.clone(),
+        symbol_1: add_liquidity_reply.symbol_1.clone(),
+        address_1: add_liquidity_reply.address_1.clone(),
+        balance_1: Nat::default(),      // add_liquidity_reply.balance_1.clone(),
+        lp_fee_1: Nat::from(0u64),      // not provided in AddPoolReply
+        price: 0.0,                     // not provided in AddPoolReply
+        lp_fee_bps: 0,                  //add_liquidity_reply.lp_fee_bps,
+        lp_token_symbol: String::new(), // add_liquidity_reply.lp_token_symbol.clone(),
+        is_removed: false,              //add_liquidity_reply.is_removed,
     };
 
     // Create accounts for Kong backend and empty (for testing)

@@ -2,7 +2,7 @@ use candid::Nat;
 use serde::{Deserialize, Serialize};
 
 use crate::helpers::nat_helpers::serialize_amount_as_string;
-use crate::swap::swap_args::SwapArgs;
+use kong_lib::swap::swap_args::SwapArgs;
 
 /// A structure representing the canonical message format for signing
 /// This must serialize to exactly the same JSON format as the frontend

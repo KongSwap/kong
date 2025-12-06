@@ -1,4 +1,4 @@
-use super::remove_liquidity_reply::RemoveLiquidityReply;
+use kong_lib::remove_liquidity::remove_liquidity_reply::RemoveLiquidityReply;
 
 use crate::helpers::nat_helpers::nat_zero;
 use crate::stable_pool::pool_map;

@@ -1,6 +1,6 @@
 use candid::Nat;
 
-use super::send_reply::SendReply;
+use kong_lib::send::send_reply::SendReply;
 
 use kong_lib::stable_token::token::Token;
 use crate::stable_token::token_map;

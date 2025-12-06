@@ -2,7 +2,7 @@ use crate::ic::get_time::get_time;
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_MAP};
 
-use super::stable_request::StableRequestId;
+use kong_lib::stable_request::stable_request::StableRequestId;
 
 pub fn archive_request_map() {
     if not_in_maintenance_mode().is_err() {

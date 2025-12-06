@@ -5,9 +5,10 @@ use crate::stable_claim::claim_map;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_lp_token::{lp_token_map, stable_lp_token::StableLPToken};
 use crate::stable_pool::{pool_map, stable_pool::StablePool};
-use crate::stable_request::{reply::Reply, request_map, status::StatusCode};
+use crate::stable_request::request_map;
 use crate::stable_transfer::archive;
 use crate::stable_tx::tx_map;
+use kong_lib::stable_request::{reply::Reply, status::StatusCode};
 use kong_lib::stable_token::token::Token;
 
 /// calculate the ratio of amounts (amount_0 and amount_1) to be added to the pool to maintain constant K

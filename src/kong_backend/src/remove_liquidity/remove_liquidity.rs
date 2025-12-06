@@ -3,9 +3,9 @@ use ic_cdk::update;
 use kong_lib::helpers::address_helpers::get_address_from_param;
 use transfer_lib::solana::verify_transfer::verify_canonical_message;
 
-use super::remove_liquidity_args::RemoveLiquidityArgs;
-use super::remove_liquidity_reply::RemoveLiquidityReply;
 use super::remove_liquidity_reply_helpers::{to_remove_liquidity_reply, to_remove_liquidity_reply_failed};
+use kong_lib::remove_liquidity::remove_liquidity_args::RemoveLiquidityArgs;
+use kong_lib::remove_liquidity::remove_liquidity_reply::RemoveLiquidityReply;
 
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_is_zero, nat_multiply, nat_subtract, nat_zero};
 use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode};
@@ -13,13 +13,14 @@ use crate::stable_claim::claim_map;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_lp_token::{lp_token_map, stable_lp_token::StableLPToken};
 use crate::stable_pool::{pool_map, stable_pool::StablePool};
-use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
+use crate::stable_request::request_map;
 use crate::stable_transfer::archive;
 use crate::stable_tx::{remove_liquidity_tx::RemoveLiquidityTx, stable_tx::StableTx, tx_map};
 use crate::stable_user::user_map;
 use crate::transfers::send_token_or_claim::send_token_or_claim;
 use crate::transfers::solana::canonical_remove_liquidity::CanonicalRemoveLiquidityMessage;
 use kong_lib::ic::address::Address;
+use kong_lib::stable_request::{reply::Reply, request::Request, stable_request::StableRequest, status::StatusCode};
 use kong_lib::stable_token::{stable_token::StableToken, token::Token};
 
 enum TokenIndex {
@@ -72,10 +73,7 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
 }
 
 /// used by remove_lp_positions() to remove_liquidity for user_id and tokens returned to to_principal_id
-pub async fn remove_liquidity_from_pool(
-    args: RemoveLiquidityArgs,
-    user_id: u32,
-) -> Result<RemoveLiquidityReply, String> {
+pub async fn remove_liquidity_from_pool(args: RemoveLiquidityArgs, user_id: u32) -> Result<RemoveLiquidityReply, String> {
     // We want to remove liquidity for someone else, caller addresses are unused
     let (
         pool,

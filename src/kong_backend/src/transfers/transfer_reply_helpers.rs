@@ -1,10 +1,9 @@
+use crate::stable_token::token_map;
 use kong_lib::chains::chains::IC_CHAIN;
 use kong_lib::stable_token::stable_token::StableToken;
-use transfer_lib::transfer_map;
-use crate::stable_token::token_map;
 use kong_lib::stable_transfer::tx_id::TxId;
-
-use super::transfer_reply::{ICTransferReply, TransferIdReply, TransferReply};
+use kong_lib::transfers::transfer_reply::{ICTransferReply, TransferIdReply, TransferReply};
+use transfer_lib::transfer_map;
 
 pub fn to_transfer_ids(transfer_ids: &[u64]) -> Vec<TransferIdReply> {
     transfer_ids.iter().filter_map(|&transfer_id| to_transfer_id(transfer_id)).collect()

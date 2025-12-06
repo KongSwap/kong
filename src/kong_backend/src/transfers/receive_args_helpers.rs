@@ -1,7 +1,8 @@
-use crate::add_liquidity::add_liquidity_args::AddLiquidityArgs;
 use crate::transfers::solana::canonical_add_liquidity::CanonicalAddLiquidityMessage;
-use crate::{stable_kong_settings::kong_settings_map, swap::swap_args::SwapArgs, transfers::solana::canonical_swap::CanonicalSwapMessage};
+use crate::{stable_kong_settings::kong_settings_map, transfers::solana::canonical_swap::CanonicalSwapMessage};
 use candid::Nat;
+use kong_lib::add_liquidity::add_liquidity_args::AddLiquidityArgs;
+use kong_lib::swap::swap_args::SwapArgs;
 use kong_lib::{
     ic::{address::Address, id::caller_id},
     stable_token::{ic_token::ICToken, solana_token::SolanaToken, stable_token::StableToken},

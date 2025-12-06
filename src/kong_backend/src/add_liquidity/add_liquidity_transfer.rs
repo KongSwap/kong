@@ -2,9 +2,9 @@ use candid::Nat;
 use transfer_lib::get_address::get_caller_address;
 
 use super::add_liquidity::TokenIndex;
-use super::add_liquidity_args::AddLiquidityArgs;
-use super::add_liquidity_reply::AddLiquidityReply;
 use super::add_liquidity_reply_helpers::{to_add_liquidity_reply, to_add_liquidity_reply_failed};
+use kong_lib::add_liquidity::add_liquidity_args::AddLiquidityArgs;
+use kong_lib::add_liquidity::add_liquidity_reply::AddLiquidityReply;
 
 use crate::add_liquidity::add_liquidity_transfer_from::{archive_to_kong_data, update_liquidity_pool};
 use crate::add_token::add_token::add_lp_token;
@@ -12,13 +12,14 @@ use crate::ic::get_time::get_time;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_pool::pool_map;
 use crate::stable_pool::stable_pool::StablePool;
-use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
+use crate::stable_request::request_map;
 use crate::stable_token::token_map;
 use crate::stable_tx::{add_liquidity_tx::AddLiquidityTx, stable_tx::StableTx, tx_map};
 use crate::stable_user::user_map;
 use crate::transfers::receive_args_helpers::create_add_liquidity_receive_args;
 use crate::transfers::send_token_or_claim;
 use kong_lib::ic::address::Address;
+use kong_lib::stable_request::{reply::Reply, request::Request, stable_request::StableRequest, status::StatusCode};
 use kong_lib::stable_token::{stable_token::StableToken, token::Token};
 
 pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidityReply, String> {

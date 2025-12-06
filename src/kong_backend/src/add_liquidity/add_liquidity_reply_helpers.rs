@@ -1,4 +1,4 @@
-use super::add_liquidity_reply::AddLiquidityReply;
+use kong_lib::add_liquidity::add_liquidity_reply::AddLiquidityReply;
 
 use crate::helpers::nat_helpers::nat_zero;
 use crate::stable_pool::pool_map;

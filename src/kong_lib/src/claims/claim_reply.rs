@@ -11,6 +11,7 @@ pub struct ClaimReply {
     pub status: String,
     pub chain: String,
     pub symbol: String,
+    pub canister_id: Option<String>,
     pub amount: Nat,
     pub fee: Nat,
     pub to_address: String,

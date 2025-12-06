@@ -5,21 +5,22 @@ use transfer_lib::receive::receive_not_used;
 use super::archive_to_kong_data::archive_to_kong_data;
 use super::return_pay_token::return_pay_token;
 use super::send_receive_token::send_receive_token;
-use super::swap_args::SwapArgs;
+use kong_lib::swap::swap_args::SwapArgs;
 use super::swap_calc::SwapCalc;
-use super::swap_reply::SwapReply;
 use super::update_liquidity_pool::update_liquidity_pool;
+use kong_lib::swap::swap_reply::SwapReply;
 
 use crate::helpers::nat_helpers::nat_is_zero;
 use crate::ic::get_time::get_time;
 use crate::ic::id::caller_id;
 use crate::stable_kong_settings::kong_settings_map;
-use crate::stable_request::{request::Request, request_map, stable_request::StableRequest, status::StatusCode};
+use kong_lib::stable_request::{request::Request, stable_request::StableRequest, status::StatusCode};
+use crate::stable_request::{request_map};
 use crate::stable_token::token_map;
 use crate::stable_user::user_map;
 use crate::transfers::receive_args_helpers::create_swap_receive_args;
-use kong_lib::ic::address::Address;
 use kong_lib::helpers::address_helpers::get_address;
+use kong_lib::ic::address::Address;
 use kong_lib::stable_token::{stable_token::StableToken, token::Token};
 
 pub async fn swap_transfer(args: SwapArgs) -> Result<SwapReply, String> {

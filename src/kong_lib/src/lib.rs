@@ -1,9 +1,8 @@
 pub mod add_liquidity;
 mod add_liquidity_amounts;
-pub mod add_pool;
 mod add_token;
 pub mod chains;
-mod claims;
+pub mod claims;
 pub mod helpers;
 pub mod ic;
 pub mod remove_liquidity;

@@ -1,8 +1,8 @@
 use candid::CandidType;
 use serde::{Deserialize, Serialize};
 
-use crate::stable_request::reply::Reply;
-use crate::stable_request::request::Request;
+use kong_lib::stable_request::reply::Reply;
+use kong_lib::stable_request::request::Request;
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct RequestReply {

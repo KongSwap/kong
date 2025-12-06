@@ -1,14 +1,15 @@
 use candid::Nat;
 use transfer_lib::solana::send_info::SendInfo;
 
-use super::claim_reply::ClaimReply;
+use kong_lib::claims::claim_reply::ClaimReply;
 
 use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
 use crate::stable_claim::claim_map;
-use kong_lib::stable_claim::stable_claim::{ClaimStatus, StableClaim};
-use crate::stable_request::{reply::Reply, request_map, status::StatusCode};
+use crate::stable_request::request_map;
 use crate::transfers::transfer_reply_helpers::to_transfer_ids;
 use kong_lib::ic::address::Address;
+use kong_lib::stable_claim::stable_claim::{ClaimStatus, StableClaim};
+use kong_lib::stable_request::{reply::Reply, status::StatusCode};
 use kong_lib::stable_token::{stable_token::StableToken, token::Token};
 
 pub async fn process_claim(
@@ -80,7 +81,18 @@ async fn send_claim(
     request_map::update_status(request_id, StatusCode::ClaimToken, None);
 
     let amount_with_gas = nat_subtract(amount, &token.fee()).unwrap_or(nat_zero());
-    match transfer_lib::send::send(token, to_address, &amount_with_gas, SendInfo{request_id, user_id: claim.user_id, ts: Some(ts)}).await {
+    match transfer_lib::send::send(
+        token,
+        to_address,
+        &amount_with_gas,
+        SendInfo {
+            request_id,
+            user_id: claim.user_id,
+            ts: Some(ts),
+        },
+    )
+    .await
+    {
         Ok(stable_transfer) => {
             transfer_ids.push(stable_transfer.transfer_id);
 

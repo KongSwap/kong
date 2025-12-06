@@ -2,7 +2,7 @@ use candid::Nat;
 use num::{BigRational, Zero};
 
 use super::swap_calc::SwapCalc;
-use super::swap_reply::{SwapReply, SwapTxReply};
+use kong_lib::swap::swap_reply::{SwapReply, SwapTxReply};
 
 use crate::helpers::math_helpers::price_rounded;
 use crate::helpers::nat_helpers::nat_zero;

@@ -1,8 +1,8 @@
 use ic_cdk::update;
 
-use super::swap_args::SwapArgs;
-use super::swap_reply::SwapReply;
+use kong_lib::swap::swap_args::SwapArgs;
 use super::swap_transfer::{swap_transfer, swap_transfer_async};
+use kong_lib::swap::swap_reply::SwapReply;
 
 use crate::ic::guards::not_in_maintenance_mode;
 

@@ -3,11 +3,12 @@ use super::process_claim::process_claim;
 
 use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode, logging::error_log};
 use crate::stable_claim::claim_map;
-use kong_lib::stable_claim::stable_claim::ClaimStatus;
 use crate::stable_memory::CLAIM_MAP;
-use crate::stable_request::{request::Request, request_map, stable_request::StableRequest, status::StatusCode};
+use crate::stable_request::request_map;
 use crate::stable_token::token_map;
 use crate::stable_user::stable_user::CLAIMS_TIMER_USER_ID;
+use kong_lib::stable_claim::stable_claim::ClaimStatus;
+use kong_lib::stable_request::{request::Request, stable_request::StableRequest, status::StatusCode};
 
 /// Send out claims where status is Unclaimed or UnclaimedOverride
 pub async fn process_claims_timer() {

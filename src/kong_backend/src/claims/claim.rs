@@ -1,7 +1,7 @@
 use ic_cdk::update;
 
 use super::archive_to_kong_data::archive_to_kong_data;
-use super::claim_reply::ClaimReply;
+use kong_lib::claims::claim_reply::ClaimReply;
 use super::process_claim::process_claim;
 
 use kong_lib::ic::address::Address;
@@ -10,10 +10,10 @@ use crate::ic::guards::not_in_maintenance_mode;
 use crate::ic::id::{caller_id, caller_principal_id};
 use crate::stable_claim::claim_map;
 use kong_lib::stable_claim::stable_claim::ClaimStatus;
-use crate::stable_request::request::Request;
+use kong_lib::stable_request::request::Request;
 use crate::stable_request::request_map;
-use crate::stable_request::stable_request::StableRequest;
-use crate::stable_request::status::StatusCode;
+use kong_lib::stable_request::stable_request::StableRequest;
+use kong_lib::stable_request::status::StatusCode;
 use crate::stable_token::token_map;
 use crate::stable_user::user_map;
 
