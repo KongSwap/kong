@@ -1,12 +1,15 @@
 use std::cell::RefCell;
 
-use ic_stable_structures::{StableBTreeMap, StableCell, memory_manager::MemoryId};
+use ic_stable_structures::{memory_manager::MemoryId, StableBTreeMap, StableCell};
 
-use crate::{memory_manager::{Memory, with_memory_manager}, solana::{
-    kong_rpc::transaction_notification::{TransactionNotification, TransactionNotificationId},
-    swap_job::{SwapJob, SwapJobId},
-}};
-use kong_lib::ic::network::ICNetwork;
+use crate::{
+    memory_manager::{with_memory_manager, Memory},
+    solana::{
+        kong_rpc::transaction_notification::{TransactionNotification, TransactionNotificationId},
+        swap_job::{SwapJob, SwapJobId},
+    },
+};
+use kong_lib::{helpers::sleep::periodic_poller, ic::network::ICNetwork};
 
 pub const CACHED_SOLANA_ADDRESS_ID: MemoryId = MemoryId::new(60);
 pub const SOLANA_BLOCKHASH_ID: MemoryId = MemoryId::new(61);
@@ -112,6 +115,16 @@ pub fn with_solana_tx_notifications_mut<R>(
 /// Get a transaction by tx_signature
 pub fn get_solana_transaction(tx_signature: &str) -> Option<TransactionNotification> {
     with_solana_tx_notifications(|notifications| notifications.get(&TransactionNotificationId(tx_signature.to_string())))
+}
+
+pub async fn wait_for_solana_transaction(
+    tx_signature: &str,
+    timeout: std::time::Duration,
+    check_period: std::time::Duration,
+) -> Option<TransactionNotification> {
+    let poll_fn = || get_solana_transaction(tx_signature).ok_or(());
+
+    periodic_poller(poll_fn, timeout, check_period).await.ok()
 }
 
 /// Clean up old notifications (older than 24 hours)

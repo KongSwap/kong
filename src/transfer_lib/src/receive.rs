@@ -187,7 +187,7 @@ async fn receive_solana(token: &StableToken, args: ReceiveArgs) -> Result<Solana
         .canonical_message
         .ok_or("canonical_message is required to receive solana".to_string())?;
     let sol_token = match token {
-        StableToken::Solana(solana_token) => solana_token.is_spl_token,
+        StableToken::Solana(solana_token) => solana_token,
         _ => Err("receive_solana: Invalid token type".to_string())?,
     };
     let tx_id = match &tx_id {
@@ -195,5 +195,5 @@ async fn receive_solana(token: &StableToken, args: ReceiveArgs) -> Result<Solana
         TxId::TransactionId(v) => v,
     };
 
-    crate::solana::verify_transfer::verify_transfer(tx_id, signature, &amount, canonical_message, token, sol_token).await
+    crate::solana::verify_transfer::verify_transfer(tx_id, signature, &amount, canonical_message, sol_token).await
 }
