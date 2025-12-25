@@ -1,6 +1,7 @@
 pub mod add_liquidity;
 pub mod add_liquidity_amounts;
 pub mod add_token;
+pub mod test_jobs;
 pub mod canister;
 pub mod claims;
 pub mod controllers;
