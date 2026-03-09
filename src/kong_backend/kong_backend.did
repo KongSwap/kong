@@ -578,6 +578,13 @@ type SendReply = record {
 };
 type SendResult = variant { Ok : SendReply; Err : text };
 
+type TokensArgs = record {
+    enabled_only : bool;
+    wildcard: opt text;
+    n_skip: opt nat32;
+    n_take: opt nat32;
+};
+
 service : {
     // icrc1 standards
     icrc1_name : () -> (text) query;
@@ -587,6 +594,8 @@ service : {
     
     // tokens(opt wildcard) - returns all tokens or wildcard search
     tokens : (opt text) -> (TokensResult) query;
+    // tokens_v2(opt tokens_args) - returns all tokens, based on search
+    tokens_v2 : (opt TokensArgs) -> (TokensResult) query;
     // pools(opt wildcard) - returns all pools or wildcard search
     pools : (opt text) -> (PoolsResult) query;
 
