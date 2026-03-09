@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use candid::CandidType;
 use serde::Deserialize;
 
 use crate::market::market::*;
+use crate::token::registry::TokenIdentifier;
 use crate::types::{TokenAmount, OutcomeIndex};
 
 #[derive(CandidType, Deserialize)]
@@ -21,4 +24,12 @@ pub struct UserHistory {
     pub total_wagered: TokenAmount,
     pub total_won: TokenAmount,
     pub current_balance: TokenAmount,
+}
+
+
+#[derive(CandidType, Deserialize, Clone, Default)]
+pub struct UserBettingSummary {
+    pub total_wagered: HashMap<TokenIdentifier, TokenAmount>,
+    pub total_won: HashMap<TokenIdentifier, TokenAmount>, 
+    pub active_bets: HashMap<TokenIdentifier, TokenAmount>,
 }

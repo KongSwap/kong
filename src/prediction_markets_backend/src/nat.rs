@@ -159,6 +159,12 @@ impl Sub<u64> for StorableNat {
     }
 }
 
+impl std::ops::SubAssign for StorableNat {
+    fn sub_assign(&mut self, other: Self) {
+        *self = self.clone() - other;
+    }
+}
+
 impl Mul for StorableNat {
     type Output = Self;
     fn mul(self, other: Self) -> Self {

@@ -459,6 +459,11 @@ export interface UserBetInfo {
   'market' : Market,
   'outcome_index' : bigint,
 }
+export interface UserBettingSummary {
+  'total_wagered' : Array<[string, bigint]>,
+  'total_won' : Array<[string, bigint]>,
+  'active_bets' : Array<[string, bigint]>,
+}
 export interface UserHistory {
   'pending_resolution' : Array<UserBetInfo>,
   'total_wagered' : bigint,
@@ -563,6 +568,7 @@ export interface _SERVICE {
     [],
     Array<[bigint, FailedTransaction]>
   >,
+  'get_user_betting_summary' : ActorMethod<[Principal], UserBettingSummary>,
   'get_user_claims' : ActorMethod<[string], Array<ClaimRecord>>,
   'get_user_history' : ActorMethod<[Principal], UserHistory>,
   'get_user_pending_claims' : ActorMethod<[string], Array<ClaimRecord>>,
@@ -582,6 +588,7 @@ export interface _SERVICE {
   'mark_transaction_resolved' : ActorMethod<[bigint], Result>,
   'place_bet' : ActorMethod<[bigint, bigint, bigint, [] | [string]], Result_6>,
   'propose_resolution' : ActorMethod<[ResolutionArgs], ResolutionResult>,
+  'recalculate_betting_summary' : ActorMethod<[], string>,
   'resolve_via_admin' : ActorMethod<[ResolutionArgs], ResolutionResult>,
   'resolve_via_admin_legacy' : ActorMethod<
     [bigint, Array<bigint>],

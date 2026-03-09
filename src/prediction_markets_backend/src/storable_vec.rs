@@ -50,9 +50,6 @@ where
     }
 }
 
-
-// TODO: think...
-// Need display?
 impl<T> Storable for StorableVec<T>
 where
     T: Serialize + for<'de> Deserialize<'de>,

@@ -339,6 +339,9 @@ async fn place_bet(
             }
         }
 
+        // Update user statistics
+        crate::user::user_betting_summary::on_new_bet(&new_bet);
+
         // Create the composite key using our new BetKey type
         let bet_key = crate::bet::bet::BetKey {
             market_id: market_id_clone,
@@ -347,6 +350,7 @@ async fn place_bet(
 
         // Insert the new bet with the composite key
         bets.insert(bet_key, new_bet);
+
 
         // For time-weighted markets, the timestamp is particularly important
         // as it determines the weight factor during payout calculations

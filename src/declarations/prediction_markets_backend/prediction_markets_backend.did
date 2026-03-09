@@ -441,6 +441,11 @@ type UserBetInfo = record {
   market : Market;
   outcome_index : nat;
 };
+type UserBettingSummary = record {
+  total_wagered : vec record { text; nat };
+  total_won : vec record { text; nat };
+  active_bets : vec record { text; nat };
+};
 type UserHistory = record {
   pending_resolution : vec UserBetInfo;
   total_wagered : nat;
@@ -516,6 +521,7 @@ service : () -> {
   get_unresolved_transactions : () -> (
       vec record { nat64; FailedTransaction },
     ) query;
+  get_user_betting_summary : (principal) -> (UserBettingSummary) query;
   get_user_claims : (text) -> (vec ClaimRecord) query;
   get_user_history : (principal) -> (UserHistory) query;
   get_user_pending_claims : (text) -> (vec ClaimRecord) query;
@@ -531,6 +537,7 @@ service : () -> {
   mark_transaction_resolved : (nat64) -> (Result);
   place_bet : (nat, nat, nat, opt text) -> (Result_6);
   propose_resolution : (ResolutionArgs) -> (ResolutionResult);
+  recalculate_betting_summary : () -> (text);
   resolve_via_admin : (ResolutionArgs) -> (ResolutionResult);
   resolve_via_admin_legacy : (nat, vec nat) -> (ResolutionResult);
   resolve_via_oracle : (nat, vec nat, blob) -> (Result_7);

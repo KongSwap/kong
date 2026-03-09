@@ -57,17 +57,17 @@
 //! This implementation includes comprehensive safeguards to ensure rewards never exceed
 //! the total market pool, with dynamic bonus pool adjustments if necessary.
 
-use candid::Principal;
 use num_traits::ToPrimitive;
 
 use super::resolution::*;
+use crate::bet::bet::Bet;
 use crate::canister::{get_current_time, record_market_payout};
 use crate::claims::claims_processing::create_winning_claim;
 use crate::market::estimate_return_types::BetPayoutRecord;
 use crate::market::market::*;
 use crate::storage::BETS;
 use crate::token::registry::get_token_info;
-use crate::token::transfer::{handle_fee_transfer, handle_fee_transfer_failure, get_fee_account};
+use crate::token::transfer::{get_fee_account, handle_fee_transfer, handle_fee_transfer_failure};
 use crate::utils::time_weighting::{calculate_time_weight, calculate_weighted_contribution, get_market_alpha};
 
 // Import re-exported types from lib.rs
@@ -245,16 +245,15 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
         ic_cdk::println!("Platform fee too small to process (less than transfer fee). Skipping fee transfer.");
     }
 
-    if total_winning_pool > 0u64 {
-        // Get all winning bets
-        let winning_bets = BETS.with(|_bets| {
-            // Get all bets for this market using our helper function
-            crate::storage::get_bets_for_market(&market.id)
-                .into_iter()
-                .filter(|bet| winning_outcomes.iter().any(|x| x == &bet.outcome_index))
-                .collect::<Vec<_>>()
-        });
+    // Get all winning bets
+    let (winning_bets, lost_bets): (Vec<_>, Vec<_>) = BETS.with(|_bets| {
+        // Get all bets for this market using our helper function
+        crate::storage::get_bets_for_market(&market.id)
+            .into_iter()
+            .partition(|bet| winning_outcomes.iter().any(|x| x == &bet.outcome_index))
+    });
 
+    if total_winning_pool > 0u64 {
         // Store the count for reporting at the end of the function
         resolution_details.winning_bet_count = winning_bets.len() as u64;
         ic_cdk::println!("Found {} winning bets", winning_bets.len());
@@ -288,8 +287,8 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
 
             // Calculate weighted contributions for each winning bet
             // Each bet's contribution is weighted by time - earlier bets get higher weights
-            // The tuple contains: (user, bet_amount, time_weight, weighted_contribution, outcome_index)
-            let mut weighted_contributions: Vec<(Principal, TokenAmount, f64, f64, OutcomeIndex)> = Vec::new();
+            // The tuple contains: (&bet, time_weight, weighted_contribution)
+            let mut weighted_contributions: Vec<(&Bet, f64, f64)> = Vec::new();
             let mut total_weighted_contribution: f64 = 0.0;
 
             for bet in &winning_bets {
@@ -312,13 +311,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                 // This value represents the bet's share of the bonus pool
                 // Formula: weighted_contribution = bet_amount * weight
                 let weighted_contribution = calculate_weighted_contribution(bet_amount, weight);
-                weighted_contributions.push((
-                    bet.user,
-                    bet.amount.clone(),
-                    weight,
-                    weighted_contribution,
-                    bet.outcome_index.clone(),
-                ));
+                weighted_contributions.push((&bet, weight, weighted_contribution));
                 total_weighted_contribution += weighted_contribution;
 
                 // Add distribution detail to resolution details
@@ -424,7 +417,11 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             // Bets placed earlier have higher weights, resulting in higher proportional rewards.
             let mut detail_index = 0;
 
-            for (user, bet_amount, weight, weighted_contribution, outcome_index) in weighted_contributions {
+            for (bet, weight, weighted_contribution) in weighted_contributions {
+                let bet_amount = bet.amount.clone();
+                let user = bet.user;
+                let outcome_index = bet.outcome_index.clone();
+
                 // Calculate the share of the bonus pool
                 let bonus_share = if total_weighted_contribution > 0.0 {
                     weighted_contribution / total_weighted_contribution * bonus_pool
@@ -467,6 +464,9 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                 } else {
                     None
                 };
+
+                // Update user statistics
+                crate::user::user_betting_summary::on_finished_market_bet(&bet, Some(gross_winnings.clone()));
 
                 // Skip if winnings are less than transfer fee
                 if gross_winnings <= token_info.transfer_fee {
@@ -596,6 +596,9 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                     let user_winnings = bet.amount.to_u64() + (total_profit_after_fees.to_f64() * bet_proportion) as u64;
                     let gross_winnings = TokenAmount::from(user_winnings);
 
+                    // Update user statistics
+                    crate::user::user_betting_summary::on_finished_market_bet(&bet, Some(gross_winnings.clone()));
+
                     // Calculate net amount to transfer (after deducting transfer fee)
                     // The transfer fee is already accounted for in the pool calculation, but we still need to
                     // subtract it from the individual payout amount for the actual transfer.
@@ -667,6 +670,10 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                 }
             }
         }
+    }
+
+    for bet in lost_bets {
+        crate::user::user_betting_summary::on_finished_market_bet(&bet, None);
     }
 
     // Update market status to Closed with the winning outcomes
