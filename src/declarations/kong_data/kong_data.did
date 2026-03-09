@@ -209,11 +209,23 @@ type SwapReply = record {
     ts : nat64;
 };
 
+type SendReply = record {
+    tx_id : nat64;
+    request_id : nat64;
+    status : text;
+    chain : text;
+    symbol : text;
+    amount : nat;
+    to_address : text;
+    ts : nat64;
+};
+
 type TxsReply = variant {
     AddPool : AddPoolReply;
     AddLiquidity : AddLiquidityReply;
     RemoveLiquidity : RemoveLiquidityReply;
     Swap : SwapReply;
+    Send : SendReply;
 };
 type TxsResult = variant { Ok : vec TxsReply; Err : text };
 
