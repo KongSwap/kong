@@ -8,6 +8,11 @@ use crate::stable_pool::pool_map;
 use crate::stable_request::request_map;
 use crate::stable_request::status::StatusCode;
 use crate::stable_token::stable_token::StableToken;
+use crate::stable_token::token::Token;
+
+fn subtract_liquid_balance(balance: &Nat, amount: &Nat, symbol: &str) -> Result<Nat, String> {
+    nat_subtract(balance, amount).ok_or_else(|| format!("Insufficient liquid {} balance in pool", symbol))
+}
 
 pub fn update_liquidity_pool(
     request_id: u64,
@@ -35,7 +40,7 @@ pub fn update_liquidity_pool(
                 if swap.receive_token_id == pool.token_id_1 {
                     // user pays token_0 and receives token_1
                     pool.balance_0 = nat_add(&pool.balance_0, &swap.pay_amount); // pay_amount is in token_0
-                    pool.balance_1 = nat_subtract(&pool.balance_1, &swap.receive_amount).unwrap_or(nat_zero()); // receive_amount is in token_1
+                    pool.balance_1 = subtract_liquid_balance(&pool.balance_1, &swap.receive_amount, &receive_token.symbol())?; // receive_amount is in token_1
                                                                                                                 // fees are in token_1. take out Kong's fee
                                                                                                                 // kong_fee_1 = lp_fee * kong_fee_bps / lp_fee_bps
                                                                                                                 // lp_fee_1 = lp_fee - kong_fee_1
@@ -47,7 +52,7 @@ pub fn update_liquidity_pool(
                 } else {
                     // user pays token_1 and receives token_0
                     pool.balance_1 = nat_add(&pool.balance_1, &swap.pay_amount); // pay_amount is in token_1
-                    pool.balance_0 = nat_subtract(&pool.balance_0, &swap.receive_amount).unwrap_or(nat_zero()); // receive_amount is in token_0
+                    pool.balance_0 = subtract_liquid_balance(&pool.balance_0, &swap.receive_amount, &receive_token.symbol())?; // receive_amount is in token_0
                                                                                                                 // fees are in token_0. take out Kong's fee
                                                                                                                 // kong_fee_0 = lp_fee * kong_fee_bps / lp_fee_bps
                                                                                                                 // lp_fee_0 = lp_fee - kong_fee_0
@@ -68,5 +73,23 @@ pub fn update_liquidity_pool(
             request_map::update_status(request_id, StatusCode::CalculatePoolAmountsFailed, Some(&e));
             Err(e)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::subtract_liquid_balance;
+    use candid::Nat;
+
+    #[test]
+    fn subtract_liquid_balance_rejects_underflow() {
+        let err = subtract_liquid_balance(&Nat::from(90_000u64), &Nat::from(2_643_564u64), "ICP").unwrap_err();
+        assert!(err.contains("Insufficient liquid ICP balance in pool"));
+    }
+
+    #[test]
+    fn subtract_liquid_balance_allows_valid_subtraction() {
+        let remaining = subtract_liquid_balance(&Nat::from(2_700_000u64), &Nat::from(2_643_564u64), "ICP").unwrap();
+        assert_eq!(remaining, Nat::from(56_436u64));
     }
 }
