@@ -84,6 +84,7 @@ export type ClaimStatus = { 'Claiming' : null } |
 export type ClaimType = {
     'Refund' : { 'bet_amount' : bigint, 'reason' : RefundReason }
   } |
+  { 'MarketCreation' : { 'creator_fee_bps' : bigint } } |
   {
     'WinningPayout' : {
       'bet_amount' : bigint,
@@ -285,10 +286,13 @@ export interface MarketResolutionDetails {
   'market_id' : bigint,
   'total_weighted_contribution' : [] | [number],
   'platform_fee_percentage' : bigint,
+  'creator_claim_id' : [] | [bigint],
   'used_time_weighting' : boolean,
   'distribution_details' : Array<BetDistributionDetail>,
   'resolution_timestamp' : bigint,
   'time_weight_alpha' : [] | [number],
+  'creator_fee_amount' : bigint,
+  'creator_fee_percentage' : bigint,
   'winning_bet_count' : bigint,
   'winning_outcomes' : Array<bigint>,
   'distributable_profit' : bigint,

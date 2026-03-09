@@ -76,6 +76,12 @@ pub struct MarketResolutionDetails {
     pub platform_fee_percentage: u64,
     /// Transaction ID for the fee transfer (if applicable)
     pub fee_transaction_id: Option<u64>,
+    /// Creator fee amount collected
+    pub creator_fee_amount: TokenAmount,
+    /// Creator fee percentage applied
+    pub creator_fee_percentage: u64,
+    // Claim id for market creation
+    pub creator_claim_id: Option<u64>,
     /// Token ID used for the market
     pub token_id: String,
     /// Token symbol (e.g., "KONG")

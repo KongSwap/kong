@@ -238,6 +238,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const ClaimType = IDL.Variant({
     'Refund' : IDL.Record({ 'bet_amount' : IDL.Nat, 'reason' : RefundReason }),
+    'MarketCreation' : IDL.Record({ 'creator_fee_bps' : IDL.Nat64 }),
     'WinningPayout' : IDL.Record({
       'bet_amount' : IDL.Nat,
       'outcomes' : IDL.Vec(IDL.Nat),
@@ -329,10 +330,13 @@ export const idlFactory = ({ IDL }) => {
     'market_id' : IDL.Nat,
     'total_weighted_contribution' : IDL.Opt(IDL.Float64),
     'platform_fee_percentage' : IDL.Nat64,
+    'creator_claim_id' : IDL.Opt(IDL.Nat64),
     'used_time_weighting' : IDL.Bool,
     'distribution_details' : IDL.Vec(BetDistributionDetail),
     'resolution_timestamp' : IDL.Nat,
     'time_weight_alpha' : IDL.Opt(IDL.Float64),
+    'creator_fee_amount' : IDL.Nat,
+    'creator_fee_percentage' : IDL.Nat64,
     'winning_bet_count' : IDL.Nat64,
     'winning_outcomes' : IDL.Vec(IDL.Nat),
     'distributable_profit' : IDL.Nat,
