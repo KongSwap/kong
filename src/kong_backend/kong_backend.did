@@ -330,6 +330,11 @@ type UpdateTokenReply = variant {
 };
 type UpdateTokenResult = variant { Ok : UpdateTokenReply; Err : text };
 
+type UpdateTokenIsRemovedArgs = record {
+    token : text;
+    is_removed : bool;
+};
+
 type AddPoolArgs = record {
     token_0 : text;
     amount_0 : nat;
@@ -601,6 +606,8 @@ service : {
     add_token : (AddTokenArgs) -> (AddTokenResult);
     // update token details
     update_token : (UpdateTokenArgs) -> (UpdateTokenResult);
+    // update token is_removed field
+    update_token_is_removed : (UpdateTokenIsRemovedArgs) -> (UpdateTokenResult);
     // add a new liquidity pool and token
     add_pool : (AddPoolArgs) -> (AddPoolResult);
 
