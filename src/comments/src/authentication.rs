@@ -3,13 +3,13 @@ use ic_cdk::{caller, query, update};
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, Storable};
 use std::cell::RefCell;
-use std::time::{SystemTime, UNIX_EPOCH};
 use ic_stable_structures::storable::Bound;
 use std::borrow::Cow;
 use icrc_ledger_types::icrc21::errors::ErrorInfo;
 use icrc_ledger_types::icrc21::requests::{ConsentMessageMetadata, ConsentMessageRequest};
 use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
 use crate::types::CreateCommentRequest;
+use crate::icrc21_helpers;
 
 // We'll implement our own simple hash function since we don't have sha2
 fn hash_principals(principals: &[Principal]) -> Vec<u8> {
@@ -47,30 +47,74 @@ pub struct ICRC21ConsentMessageResponse {
 
 /// Generates a consent message for ICRC-21 canister calls
 /// This follows the specification from https://github.com/dfinity/wg-identity-authentication/blob/main/topics/ICRC-21/icrc_21_consent_msg.md
+/// Supports both GenericDisplayMessage (Markdown) and FieldsDisplayMessage (structured fields)
 #[query]
 pub fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageRequest) -> Result<ConsentInfo, ErrorInfo> {
+    use icrc21_helpers::*;
+
     let caller_principal = caller();
-    
+    let use_fields_display = should_use_fields_display(&consent_msg_request);
+
     let consent_message = match consent_msg_request.method.as_str() {
         "create_comment" => {
             let request = decode_one::<CreateCommentRequest>(&consent_msg_request.arg)
-                .map_err(|e| ErrorInfo { 
-                    description: format!("Failed to decode comment request: {}", e) 
+                .map_err(|e| ErrorInfo {
+                    description: format!("Failed to decode comment request: {}", e)
                 })?;
 
-            ConsentMessage::GenericDisplayMessage(format!(
-                "# Approve KongSwap Comment\n\nContext: {}\n\nComment: {}\n\nFrom: {}",
-                request.context_id,
-                request.content,
-                caller_principal
-            ))
-        },
-        // Add other method matches here as needed
-        _ => ConsentMessage::GenericDisplayMessage(
-            format!("Approve KongSwap to execute {}?", 
-                consent_msg_request.method,
+            let mut fields = Vec::new();
+            add_text_field(&mut fields, "Context", request.context_id.clone());
+            add_text_field(&mut fields, "Comment", request.content.clone());
+            add_timestamp_field(&mut fields);
+
+            create_consent_message(
+                use_fields_display,
+                "Create a new comment on KongSwap",
+                fields,
+                format!(
+                    "# Approve KongSwap Comment\n\n**Context:** {}\n\n**Comment:** {}\n\n**From:** {}",
+                    request.context_id,
+                    request.content,
+                    caller_principal
+                )
             )
-        ),
+        },
+        "update_comment" => {
+            let fields = create_standard_fields("Update Comment", &caller_principal.to_string());
+            create_consent_message(
+                use_fields_display,
+                "Update an existing comment on KongSwap",
+                fields,
+                format!("# Approve KongSwap Action\n\n**Action:** Update Comment\n\n**Requester:** {}", caller_principal)
+            )
+        },
+        "delete_comment" => {
+            let fields = create_standard_fields("Delete Comment", &caller_principal.to_string());
+            create_consent_message(
+                use_fields_display,
+                "Delete a comment on KongSwap",
+                fields,
+                format!("# Approve KongSwap Action\n\n**Action:** Delete Comment\n\n**Requester:** {}", caller_principal)
+            )
+        },
+        // Default case for unknown methods
+        _ => {
+            let mut fields = Vec::new();
+            add_text_field(&mut fields, "Method", consent_msg_request.method.clone());
+            add_text_field(&mut fields, "Requester", caller_principal.to_string());
+            add_timestamp_field(&mut fields);
+
+            create_consent_message(
+                use_fields_display,
+                &format!("Execute {} on KongSwap", consent_msg_request.method),
+                fields,
+                format!(
+                    "# KongSwap Transaction Approval\n\n**Method:** {}\n\n**Requester:** {}",
+                    consent_msg_request.method,
+                    caller_principal
+                )
+            )
+        },
     };
 
     let metadata = ConsentMessageMetadata {
@@ -154,12 +198,9 @@ pub struct RevokeDelegationRequest {
     pub targets: Vec<Principal>,
 }
 
-// Helper function to get current time in nanoseconds
+// Helper function to get current time in nanoseconds using IC API
 fn get_current_time() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_nanos() as u64
+    ic_cdk::api::time()
 }
 
 // Wrapper type for Vec<Delegation> that implements Storable
@@ -321,4 +362,41 @@ fn icrc28_trusted_origins() -> Icrc28TrustedOriginsResponse {
     ];
 
     Icrc28TrustedOriginsResponse { trusted_origins }
+}
+
+// ICRC-10 Supported Standards
+#[derive(CandidType, Clone, Debug, Deserialize, serde::Serialize)]
+pub struct Icrc10SupportedStandard {
+    pub name: String,
+    pub url: String,
+}
+
+#[derive(CandidType, Clone, Debug, Deserialize, serde::Serialize)]
+pub struct Icrc10SupportedStandardsResponse {
+    pub supported_standards: Vec<Icrc10SupportedStandard>,
+}
+
+/// Returns the list of standards supported by this canister
+#[query]
+pub fn icrc10_supported_standards() -> Icrc10SupportedStandardsResponse {
+    let supported_standards = vec![
+        Icrc10SupportedStandard {
+            name: "ICRC-10".to_string(),
+            url: "https://github.com/dfinity/ICRC/blob/main/ICRCs/ICRC-10/ICRC-10.md".to_string(),
+        },
+        Icrc10SupportedStandard {
+            name: "ICRC-21".to_string(),
+            url: "https://github.com/dfinity/wg-identity-authentication/blob/main/topics/ICRC-21/icrc_21_consent_msg.md".to_string(),
+        },
+        Icrc10SupportedStandard {
+            name: "ICRC-28".to_string(),
+            url: "https://github.com/dfinity/wg-identity-authentication/blob/main/topics/ICRC-28/icrc-28-trusted-origins.md".to_string(),
+        },
+        Icrc10SupportedStandard {
+            name: "ICRC-34".to_string(),
+            url: "https://github.com/dfinity/wg-identity-authentication/blob/main/topics/ICRC-34/icrc34.md".to_string(),
+        },
+    ];
+
+    Icrc10SupportedStandardsResponse { supported_standards }
 }

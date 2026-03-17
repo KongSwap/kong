@@ -10,6 +10,7 @@ mod state;
 mod queries;
 mod updates;
 mod admin;
+mod icrc21_helpers;
 
 // Public exports
 pub use authentication::*;

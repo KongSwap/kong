@@ -34,9 +34,7 @@ export interface ConsentInfo {
   'metadata' : ConsentMessageMetadata,
   'consent_message' : ConsentMessage,
 }
-export type ConsentMessage = {
-    'LineDisplayMessage' : { 'pages' : Array<LineDisplayPage> }
-  } |
+export type ConsentMessage = { 'FieldsDisplayMessage' : FieldsDisplay } |
   { 'GenericDisplayMessage' : string };
 export interface ConsentMessageMetadata {
   'utc_offset_minutes' : [] | [number],
@@ -74,26 +72,28 @@ export interface DelegationRequest {
 }
 export interface DelegationResponse { 'delegations' : Array<Delegation> }
 export type DisplayMessageType = { 'GenericDisplay' : null } |
-  {
-    'LineDisplay' : {
-      'characters_per_line' : number,
-      'lines_per_page' : number,
-    }
-  };
+  { 'FieldsDisplay' : null };
 export interface EditCommentRequest {
   'content' : string,
   'comment_id' : bigint,
 }
 export interface ErrorInfo { 'description' : string }
+export interface FieldsDisplay {
+  'fields' : Array<[string, Value]>,
+  'intent' : string,
+}
 export interface GetCommentsRequest {
   'context_id' : string,
   'pagination' : [] | [PaginationParams],
   'check_likes_for' : [] | [Principal],
 }
+export interface Icrc10SupportedStandard { 'url' : string, 'name' : string }
+export interface Icrc10SupportedStandardsResponse {
+  'supported_standards' : Array<Icrc10SupportedStandard>,
+}
 export interface Icrc28TrustedOriginsResponse {
   'trusted_origins' : Array<string>,
 }
-export interface LineDisplayPage { 'lines' : Array<string> }
 export interface PaginationParams {
   'cursor' : [] | [bigint],
   'limit' : [] | [bigint],
@@ -111,6 +111,16 @@ export type Result_4 = { 'Ok' : DelegationResponse } |
 export type Result_5 = { 'Ok' : null } |
   { 'Err' : DelegationError };
 export interface RevokeDelegationRequest { 'targets' : Array<Principal> }
+export type Value = { 'Text' : { 'content' : string } } |
+  {
+    'TokenAmount' : {
+      'decimals' : number,
+      'amount' : bigint,
+      'symbol' : string,
+    }
+  } |
+  { 'TimestampSeconds' : { 'amount' : bigint } } |
+  { 'DurationSeconds' : { 'amount' : bigint } };
 export interface _SERVICE {
   'add_admin' : ActorMethod<[string], Result>,
   'ban_user' : ActorMethod<[Principal, bigint], Result>,
@@ -128,6 +138,10 @@ export interface _SERVICE {
   'get_context_comment_count' : ActorMethod<[string], number>,
   'get_user_comments' : ActorMethod<[Principal, [] | [number]], Array<Comment>>,
   'get_user_liked_comments' : ActorMethod<[], BigUint64Array | bigint[]>,
+  'icrc10_supported_standards' : ActorMethod<
+    [],
+    Icrc10SupportedStandardsResponse
+  >,
   'icrc21_canister_call_consent_message' : ActorMethod<
     [ConsentMessageRequest],
     Result_3

@@ -31,7 +31,7 @@ type ConsentInfo = record {
   consent_message : ConsentMessage;
 };
 type ConsentMessage = variant {
-  LineDisplayMessage : record { pages : vec LineDisplayPage };
+  FieldsDisplayMessage : FieldsDisplay;
   GenericDisplayMessage : text;
 };
 type ConsentMessageMetadata = record {
@@ -71,19 +71,23 @@ type DelegationRequest = record {
   expiration : opt nat64;
 };
 type DelegationResponse = record { delegations : vec Delegation };
-type DisplayMessageType = variant {
-  GenericDisplay;
-  LineDisplay : record { characters_per_line : nat16; lines_per_page : nat16 };
-};
+type DisplayMessageType = variant { GenericDisplay; FieldsDisplay };
 type EditCommentRequest = record { content : text; comment_id : nat64 };
 type ErrorInfo = record { description : text };
+type FieldsDisplay = record {
+  fields : vec record { text; Value };
+  intent : text;
+};
 type GetCommentsRequest = record {
   context_id : text;
   pagination : opt PaginationParams;
   check_likes_for : opt principal;
 };
+type Icrc10SupportedStandard = record { url : text; name : text };
+type Icrc10SupportedStandardsResponse = record {
+  supported_standards : vec Icrc10SupportedStandard;
+};
 type Icrc28TrustedOriginsResponse = record { trusted_origins : vec text };
-type LineDisplayPage = record { lines : vec text };
 type PaginationParams = record { cursor : opt nat64; limit : opt nat64 };
 type Result = variant { Ok; Err : text };
 type Result_1 = variant { Ok : CommentResponse; Err : text };
@@ -92,12 +96,23 @@ type Result_3 = variant { Ok : ConsentInfo; Err : ErrorInfo };
 type Result_4 = variant { Ok : DelegationResponse; Err : DelegationError };
 type Result_5 = variant { Ok; Err : DelegationError };
 type RevokeDelegationRequest = record { targets : vec principal };
+type Value = variant {
+  Text : record { content : text };
+  TokenAmount : record { decimals : nat8; amount : nat64; symbol : text };
+  TimestampSeconds : record { amount : nat64 };
+  DurationSeconds : record { amount : nat64 };
+};
 service : () -> {
+  // Allows admins to add new admins
   add_admin : (text) -> (Result);
+  // Allows admins to ban a user for a specified number of days
   ban_user : (principal, nat64) -> (Result);
+  // Check if a user is banned and return the remaining ban time in seconds
   check_ban_status : (principal) -> (opt nat64) query;
   create_comment : (CreateCommentRequest) -> (Result_1);
+  // Allows admins to delete any comment
   delete_comment : (nat64) -> (Result);
+  // Allows admins to bulk delete comments for a specific context
   delete_context_comments : (text) -> (Result_2);
   edit_comment : (EditCommentRequest) -> (Result_1);
   get_batch_context_comment_counts : (BatchCommentCountRequest) -> (
@@ -108,15 +123,25 @@ service : () -> {
   get_context_comment_count : (text) -> (nat32) query;
   get_user_comments : (principal, opt nat32) -> (vec Comment) query;
   get_user_liked_comments : () -> (vec nat64) query;
+  // Returns the list of standards supported by this canister
+  icrc10_supported_standards : () -> (Icrc10SupportedStandardsResponse) query;
+  // Generates a consent message for ICRC-21 canister calls
+  // This follows the specification from https://github.com/dfinity/wg-identity-authentication/blob/main/topics/ICRC-21/icrc_21_consent_msg.md
+  // Supports both GenericDisplayMessage (Markdown) and FieldsDisplayMessage (structured fields)
   icrc21_canister_call_consent_message : (ConsentMessageRequest) -> (
       Result_3,
     ) query;
   icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse) query;
+  // Creates a new delegation for the specified targets
   icrc_34_delegate : (DelegationRequest) -> (Result_4);
+  // Returns current delegations for the caller that match the requested targets
   icrc_34_get_delegation : (DelegationRequest) -> (Result_4) query;
+  // Revokes delegations for the specified targets
   icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_5);
+  // Check if a specific principal is an admin
   is_admin : (text) -> (bool) query;
   like_comment : (nat64) -> (Result_2);
+  // Allows admins to unban a user
   unban_user : (principal) -> (Result);
   unlike_comment : (nat64) -> (Result_2);
 }

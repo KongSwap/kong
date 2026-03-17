@@ -21,10 +21,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const DisplayMessageType = IDL.Variant({
     'GenericDisplay' : IDL.Null,
-    'LineDisplay' : IDL.Record({
-      'characters_per_line' : IDL.Nat16,
-      'lines_per_page' : IDL.Nat16,
-    }),
+    'FieldsDisplay' : IDL.Null,
   });
   const ConsentMessageSpec = IDL.Record({
     'metadata' : ConsentMessageMetadata,
@@ -35,9 +32,22 @@ export const idlFactory = ({ IDL }) => {
     'method' : IDL.Text,
     'user_preferences' : ConsentMessageSpec,
   });
-  const LineDisplayPage = IDL.Record({ 'lines' : IDL.Vec(IDL.Text) });
+  const Value = IDL.Variant({
+    'Text' : IDL.Record({ 'content' : IDL.Text }),
+    'TokenAmount' : IDL.Record({
+      'decimals' : IDL.Nat8,
+      'amount' : IDL.Nat64,
+      'symbol' : IDL.Text,
+    }),
+    'TimestampSeconds' : IDL.Record({ 'amount' : IDL.Nat64 }),
+    'DurationSeconds' : IDL.Record({ 'amount' : IDL.Nat64 }),
+  });
+  const FieldsDisplay = IDL.Record({
+    'fields' : IDL.Vec(IDL.Tuple(IDL.Text, Value)),
+    'intent' : IDL.Text,
+  });
   const ConsentMessage = IDL.Variant({
-    'LineDisplayMessage' : IDL.Record({ 'pages' : IDL.Vec(LineDisplayPage) }),
+    'FieldsDisplayMessage' : FieldsDisplay,
     'GenericDisplayMessage' : IDL.Text,
   });
   const ConsentInfo = IDL.Record({
